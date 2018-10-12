@@ -17,6 +17,9 @@ from PIL import Image
 from traceback import print_exception
 from ast import literal_eval
 
+#add by jeff
+import random
+
 import mimetypes
 _SCRIPT_DIR = os.path.realpath(os.path.dirname(__file__))
 _MEDIA_MIMETYPES_FILE = os.path.join(_SCRIPT_DIR, "media.mimetypes")
@@ -590,6 +593,16 @@ def _save_task_to_db(db_task, task_params):
         db_job = models.Job()
         db_job.segment = db_segment
         db_job.save()
+
+    #add by jeff to create user record
+    frame_list = list(range(0, db_task.size))
+    random.shuffle(frame_list)
+    print ("list",frame_list)
+    for x in range(0, len(frame_list)):
+        db_taskFrameUserRecord = models.TaskFrameUserRecord()
+        db_taskFrameUserRecord.task = db_task
+        db_taskFrameUserRecord.frame = frame_list[x]
+        db_taskFrameUserRecord.save()
 
     parsed_labels = _parse_labels(task_params['labels'])
     for label in parsed_labels:

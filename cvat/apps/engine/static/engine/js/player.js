@@ -10,7 +10,7 @@
 class FrameProvider extends Listener {
     constructor(stop, tid) {
         super('onFrameLoad', () => this._loaded);
-        this._MAX_LOAD = 500;
+        this._MAX_LOAD = 1; //change by jeff
 
         this._stack = [];
         this._loadInterval = null;
@@ -125,12 +125,13 @@ const MAX_PLAYER_SCALE = 10;
 const MIN_PLAYER_SCALE = 0.1;
 
 class PlayerModel extends Listener {
-    constructor(job, playerSize) {
+    // add by jeff, set frame in playermodel
+    constructor(job, playerSize, myframe) {
         super('onPlayerUpdate', () => this);
         this._frame = {
-            start: job.start,
-            stop: job.stop,
-            current: job.start,
+            start: myframe,
+            stop: myframe,
+            current: myframe,
             previous: null
         };
 

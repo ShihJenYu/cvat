@@ -38,6 +38,7 @@ function initLogger(jobID) {
 
 function buildAnnotationUI(job, shapeData, loadJobEvent) {
     // Setup some API
+    // shapeData = [data, frame], change by jeff
     window.cvat = {
         labelsInfo: new LabelsInfo(job),
         player: {
@@ -45,9 +46,10 @@ function buildAnnotationUI(job, shapeData, loadJobEvent) {
                 scale: 1,
             },
             frames: {
-                current: job.start,
-                start: job.start,
-                stop: job.stop,
+                // change by jeff
+                current: shapeData[1],
+                start: shapeData[1],
+                stop: shapeData[1],
             }
         },
         mode: null,
@@ -100,7 +102,7 @@ function buildAnnotationUI(job, shapeData, loadJobEvent) {
     // Setup components
     let annotationParser = new AnnotationParser(job, window.cvat.labelsInfo);
 
-    let shapeCollectionModel = new ShapeCollectionModel().import(shapeData).updateHash();
+    let shapeCollectionModel = new ShapeCollectionModel().import(shapeData[0]).updateHash();
     let shapeCollectionController = new ShapeCollectionController(shapeCollectionModel);
     let shapeCollectionView = new ShapeCollectionView(shapeCollectionModel, shapeCollectionController);
 
@@ -154,8 +156,10 @@ function buildAnnotationUI(job, shapeData, loadJobEvent) {
         width: $('#playerFrame').width(),
         height: $('#playerFrame').height(),
     };
-
-    let playerModel = new PlayerModel(job, playerGeometry);
+    
+    // add by jeff, set frame in playermodel
+    let playerModel = new PlayerModel(job, playerGeometry,shapeData[1]);
+    //let playerModel = new PlayerModel(job, playerGeometry);
     let playerController = new PlayerController(playerModel,
         () => shapeCollectionModel.activeShape,
         (direction) => shapeCollectionModel.find(direction),

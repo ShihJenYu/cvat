@@ -233,7 +233,10 @@ def download_annotation(request, tid):
 def get_annotation(request, jid):
     try:
         job_logger[jid].info("get annotation for {} job".format(jid))
-        response = annotation.get(jid)
+        #change by jeff
+        response = annotation.get_my(jid,request.user.username)
+        #response = annotation.get(jid)
+        
     except Exception as e:
         job_logger[jid].error("cannot get annotation for job {}".format(jid), exc_info=True)
         return HttpResponseBadRequest(str(e))

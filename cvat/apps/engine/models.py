@@ -224,3 +224,14 @@ class TrackedPoints(TrackedObject, PolyShape):
 
 class TrackedPointsAttributeVal(AttributeVal):
     points = models.ForeignKey(TrackedPoints, on_delete=models.CASCADE)
+
+#add by jeff
+class TaskFrameUserRecord(models.Model):
+    task = models.ForeignKey(Task, on_delete=models.CASCADE)
+    frame = models.PositiveIntegerField()
+    user = models.CharField(max_length=150)
+    modify_date = models.DateTimeField(auto_now=True)
+    checker = models.CharField(max_length=150)
+    current = models.BooleanField(default=False)
+    user_submit = models.BooleanField(default=False)
+    comment = models.CharField(max_length=2048)
