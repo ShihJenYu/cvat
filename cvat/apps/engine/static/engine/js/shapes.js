@@ -700,6 +700,31 @@ class BoxModel extends ShapeModel {
             }
         }
 
+        //add by jeff
+        $('.detectpoint').remove();
+        $('.detectpointAim').remove();
+        
+        var selectAtts = null;
+        console.log("upposition",this)
+        var objs = $("#uiContent .bold label")
+        for (let i = 0; i < objs.length; i ++) {
+            let str = objs[i].textContent;
+            let id = str.split(" ")[1];
+            if(this._id==parseInt(id)) {
+                console.log($($(objs[i]).parent()).parent()[0]);
+                selectAtts = $($(objs[i]).parent()).parent()[0];
+                break;
+            }
+        }
+        if(selectAtts != null) {
+            var inputDetectPoint = selectAtts.getElementsByClassName("uiAttr")[6].getElementsByClassName("regular textAttr")[0];
+            var attrid = inputDetectPoint.getAttribute("attrid");
+            attrid = parseInt(attrid);
+           
+            this._attributes.mutable[frame][attrid] = "\"-1,-1 -1,-1\"";
+            inputDetectPoint.value = this._attributes.mutable[frame][attrid];
+        }
+
         if (!silent) {
             this.notify('position');
         }
@@ -2123,6 +2148,8 @@ class ShapeView extends Listener {
             label.innerText = `${attrInfo.name.normalize()}: `;
 
             let text = document.createElement('input');
+            //add by jeff
+            text.setAttribute('attrId', attrId);
             text.setAttribute('type', 'text');
             text.classList.add('regular', 'textAttr');
 

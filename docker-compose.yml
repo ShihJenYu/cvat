@@ -17,6 +17,8 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_DB: cvat
+    ports:
+      - "2345:5432"
     volumes:
       - cvat_db:/var/lib/postgresql/data
 

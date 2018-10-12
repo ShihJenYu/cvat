@@ -436,10 +436,17 @@ class ShapeCollectionModel extends Listener {
         this._interpolate();
     }
 
+    //add by jeff
+    removeDetectPoint() {
+        $('.detectpoint').remove();
+        $('.detectpointAim').remove();
+    }
+
     resetActive() {
         if (this._activeShape) {
             this._activeShape.active = false;
             this._activeShape = null;
+            this.removeDetectPoint();
         }
     }
 
@@ -876,6 +883,11 @@ class ShapeCollectionController {
                 this.switchActiveColor();
             }.bind(this));
 
+            //add by jeff
+            let detectPointHandler = Logger.shortkeyLogDecorator(function() {
+                this.setDetectPoint();
+            }.bind(this));
+
             let incZHandler = Logger.shortkeyLogDecorator(function() {
                 if (window.cvat.mode === null) {
                     let activeShape = this._model.activeShape;
@@ -906,6 +918,8 @@ class ShapeCollectionController {
             Mousetrap.bind(shortkeys["change_shape_label"].value, switchLabelHandler.bind(this), 'keydown');
             Mousetrap.bind(shortkeys["delete_shape"].value, removeActiveHandler.bind(this), 'keydown');
             Mousetrap.bind(shortkeys["change_shape_color"].value, changeShapeColorHandler.bind(this), 'keydown');
+            // add by jeff
+            Mousetrap.bind(shortkeys["detect_point"].value, detectPointHandler.bind(this), 'keydown');
 
             if (window.cvat.job.z_order) {
                 Mousetrap.bind(shortkeys["inc_z"].value, incZHandler.bind(this), 'keydown');
@@ -991,6 +1005,133 @@ class ShapeCollectionController {
                     this._model.colorsByGroup(window.cvat.labelsInfo.labelColorIdx(labelId)));
                 colorByLabelInput.trigger('change');
             }
+        }
+    }
+
+    //add by jeff
+    setDetectPoint() {
+        console.log("in detect_point");
+        $('.detectpoint').remove();
+        $('.detectpointAim').remove();
+
+        let activeShape = this._model.activeShape;
+        if(activeShape) {
+            var xtl = activeShape._positions[activeShape._frame]['xtl'];
+            var ytl = activeShape._positions[activeShape._frame]['ytl'];
+            var xbr = activeShape._positions[activeShape._frame]['xbr'];
+            var ybr = activeShape._positions[activeShape._frame]['ybr'];
+
+            var selectAtts = null;
+            var objs = $("#uiContent .bold label")
+            for (let i = 0; i < objs.length; i ++) {
+                let str = objs[i].textContent;
+                let id = str.split(" ")[1];
+                if(activeShape._id==parseInt(id)) {
+                    selectAtts = $($(objs[i]).parent()).parent()[0];
+                    break;
+                }
+            }
+            
+            var inputDetectPoint = selectAtts.getElementsByClassName("uiAttr")[6].getElementsByClassName("regular textAttr")[0];
+            var attrid = inputDetectPoint.getAttribute("attrid");
+            attrid = parseInt(attrid);
+            var detectpoint_str = inputDetectPoint.value.replace(/"/g, "");
+            var detectpoints = detectpoint_str.split(/[\s,]+/); 
+            var xdl=detectpoints[0],ydl=detectpoints[1],xdr=detectpoints[2],ydr=detectpoints[3];
+            
+            if(xdl == "-1")xdl=xtl+(xbr-xtl)/3;
+            if(ydl == "-1")ydl=ybr;
+            if(xdr == "-1")xdr=xtl+(xbr-xtl)/3*2;
+            if(ydr == "-1")ydr=ybr;
+
+            let scaledR = POINT_RADIUS / window.cvat.player.geometry.scale;
+            var thisframeContent = SVG.adopt($('#frameContent')[0]);
+
+            thisframeContent.rect(scaledR*2,scaledR*2).draggable({
+                minX: xtl-scaledR
+                , minY: ybr-scaledR
+                , maxX: xbr+scaledR
+                , maxY: ybr+scaledR
+                , snapToGrid: 0.1 
+                }).center(xdl,ydl).addClass("detectpoint").fill('#ffff00').attr({'stroke-width':  STROKE_WIDTH / window.cvat.player.geometry.scale,
+            }).on('dragend', function(e){
+                e.preventDefault();
+                var x = (parseFloat(e.target.getAttribute('x'))+parseFloat(scaledR)).toFixed(2);
+                var y = (parseFloat(e.target.getAttribute('y'))+parseFloat(scaledR)).toFixed(2);
+                objs = $("#uiContent .bold label")
+                for (let i = 0; i < objs.length; i ++) {
+                    let str = objs[i].textContent;
+                    let id = str.split(" ")[1];
+                    if(activeShape._id==parseInt(id)) {
+                        selectAtts = $($(objs[i]).parent()).parent()[0];
+                        break;
+                    }
+                }
+                inputDetectPoint = selectAtts.getElementsByClassName("uiAttr")[6].getElementsByClassName("regular textAttr")[0];
+                attrid = inputDetectPoint.getAttribute("attrid");
+                attrid = parseInt(attrid);
+                detectpoint_str = inputDetectPoint.value.replace(/"/g, "");
+                detectpoints = detectpoint_str.split(/[\s,]+/); 
+                xdl=detectpoints[0];ydl=detectpoints[1];xdr=detectpoints[2];ydr=detectpoints[3];
+                
+                if(xdl == "-1")xdl=xtl+(xbr-xtl)/3;
+                if(ydl == "-1")ydl=ybr;
+                if(xdr == "-1")xdr=xtl+(xbr-xtl)/3*2;
+                if(ydr == "-1")ydr=ybr;
+                
+                activeShape._attributes.mutable[activeShape._frame][attrid]= "\"" + x + "," + y + " " + parseFloat(xdr).toFixed(2) + "," + parseFloat(ydr).toFixed(2) + "\"";
+                inputDetectPoint.value = activeShape._attributes.mutable[activeShape._frame][attrid];
+                });
+            thisframeContent.rect(scaledR*2,scaledR*2).draggable({
+                minX: xtl-scaledR
+                , minY: ybr-scaledR
+                , maxX: xbr+scaledR
+                , maxY: ybr+scaledR
+                , snapToGrid: 0.1 
+                }).center(xdr,ydr).addClass("detectpoint").fill('#ffff00').attr({'stroke-width':  STROKE_WIDTH / window.cvat.player.geometry.scale,
+            }).on('dragend', function(e){
+                e.preventDefault();
+                var x = (parseFloat(e.target.getAttribute('x'))+parseFloat(scaledR)).toFixed(2);
+                var y = (parseFloat(e.target.getAttribute('y'))+parseFloat(scaledR)).toFixed(2);
+                objs = $("#uiContent .bold label")
+                for (let i = 0; i < objs.length; i ++) {
+                    let str = objs[i].textContent;
+                    let id = str.split(" ")[1];
+                    if(activeShape._id==parseInt(id)) {
+                        selectAtts = $($(objs[i]).parent()).parent()[0];
+                        break;
+                    }
+                }
+                inputDetectPoint = selectAtts.getElementsByClassName("uiAttr")[6].getElementsByClassName("regular textAttr")[0];
+                attrid = inputDetectPoint.getAttribute("attrid");
+                attrid = parseInt(attrid);
+                detectpoint_str = inputDetectPoint.value.replace(/"/g, "");
+                detectpoints = detectpoint_str.split(/[\s,]+/); 
+                xdl=detectpoints[0];ydl=detectpoints[1];xdr=detectpoints[2];ydr=detectpoints[3];
+
+                if(xdl == "-1")xdl=xtl+(xbr-xtl)/3;
+                if(ydl == "-1")ydl=ybr;
+                if(xdr == "-1")xdr=xtl+(xbr-xtl)/3*2;
+                if(ydr == "-1")ydr=ybr;
+                
+                activeShape._attributes.mutable[activeShape._frame][attrid] = "\"" + parseFloat(xdl).toFixed(2) + "," + parseFloat(ydl).toFixed(2) + " " + x + "," + y + "\"";
+                inputDetectPoint.value = activeShape._attributes.mutable[activeShape._frame][attrid];
+                });
+                
+                $('.detectpoint').each(function() {
+                $(this).on('dragstart dragmove', () => {
+                    $('.detectpointAim').remove();
+                    thisframeContent.line($(this)[0].getBBox().x+scaledR,ytl,$(this)[0].getBBox().x+scaledR,$(this)[0].getBBox().y).attr(
+                        {
+                            'stroke-width': STROKE_WIDTH / 2 / window.cvat.player.geometry.scale ,'stroke': '#ffff00',
+                        }
+                    ).addClass('detectpointAim');
+                }).on('mouseover', () => {
+                    this.instance.attr('stroke-width', STROKE_WIDTH * 2 / window.cvat.player.geometry.scale);
+                }).on('mouseout', () => {
+                    this.instance.attr('stroke-width', STROKE_WIDTH / window.cvat.player.geometry.scale);
+                });
+            });
         }
     }
 
@@ -1206,6 +1347,10 @@ class ShapeCollectionView {
             case "drag_polygon":
                 this._controller.switchDraggableForActive();
                 break;
+            //add by jeff
+            case "detect_point":
+                this._controller.setDetectPoint();
+                break;
             }
         });
 
@@ -1223,6 +1368,10 @@ class ShapeCollectionView {
                 break;
             case "switch_lock":
                 button.innerText = `Switch Lock (${shortkeys['switch_lock_property'].view_value})`;
+                break;
+            //add by jeff
+            case "detect_point":
+                button.innerText = `Detect Point (${shortkeys['detect_point'].view_value})`;
                 break;
             }
         }

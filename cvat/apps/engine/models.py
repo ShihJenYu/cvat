@@ -97,7 +97,7 @@ def parse_attribute(text):
 
 class AttributeSpec(models.Model):
     label = models.ForeignKey(Label, on_delete=models.CASCADE)
-    text  = models.CharField(max_length=1024)
+    text  = models.CharField(max_length=2048) #change by jeff
 
     def get_attribute(self):
         return parse_attribute(self.text)

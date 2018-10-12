@@ -72,6 +72,13 @@ class Config {
                 description: "change color for highligted shape"
             },
 
+            // add by jeff
+            detect_point: {
+                value: "k",
+                view_value: "K",
+                description: "set detect_point"
+            },
+
             change_player_brightness: {
                 value: "shift+b,alt+b".split(','),
                 view_value: "Shift+B / Alt+B",
