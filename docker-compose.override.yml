@@ -1,0 +1,15 @@
+version: "2.3"
+
+services:
+  cvat:
+    environment:
+      CVAT_SHARE_URL: "Mounted from /home/jeff/TestImg host directory"
+    volumes:
+      - cvat_share:/home/django/share:ro
+      
+volumes:
+  cvat_share:
+    driver_opts:
+      type: none
+      device: /home/jeff/TestImg
+      o: bind

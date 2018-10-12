@@ -15,7 +15,7 @@ services:
           - db
     restart: always
     environment:
-      POSTGRES_USER: root
+      POSTGRES_USER: postgres
       POSTGRES_DB: cvat
     volumes:
       - cvat_db:/var/lib/postgresql/data
