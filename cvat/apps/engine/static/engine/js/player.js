@@ -265,6 +265,7 @@ class PlayerModel extends Listener {
     }
 
     shift(delta, absolute) {
+        console.log("in shift");
         if (['resize', 'drag'].indexOf(window.cvat.mode) != -1) {
             return false;
         }
@@ -295,10 +296,12 @@ class PlayerModel extends Listener {
         let changed = this._frame.previous != this._frame.current;
         if (this._settings.resetZoom || this._frame.previous === null) {  // fit in annotation mode or once in interpolation mode
             this._frame.previous = this._frame.current;
+            console.log("next fit");
             this.fit();     // notify() inside the fit()
         }
         else {
             this._frame.previous = this._frame.current;
+            console.log("next notify");
             this.notify();
         }
 
@@ -594,6 +597,28 @@ class PlayerController {
         this._model.pause();
     }
 
+    // add by jeff
+    myNext() {
+        console.log("in myNext");
+        let jid = window.location.href.match('id=[0-9]+')[0].slice(3);
+        let loadJobEvent = Logger.addContinuedEvent(Logger.EventType.loadJob);
+        serverRequest("/set/current/job/" + jid, function() {
+            console.log("fuckinginigingingi done set/current");
+            serverRequest("/get/job/" + jid, function(job) {
+                console.log("/get/job/");
+                serverRequest("get/annotation/job/" + jid, function(data) {
+                    console.log("/get/annotation/job/");
+                    $('#loadingOverlay').remove();
+                    setTimeout(() => {
+                        buildAnnotationUI(job, data, loadJobEvent);
+                    }, 0);
+                });
+            });
+        });
+        this._model.shift(0);
+        this._model.pause();
+    }
+
     previous() {
         this._model.shift(-1);
         this._model.pause();
@@ -649,6 +674,9 @@ class PlayerView {
         this._playerGridPattern = $('#playerGridPattern');
         this._playerGridPath = $('#playerGridPath');
         this._contextMenuUI = $('#playerContextMenu');
+        // add by jeff
+        this._nextButtonFlag = $('#nextButtonFlag');
+        this._nextButtonTraining = $('#nextButton_training');
 
         $('*').on('mouseup', () => this._controller.frameMouseUp());
         this._playerUI.on('wheel', (e) => this._controller.zoom(e));
@@ -675,6 +703,23 @@ class PlayerView {
                 this._controller.seek(+e.target.value);
                 blurAllElements();
             }
+        });
+
+        // add by jeff
+        $('#nextButtonFlag').click(function(){
+            if($(this).is(':checked')) {
+                $('#nextButton_training')[0].setAttribute("class","playerButton_training");
+            }
+            else {
+                $('#nextButton_training')[0].setAttribute("class","disabled");
+            }
+        });
+        this._nextButtonTraining.unbind('click').on('click', () => {
+            //callAnnotationUI(id);
+            console.log("fucking3333");
+            $('#nextButtonFlag').prop('checked',false);
+            $('#nextButton_training')[0].setAttribute("class","disabled");
+            this._controller.myNext();
         });
 
         let shortkeys = window.cvat.config.shortkeys;

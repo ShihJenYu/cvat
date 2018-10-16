@@ -1510,6 +1510,8 @@ class ShapeCollectionView {
     onCollectionUpdate(collection) {
         // Save parents and detach elements from DOM
         // in order to increase performance in the buildShapeView function
+
+        console.log("onCollectionUpdate(collection) ");
         let parents = {
             uis: this._UIContent.parent(),
             shapes: this._frameContent.node.parentNode

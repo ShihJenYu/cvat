@@ -84,14 +84,21 @@ def get_my(jid,username):
     user_record = None
     try:
         user_record = models.TaskFrameUserRecord.objects.get(task_id=db_job.segment.task.id,user=username,current=True)
-        print ("find current frame",user_record.frame)
+        print ("BBBuser=username find current",user_record.frame)
     except ObjectDoesNotExist:
-        query = Q(user='')
-        query.add(Q(user=username), Q.OR)
-        query.add(Q(task_id=db_job.segment.task.id), Q.AND)
+        try:
+            user_record = models.TaskFrameUserRecord.objects.filter(task_id=db_job.segment.task.id,user='').first()
+            print ("user='' find empty first frame",user_record.frame)
+        except ObjectDoesNotExist:
+            print ("no user's current or empty can set current!!")
+        # query = Q(user='')
+        # query.add(Q(user=username), Q.OR)
+        # query.add(Q(task_id=db_job.segment.task.id), Q.AND)
+        # query.add(Q(user_submit=False), Q.AND)
 
-        user_record = models.TaskFrameUserRecord.objects.filter(query).first()
-        print ("not found current frame, set",user_record.frame)
+        # user_record = models.TaskFrameUserRecord.objects.filter(query).first()
+        # user_record = models.TaskFrameUserRecord.objects.get(task_id=db_job.segment.task.id,user='',current=True)
+        # print ("not found current frame, set",user_record.frame)
      
     annotation = _AnnotationForJob(db_job)
     if not (user_record is None):
@@ -101,8 +108,8 @@ def get_my(jid,username):
         user_record.current = True
         user_record.save()
     else:
-        print ("user_record is None")
-        annotation.init_from_db_my(0)
+        print ("user_record is None, will error")
+        annotation.init_from_db_my(user_record.frame)
     return annotation.to_client() , user_record.frame
 
 @transaction.atomic

@@ -703,7 +703,7 @@ function saveAnnotation(shapeCollectionModel, job) {
 
     saveButton.prop('disabled', true);
     saveButton.text('Saving..');
-
+    console.log("this data is will save in db",data);
     saveJobRequest(job.jobid, data, () => {
         // success
         shapeCollectionModel.updateHash();

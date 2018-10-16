@@ -234,4 +234,5 @@ class TaskFrameUserRecord(models.Model):
     checker = models.CharField(max_length=150)
     current = models.BooleanField(default=False)
     user_submit = models.BooleanField(default=False)
+    need_modify = models.BooleanField(default=False)
     comment = models.CharField(max_length=2048)

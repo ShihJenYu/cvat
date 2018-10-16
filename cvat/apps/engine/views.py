@@ -14,6 +14,10 @@ from django.contrib.auth.decorators import permission_required
 from django.views.decorators.gzip import gzip_page
 from sendfile import sendfile
 
+#add by jeff
+from django.db.models import Q
+from django.core.exceptions import ObjectDoesNotExist
+
 from . import annotation, task, models
 from cvat.settings.base import JS_3RDPARTY
 from cvat.apps.authentication.decorators import login_required
@@ -292,3 +296,69 @@ def rq_handler(job, exc_type, exc_value, tb):
         return annotation.rq_handler(job, exc_type, exc_value, tb)
 
     return True
+
+# add by jeff
+@login_required
+@permission_required(perm=['engine.view_task', 'engine.change_annotation'], raise_exception=True)
+def set_user_currnet(request, jid):
+    try:
+        
+        print ("qqqqqqqqqqqqqqqqqqqqqq")
+        job_logger[jid].info("set {} currnet for {} job".format(request.user.username,jid))
+        print ("wwwwwwwwwqqqqqqwwww")
+        db_job = models.Job.objects.get(id=jid)
+        print ("wwwwwwwwwwwww")
+        # set current frame to submit
+        user_record = None
+        print ("wwwwwwwxxxxwwwwww")
+        try:
+            print ("wwwwwwwssssssssswwwwww")
+            user_record = models.TaskFrameUserRecord.objects.get(task_id=db_job.segment.task.id,user=request.user.username,current=True)
+
+            user_record.current = False
+            user_record.user_submit = True
+            user_record.need_modify = False
+            user_record.save()
+            print("fucking user_record.save()",user_record.frame)
+            print ("AAuser=username find current",user_record.frame)
+        except ObjectDoesNotExist:
+            print ("user=username not found current",user_record.frame)
+            print ("aaaaaaaaaaaaaaaaaaaaaa")
+            
+            
+        # select need_modify
+        user_record = None
+        try:
+            print("aaaabbbb")
+            user_record = models.TaskFrameUserRecord.objects.filter(task_id=db_job.segment.task.id,user=request.user.username,need_modify=True).first()
+
+            if user_record is None:
+                try:
+                    print("ccccc")
+                    user_record = models.TaskFrameUserRecord.objects.filter(task_id=db_job.segment.task.id,user='').first()
+                    print ("user='' find empty first frame",user_record.frame)
+                except ObjectDoesNotExist:
+                    print ("no user's need_modify or empty can set current!!",user_record.frame)
+
+        except ObjectDoesNotExist:
+            try:
+                print("bbbbaaaaa")
+                user_record = models.TaskFrameUserRecord.objects.filter(task_id=db_job.segment.task.id,user='').first()
+                print ("user='' find empty first frame",user_record.frame)
+            except ObjectDoesNotExist:
+                print ("no user's need_modify or empty can set current!!",user_record.frame)
+        print("zzzz")
+        user_record.user = request.user.username
+        user_record.current = True
+        user_record.save()
+
+    except Exception as e:
+        print("fucking error is !!!!",str(e))
+        job_logger[jid].error("cannot set {} currnet for {} job".format(request.user.username,jid), exc_info=True)
+        print("fucking",user_record.frame)
+        return HttpResponseBadRequest(str(e))
+        
+
+    
+    print("fucking user_record.save() 2",user_record.frame)
+    return JsonResponse({'frame': user_record.frame})

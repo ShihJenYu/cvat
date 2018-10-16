@@ -28,6 +28,25 @@
     fill:grey !important;
     stroke: grey !important;
 }
+/* add by ericlou */
+.playerButton_training {
+    fill: #09c;
+    stroke-width: 2px;
+    stroke: black;
+    margin-top: 1%;
+    margin-right: 40px;
+    float: left;
+    width: 40px;
+    height: 40px;
+}
+/* add by ericlou */
+.playerButton_training:hover {
+    fill: rgba(0,0,0,0);
+}
+/* add by ericlou */
+.playerButton_training:active {
+    fill: #017196;
+}
 
 
 
