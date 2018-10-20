@@ -232,6 +232,25 @@ function buildAnnotationUI(job, shapeData, loadJobEvent) {
             blurAllElements();
         }
     });
+
+    // add by jeff
+    $('#nextButtonFlag').click(function(e){
+
+        if (shapeCollectionModel.hasUnsavedChanges())
+        {
+            // var r = confirm("Press a button!");
+            alert("Hello! Submit you made may not be saved !!!");
+            $('#nextButtonFlag').prop('checked',false);
+        } else {
+            if($('#nextButtonFlag').is(':checked')) {
+                $('#nextButton_training')[0].setAttribute("class","playerButton_training");
+            }
+            else {
+                $('#nextButton_training')[0].setAttribute("class","playerButton_training disabledPlayerButton");
+                
+            }
+        }        
+    });
 }
 
 
@@ -697,6 +716,7 @@ function saveAnnotation(shapeCollectionModel, job) {
     let annotationLogs = Logger.getLogs();
 
     const data = {
+        current_frame: shapeCollectionModel._frame,
         annotation: exportedData,
         logs: JSON.stringify(annotationLogs.export()),
     };

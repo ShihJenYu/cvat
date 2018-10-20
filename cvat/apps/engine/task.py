@@ -596,7 +596,7 @@ def _save_task_to_db(db_task, task_params):
 
     #add by jeff to create user record
     frame_list = list(range(0, db_task.size))
-    random.shuffle(frame_list)
+    #random.shuffle(frame_list)
     print ("list",frame_list)
     for x in range(0, len(frame_list)):
         db_taskFrameUserRecord = models.TaskFrameUserRecord()

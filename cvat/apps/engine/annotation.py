@@ -15,12 +15,14 @@ from xml.dom import minidom
 from xml.sax.saxutils import XMLGenerator
 from abc import ABCMeta, abstractmethod
 from PIL import Image
+#add by jeff
+import time, random
 
 import django_rq
 from django.conf import settings
 from django.db import transaction
 #add by jeff
-from django.db.models import Q
+from django.db.models import Q, Max, Min
 from django.core.exceptions import ObjectDoesNotExist
 
 from . import models
@@ -64,63 +66,63 @@ def check(tid):
     return response
 
 @transaction.atomic
-def get(jid):
+def get(jid, username=None):
     """
     Get annotations for the job.
     """
     db_job = models.Job.objects.select_for_update().get(id=jid)
-    annotation = _AnnotationForJob(db_job)
-    annotation.init_from_db()
-
-    return annotation.to_client()
-
-#add by jeff
-@transaction.atomic
-def get_my(jid,username):
-    """
-    Get annotations for the job.
-    """
-    db_job = models.Job.objects.select_for_update().get(id=jid)
-    user_record = None
-    try:
-        user_record = models.TaskFrameUserRecord.objects.get(task_id=db_job.segment.task.id,user=username,current=True)
-        print ("BBBuser=username find current",user_record.frame)
-    except ObjectDoesNotExist:
+    
+    frame = None
+    if not username is None:
+        user_record = None
         try:
-            user_record = models.TaskFrameUserRecord.objects.filter(task_id=db_job.segment.task.id,user='').first()
-            print ("user='' find empty first frame",user_record.frame)
+            user_record = models.TaskFrameUserRecord.objects.get(task_id=db_job.segment.task.id,user=username,current=True)
+            frame = user_record.frame
+            print ("user: {}, get frame: {} in job: {}".format(username,frame,jid))
         except ObjectDoesNotExist:
-            print ("no user's current or empty can set current!!")
-        # query = Q(user='')
-        # query.add(Q(user=username), Q.OR)
-        # query.add(Q(task_id=db_job.segment.task.id), Q.AND)
-        # query.add(Q(user_submit=False), Q.AND)
+            try:
+                start_time = time.time()
+                #user_record = models.TaskFrameUserRecord.objects.filter(task_id=db_job.segment.task.id,user='').first()
+                qs = models.TaskFrameUserRecord.objects.filter(task_id=db_job.segment.task.id,user='')
+                if qs.count():
+                    max_id = qs.aggregate(max_id=Max("id"))['max_id']
+                    min_id = qs.aggregate(min_id=Min("id"))['min_id']
 
-        # user_record = models.TaskFrameUserRecord.objects.filter(query).first()
-        # user_record = models.TaskFrameUserRecord.objects.get(task_id=db_job.segment.task.id,user='',current=True)
-        # print ("not found current frame, set",user_record.frame)
-     
+                    while True:
+                        pk = random.randint(min_id, max_id)
+                        user_record = models.TaskFrameUserRecord.objects.get(pk=pk)
+                        if user_record:
+                            break
+                end_time = time.time()
+                frame = user_record.frame
+                print ("user='' find empty first frame",frame)
+                print ("use random pk cost time : ",(end_time - start_time))
+            except ObjectDoesNotExist:
+                print ("no user's current or empty can set current!!")
+
+        if not user_record is None:
+            print ("save current")
+            user_record.user = username
+            user_record.current = True
+            user_record.save()
+        else:
+            print ("user_record is None, will error")
+            raise Exception('user_record is None')
+
     annotation = _AnnotationForJob(db_job)
-    if not (user_record is None):
-        annotation.init_from_db_my(user_record.frame)
-        print ("save current")
-        user_record.user = username
-        user_record.current = True
-        user_record.save()
-    else:
-        print ("user_record is None, will error")
-        annotation.init_from_db_my(user_record.frame)
-    return annotation.to_client() , user_record.frame
+    annotation.init_from_db(frame=frame)
+
+    return annotation.to_client(), frame
 
 @transaction.atomic
-def save_job(jid, data):
+def save_job(jid, data, oneFrameFlag=False,frame=None):
     """
     Save new annotations for the job.
     """
     db_job = models.Job.objects.select_for_update().get(id=jid)
     annotation = _AnnotationForJob(db_job)
     annotation.init_from_client(data)
-    annotation.save_to_db()
+    annotation.save_to_db(oneFrameFlag,frame)
     db_job.segment.task.updated_date = timezone.now()
     db_job.segment.task.save()
 
@@ -509,255 +511,7 @@ class _AnnotationForJob(_Annotation):
             ))
         return ' '.join(verified)
 
-    def init_from_db(self):
-        def get_values(shape_type):
-            if shape_type == 'polygons':
-                return [
-                    ('id', 'frame', 'points', 'label_id', 'group_id', 'occluded', 'z_order',
-                    'labeledpolygonattributeval__value', 'labeledpolygonattributeval__spec_id',
-                    'labeledpolygonattributeval__id'), {
-                        'attributes': [
-                            'labeledpolygonattributeval__value',
-                            'labeledpolygonattributeval__spec_id',
-                            'labeledpolygonattributeval__id'
-                        ]
-                    }, 'labeledpolygonattributeval_set'
-                ]
-            elif shape_type == 'polylines':
-                return [
-                    ('id', 'frame', 'points', 'label_id', 'group_id', 'occluded', 'z_order',
-                    'labeledpolylineattributeval__value', 'labeledpolylineattributeval__spec_id',
-                    'labeledpolylineattributeval__id'), {
-                        'attributes': [
-                            'labeledpolylineattributeval__value',
-                            'labeledpolylineattributeval__spec_id',
-                            'labeledpolylineattributeval__id'
-                        ]
-                    }, 'labeledpolylineattributeval_set'
-                ]
-            elif shape_type == 'boxes':
-                return [
-                    ('id', 'frame', 'xtl', 'ytl', 'xbr', 'ybr', 'label_id', 'group_id', 'occluded', 'z_order',
-                    'labeledboxattributeval__value', 'labeledboxattributeval__spec_id',
-                    'labeledboxattributeval__id'), {
-                        'attributes': [
-                            'labeledboxattributeval__value',
-                            'labeledboxattributeval__spec_id',
-                            'labeledboxattributeval__id'
-                        ]
-                    }, 'labeledboxattributeval_set'
-                ]
-            elif shape_type == 'points':
-                return [
-                    ('id', 'frame', 'points', 'label_id', 'group_id', 'occluded', 'z_order',
-                    'labeledpointsattributeval__value', 'labeledpointsattributeval__spec_id',
-                    'labeledpointsattributeval__id'), {
-                        'attributes': [
-                            'labeledpointsattributeval__value',
-                            'labeledpointsattributeval__spec_id',
-                            'labeledpointsattributeval__id'
-                        ]
-                    }, 'labeledpointsattributeval_set'
-                ]
-
-        self.reset()
-        for shape_type in ['boxes', 'points', 'polygons', 'polylines']:
-            (values, merge_keys, prefetch) = get_values(shape_type)
-            db_shapes = list(self._get_shape_set(shape_type).prefetch_related(prefetch).
-                values(*values).order_by('frame'))
-            db_shapes = self._merge_table_rows(db_shapes, merge_keys, 'id')
-            for db_shape in db_shapes:
-                label = _Label(self.db_labels[db_shape.label_id])
-                if shape_type == 'boxes':
-                    shape = _LabeledBox(label, db_shape.xtl, db_shape.ytl, db_shape.xbr, db_shape.ybr,
-                        db_shape.frame, db_shape.group_id, db_shape.occluded, db_shape.z_order)
-                else:
-                    shape = _LabeledPolyShape(label, db_shape.points, db_shape.frame,
-                        db_shape.group_id, db_shape.occluded, db_shape.z_order)
-                for db_attr in db_shape.attributes:
-                    if db_attr.id != None:
-                        spec = self.db_attributes[db_attr.spec_id]
-                        attr = _Attribute(spec, db_attr.value)
-                        shape.add_attribute(attr)
-                getattr(self, shape_type).append(shape)
-
-
-
-        db_paths = self.db_job.objectpath_set
-        for shape in ['trackedpoints_set', 'trackedbox_set', 'trackedpolyline_set', 'trackedpolygon_set']:
-            db_paths.prefetch_related(shape)
-        for shape_attr in ['trackedpoints_set__trackedpointsattributeval_set', 'trackedbox_set__trackedboxattributeval_set',
-            'trackedpolygon_set__trackedpolygonattributeval_set', 'trackedpolyline_set__trackedpolylineattributeval_set']:
-            db_paths.prefetch_related(shape_attr)
-        db_paths.prefetch_related('objectpathattributeval_set')
-        db_paths = list (db_paths.values('id', 'frame', 'group_id', 'shapes', 'objectpathattributeval__spec_id',
-            'objectpathattributeval__id', 'objectpathattributeval__value',
-            'trackedbox', 'trackedpolygon', 'trackedpolyline', 'trackedpoints',
-            'trackedbox__id', 'label_id', 'trackedbox__xtl', 'trackedbox__ytl',
-            'trackedbox__xbr', 'trackedbox__ybr', 'trackedbox__frame', 'trackedbox__occluded',
-            'trackedbox__z_order','trackedbox__outside', 'trackedbox__trackedboxattributeval__spec_id',
-            'trackedbox__trackedboxattributeval__value', 'trackedbox__trackedboxattributeval__id',
-            'trackedpolygon__id' ,'trackedpolygon__points', 'trackedpolygon__frame', 'trackedpolygon__occluded',
-            'trackedpolygon__z_order', 'trackedpolygon__outside', 'trackedpolygon__trackedpolygonattributeval__spec_id',
-            'trackedpolygon__trackedpolygonattributeval__value', 'trackedpolygon__trackedpolygonattributeval__id',
-            'trackedpolyline__id', 'trackedpolyline__points', 'trackedpolyline__frame', 'trackedpolyline__occluded',
-            'trackedpolyline__z_order', 'trackedpolyline__outside', 'trackedpolyline__trackedpolylineattributeval__spec_id',
-            'trackedpolyline__trackedpolylineattributeval__value', 'trackedpolyline__trackedpolylineattributeval__id',
-            'trackedpoints__id', 'trackedpoints__points', 'trackedpoints__frame', 'trackedpoints__occluded',
-            'trackedpoints__z_order', 'trackedpoints__outside', 'trackedpoints__trackedpointsattributeval__spec_id',
-            'trackedpoints__trackedpointsattributeval__value', 'trackedpoints__trackedpointsattributeval__id')
-            .order_by('id', 'trackedbox__frame', 'trackedpolygon__frame', 'trackedpolyline__frame', 'trackedpoints__frame'))
-
-        db_box_paths = list(filter(lambda path: path['shapes'] == 'boxes', db_paths ))
-        db_polygon_paths = list(filter(lambda path: path['shapes'] == 'polygons', db_paths ))
-        db_polyline_paths = list(filter(lambda path: path['shapes'] == 'polylines', db_paths ))
-        db_points_paths = list(filter(lambda path: path['shapes'] == 'points', db_paths ))
-
-        object_path_attr_merge_key = [
-            'objectpathattributeval__value',
-            'objectpathattributeval__spec_id',
-            'objectpathattributeval__id'
-        ]
-
-        db_box_paths = self._merge_table_rows(db_box_paths, {
-            'attributes': object_path_attr_merge_key,
-            'shapes': [
-                'trackedbox__id', 'trackedbox__xtl', 'trackedbox__ytl',
-                'trackedbox__xbr', 'trackedbox__ybr', 'trackedbox__frame',
-                'trackedbox__occluded', 'trackedbox__z_order', 'trackedbox__outside',
-                'trackedbox__trackedboxattributeval__value',
-                'trackedbox__trackedboxattributeval__spec_id',
-                'trackedbox__trackedboxattributeval__id'
-            ],
-        }, 'id')
-
-        db_polygon_paths = self._merge_table_rows(db_polygon_paths, {
-            'attributes': object_path_attr_merge_key,
-            'shapes': [
-                'trackedpolygon__id', 'trackedpolygon__points', 'trackedpolygon__frame',
-                'trackedpolygon__occluded', 'trackedpolygon__z_order', 'trackedpolygon__outside',
-                'trackedpolygon__trackedpolygonattributeval__value',
-                'trackedpolygon__trackedpolygonattributeval__spec_id',
-                'trackedpolygon__trackedpolygonattributeval__id'
-            ]
-        }, 'id')
-
-        db_polyline_paths = self._merge_table_rows(db_polyline_paths, {
-            'attributes': object_path_attr_merge_key,
-            'shapes': [
-                'trackedpolyline__id', 'trackedpolyline__points', 'trackedpolyline__frame',
-                'trackedpolyline__occluded', 'trackedpolyline__z_order', 'trackedpolyline__outside',
-                'trackedpolyline__trackedpolylineattributeval__value',
-                'trackedpolyline__trackedpolylineattributeval__spec_id',
-                'trackedpolyline__trackedpolylineattributeval__id'
-            ],
-        }, 'id')
-
-        db_points_paths = self._merge_table_rows(db_points_paths, {
-            'attributes': object_path_attr_merge_key,
-            'shapes': [
-                'trackedpoints__id', 'trackedpoints__points', 'trackedpoints__frame',
-                'trackedpoints__occluded', 'trackedpoints__z_order', 'trackedpoints__outside',
-                'trackedpoints__trackedpointsattributeval__value',
-                'trackedpoints__trackedpointsattributeval__spec_id',
-                'trackedpoints__trackedpointsattributeval__id'
-            ]
-        }, 'id')
-
-        for db_box_path in db_box_paths:
-            db_box_path.attributes = list(set(db_box_path.attributes))
-            db_box_path.shapes = self._merge_table_rows(db_box_path.shapes, {
-                'attributes': [
-                    'trackedboxattributeval__value',
-                    'trackedboxattributeval__spec_id',
-                    'trackedboxattributeval__id'
-                ]
-            }, 'id')
-
-        for db_polygon_path in db_polygon_paths:
-            db_polygon_path.attributes = list(set(db_polygon_path.attributes))
-            db_polygon_path.shapes = self._merge_table_rows(db_polygon_path.shapes, {
-                'attributes': [
-                    'trackedpolygonattributeval__value',
-                    'trackedpolygonattributeval__spec_id',
-                    'trackedpolygonattributeval__id'
-                ]
-            }, 'id')
-
-        for db_polyline_path in db_polyline_paths:
-            db_polyline_path.attributes = list(set(db_polyline_path.attributes))
-            db_polyline_path.shapes = self._merge_table_rows(db_polyline_path.shapes, {
-                'attributes': [
-                    'trackedpolylineattributeval__value',
-                    'trackedpolylineattributeval__spec_id',
-                    'trackedpolylineattributeval__id'
-                ]
-            }, 'id')
-
-        for db_points_path in db_points_paths:
-            db_points_path.attributes = list(set(db_points_path.attributes))
-            db_points_path.shapes = self._merge_table_rows(db_points_path.shapes, {
-                'attributes': [
-                    'trackedpointsattributeval__value',
-                    'trackedpointsattributeval__spec_id',
-                    'trackedpointsattributeval__id'
-                ]
-            }, 'id')
-
-        for db_path in db_box_paths:
-            for db_shape in db_path.shapes:
-                db_shape.attributes = list(set(db_shape.attributes))
-            label = _Label(self.db_labels[db_path.label_id])
-            path = _BoxPath(label, db_path.frame, self.stop_frame, db_path.group_id)
-            for db_attr in db_path.attributes:
-                spec = self.db_attributes[db_attr.spec_id]
-                attr = _Attribute(spec, db_attr.value)
-                path.add_attribute(attr)
-
-            frame = -1
-            for db_shape in db_path.shapes:
-                box = _TrackedBox(db_shape.xtl, db_shape.ytl, db_shape.xbr, db_shape.ybr,
-                    db_shape.frame, db_shape.occluded, db_shape.z_order, db_shape.outside)
-                assert box.frame > frame
-                frame = box.frame
-
-                for db_attr in db_shape.attributes:
-                    spec = self.db_attributes[db_attr.spec_id]
-                    attr = _Attribute(spec, db_attr.value)
-                    box.add_attribute(attr)
-                path.add_box(box)
-
-            self.box_paths.append(path)
-
-        for idx, paths_type in enumerate(['polygon_paths', 'polyline_paths', 'points_paths']):
-            source = [db_polygon_paths, db_polyline_paths, db_points_paths][idx]
-
-            for db_path in source:
-                for db_shape in db_path.shapes:
-                    db_shape.attributes = list(set(db_shape.attributes))
-                label = _Label(self.db_labels[db_path.label_id])
-                path = _PolyPath(label, db_path.frame, self.stop_frame, db_path.group_id)
-                for db_attr in db_path.attributes:
-                    spec = self.db_attributes[db_attr.spec_id]
-                    attr = _Attribute(spec, db_attr.value)
-                    path.add_attribute(attr)
-
-                frame = -1
-                for db_shape in db_path.shapes:
-                    shape = _TrackedPolyShape(db_shape.points, db_shape.frame, db_shape.occluded, db_shape.z_order, db_shape.outside)
-                    assert shape.frame > frame
-                    frame = shape.frame
-
-                    for db_attr in db_shape.attributes:
-                        spec = self.db_attributes[db_attr.spec_id]
-                        attr = _Attribute(spec, db_attr.value)
-                        shape.add_attribute(attr)
-                    path.add_shape(shape)
-
-                getattr(self, paths_type).append(path)
-
-    #add by jeff
-    def init_from_db_my(self,frame):
+    def init_from_db(self,frame=None):
         def get_values(shape_type):
             if shape_type == 'polygons':
                 return [
@@ -831,7 +585,6 @@ class _AnnotationForJob(_Annotation):
                     getattr(self, shape_type).append(shape)
 
 
-
         db_paths = self.db_job.objectpath_set
         for shape in ['trackedpoints_set', 'trackedbox_set', 'trackedpolyline_set', 'trackedpolygon_set']:
             db_paths.prefetch_related(shape)
@@ -1004,7 +757,7 @@ class _AnnotationForJob(_Annotation):
                     path.add_shape(shape)
 
                 getattr(self, paths_type).append(path)
-
+    
     def init_from_client(self, data):
         # All fields inside data should be converted to correct type explicitly.
         # We cannot trust that client will send 23 as integer. Here we also
@@ -1186,8 +939,12 @@ class _AnnotationForJob(_Annotation):
         elif shape_type == 'points_paths':
             return models.TrackedPointsAttributeVal
 
-    def _save_paths_to_db(self):
-        self.db_job.objectpath_set.all().delete()
+    def _save_paths_to_db(self, oneFrameFlag=False, frame=None):
+        #self.db_job.objectpath_set.all().delete()
+        if(oneFrameFlag):
+            self.db_job.objectpath_set.filter(frame=frame).delete()
+        else:
+            self.db_job.objectpath_set.delete()
 
         for shape_type in ['polygon_paths', 'polyline_paths', 'points_paths', 'box_paths']:
             db_paths = []
@@ -1305,12 +1062,16 @@ class _AnnotationForJob(_Annotation):
         elif shape_type == 'points':
             return self.db_job.labeledpoints_set
 
-    def _save_shapes_to_db(self):
+    def _save_shapes_to_db(self, oneFrameFlag=False, frame=None):
         db_shapes = []
         db_attrvals = []
 
         for shape_type in ['polygons', 'polylines', 'points', 'boxes']:
-            self._get_shape_set(shape_type).all().delete()
+            if(oneFrameFlag):
+                self._get_shape_set(shape_type).filter(frame=frame).delete()
+            else:
+                self._get_shape_set(shape_type).all().delete()
+            
             db_shapes = []
             db_attrvals = []
 
@@ -1368,9 +1129,9 @@ class _AnnotationForJob(_Annotation):
 
             self._get_shape_attr_class(shape_type).objects.bulk_create(db_attrvals)
 
-    def save_to_db(self):
-        self._save_shapes_to_db()
-        self._save_paths_to_db()
+    def save_to_db(self, oneFrameFlag=False, frame=None):
+        self._save_shapes_to_db(oneFrameFlag,frame)
+        self._save_paths_to_db(oneFrameFlag,frame)
 
     def to_client(self):
         data = {

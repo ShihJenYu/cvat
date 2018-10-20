@@ -6,6 +6,8 @@
 import os
 import json
 import traceback
+#add by jeff
+import time, random
 
 from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.shortcuts import redirect, render
@@ -15,7 +17,7 @@ from django.views.decorators.gzip import gzip_page
 from sendfile import sendfile
 
 #add by jeff
-from django.db.models import Q
+from django.db.models import Q, Max, Min
 from django.core.exceptions import ObjectDoesNotExist
 
 from . import annotation, task, models
@@ -238,8 +240,7 @@ def get_annotation(request, jid):
     try:
         job_logger[jid].info("get annotation for {} job".format(jid))
         #change by jeff
-        response = annotation.get_my(jid,request.user.username)
-        #response = annotation.get(jid)
+        response = annotation.get(jid, username=request.user.username)
         
     except Exception as e:
         job_logger[jid].error("cannot get annotation for job {}".format(jid), exc_info=True)
@@ -254,7 +255,7 @@ def save_annotation_for_job(request, jid):
         job_logger[jid].info("save annotation for {} job".format(jid))
         data = json.loads(request.body.decode('utf-8'))
         if 'annotation' in data:
-            annotation.save_job(jid, json.loads(data['annotation']))
+            annotation.save_job(jid, json.loads(data['annotation']),oneFrameFlag=True,frame=data['current_frame'])
         if 'logs' in data:
             for event in json.loads(data['logs']):
                 job_client_logger[jid].info(json.dumps(event))
@@ -301,64 +302,103 @@ def rq_handler(job, exc_type, exc_value, tb):
 @login_required
 @permission_required(perm=['engine.view_task', 'engine.change_annotation'], raise_exception=True)
 def set_user_currnet(request, jid):
-    try:
-        
-        print ("qqqqqqqqqqqqqqqqqqqqqq")
+    try:        
         job_logger[jid].info("set {} currnet for {} job".format(request.user.username,jid))
-        print ("wwwwwwwwwqqqqqqwwww")
+        
         db_job = models.Job.objects.get(id=jid)
-        print ("wwwwwwwwwwwww")
-        # set current frame to submit
+        
         user_record = None
-        print ("wwwwwwwxxxxwwwwww")
+        
+        # set current frame to submit
         try:
-            print ("wwwwwwwssssssssswwwwww")
             user_record = models.TaskFrameUserRecord.objects.get(task_id=db_job.segment.task.id,user=request.user.username,current=True)
-
+            print ("user: {} find current {}".format(request.user.username,user_record.frame))
             user_record.current = False
             user_record.user_submit = True
             user_record.need_modify = False
-            user_record.save()
-            print("fucking user_record.save()",user_record.frame)
-            print ("AAuser=username find current",user_record.frame)
+            user_record.save()            
+            print ("user: {}'s user_record.save()".format(request.user.username))
         except ObjectDoesNotExist:
-            print ("user=username not found current",user_record.frame)
-            print ("aaaaaaaaaaaaaaaaaaaaaa")
-            
+            print ("user: {}'s not found current frame".format(request.user.username))            
             
         # select need_modify
         user_record = None
         try:
-            print("aaaabbbb")
-            user_record = models.TaskFrameUserRecord.objects.filter(task_id=db_job.segment.task.id,user=request.user.username,need_modify=True).first()
+            print("try get need_modify frame first")
+            #user_record = models.TaskFrameUserRecord.objects.filter(task_id=db_job.segment.task.id,user=request.user.username,need_modify=True).first()
+            start_time = time.time()
+            qs = models.TaskFrameUserRecord.objects.filter(task_id=db_job.segment.task.id,user=request.user.username,need_modify=True)
+            if qs.count():
+                max_id = qs.aggregate(max_id=Max("id"))['max_id']
+                min_id = qs.aggregate(min_id=Min("id"))['min_id']
+
+                while True:
+                    pk = random.randint(min_id, max_id)
+                    user_record = models.TaskFrameUserRecord.objects.get(pk=pk)
+                    if user_record:
+                        break
+            end_time = time.time()
+            print ("use random pk cost time : ",(end_time - start_time))
 
             if user_record is None:
                 try:
-                    print("ccccc")
-                    user_record = models.TaskFrameUserRecord.objects.filter(task_id=db_job.segment.task.id,user='').first()
-                    print ("user='' find empty first frame",user_record.frame)
+                    print("need modify is none, try get new frame")
+                    #user_record = models.TaskFrameUserRecord.objects.filter(task_id=db_job.segment.task.id,user='').first()
+                    start_time = time.time()
+                    qs = models.TaskFrameUserRecord.objects.filter(task_id=db_job.segment.task.id,user='')
+                    if qs.count():
+                        max_id = qs.aggregate(max_id=Max("id"))['max_id']
+                        min_id = qs.aggregate(min_id=Min("id"))['min_id']
+
+                        while True:
+                            pk = random.randint(min_id, max_id)
+                            user_record = models.TaskFrameUserRecord.objects.get(pk=pk)
+                            if user_record:
+                                break
+                    end_time = time.time()
+                    print ("use random pk cost time : ",(end_time - start_time))
+                    print ("try get new frame is success",user_record.frame)
                 except ObjectDoesNotExist:
-                    print ("no user's need_modify or empty can set current!!",user_record.frame)
+                    print ("no user's need_modify or new can set current!!",user_record.frame)
 
         except ObjectDoesNotExist:
             try:
-                print("bbbbaaaaa")
-                user_record = models.TaskFrameUserRecord.objects.filter(task_id=db_job.segment.task.id,user='').first()
-                print ("user='' find empty first frame",user_record.frame)
+                print("try get need_modify frame ObjectDoesNotExist try get new first")
+                #user_record = models.TaskFrameUserRecord.objects.filter(task_id=db_job.segment.task.id,user='').first()
+                start_time = time.time()
+                qs = models.TaskFrameUserRecord.objects.filter(task_id=db_job.segment.task.id,user='')
+                if qs.count():
+                    max_id = qs.aggregate(max_id=Max("id"))['max_id']
+                    min_id = qs.aggregate(min_id=Min("id"))['min_id']
+    
+                    while True:
+                        pk = random.randint(min_id, max_id)
+                        user_record = models.TaskFrameUserRecord.objects.get(pk=pk)
+                        if user_record:
+                            break
+                end_time = time.time()
+                print ("use random pk cost time : ",(end_time - start_time))
+                print ("try get new frame is success",user_record.frame)
             except ObjectDoesNotExist:
                 print ("no user's need_modify or empty can set current!!",user_record.frame)
-        print("zzzz")
+        
         user_record.user = request.user.username
         user_record.current = True
         user_record.save()
+        print("finished to save user_record")
+
+        mAnnotation = annotation._AnnotationForJob(db_job)
+        mAnnotation.init_from_db(user_record.frame)
+        return JsonResponse({'data':mAnnotation.to_client(),'frame': user_record.frame})
 
     except Exception as e:
-        print("fucking error is !!!!",str(e))
+        print("error is !!!!",str(e))
         job_logger[jid].error("cannot set {} currnet for {} job".format(request.user.username,jid), exc_info=True)
-        print("fucking",user_record.frame)
         return HttpResponseBadRequest(str(e))
-        
+
 
     
-    print("fucking user_record.save() 2",user_record.frame)
-    return JsonResponse({'frame': user_record.frame})
+    
+    
+
+    

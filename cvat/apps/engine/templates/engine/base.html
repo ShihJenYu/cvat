@@ -34,6 +34,9 @@
             {% endblock %}
         {% endcompress %}
 
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-confirm/3.3.1/jquery-confirm.min.css">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-confirm/3.3.1/jquery-confirm.min.js"></script>
+
         {% compress js file cvat %}
             {% block head_js_cvat %}
                 <script type="text/javascript" src="{% static 'engine/js/base.js' %}"></script>

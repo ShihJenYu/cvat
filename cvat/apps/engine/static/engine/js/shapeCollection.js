@@ -7,6 +7,8 @@
 /* exported ShapeCollectionModel ShapeCollectionController ShapeCollectionView */
 "use strict";
 
+var is_one_frame_mode = false;
+var one_frame_data = null;
 class ShapeCollectionModel extends Listener {
     constructor() {
         super('onCollectionUpdate', () => this);
@@ -1009,6 +1011,24 @@ class ShapeCollectionController {
     }
 
     //add by jeff
+    rmAllCollection() {
+        // is_one_frame_mode = false;
+        // console.log("in rmAllCollection");
+        // this._model.empty();
+        // try{
+        //     this._model.import(one_frame_data);
+        //     one_frame_data = null;
+        //     this._model.update();
+        // }
+        // catch (err) {
+        //     console.log("rmAllCollection error");
+        // }
+        
+
+        // console.log("rmAllCollection done");
+    }
+
+    //add by jeff
     setDetectPoint() {
         console.log("in detect_point");
         $('.detectpoint').remove();
@@ -1209,6 +1229,10 @@ class ShapeCollectionView {
 
         this._currentModels = [];
         this._frameMarker = null;
+
+        // add by jeff for temp delete current (load a frame)
+        this._tempViews = [];
+        this._tempModels = [];
 
         this._activeShapeUI = null;
         this._scale = 1;
@@ -1512,6 +1536,38 @@ class ShapeCollectionView {
         // in order to increase performance in the buildShapeView function
 
         console.log("onCollectionUpdate(collection) ");
+
+
+        // is_one_frame_mode = false;
+        // console.log("in rmAllCollection");
+        // this._model.empty();
+        // try{
+        //     this._model.import(one_frame_data);
+        //     one_frame_data = null;
+        //     this._model.update();
+        // }
+        // catch (err) {
+        //     console.log("rmAllCollection error");
+        // }
+        
+
+        // console.log("rmAllCollection done");
+
+        // add by jeff
+        if(is_one_frame_mode) {
+            // this._controller.rmAllCollection();
+            is_one_frame_mode = false;
+            console.log("do empty");
+            this._controller._model.empty();
+            console.log("done empty");
+            console.log("do import");
+            this._controller._model.import(one_frame_data).updateHash();
+            console.log("done import");
+            console.log("do update");
+            this._controller._model.update();
+            console.log("done update");
+        }
+
         let parents = {
             uis: this._UIContent.parent(),
             shapes: this._frameContent.node.parentNode
@@ -1519,6 +1575,7 @@ class ShapeCollectionView {
 
         let oldModels = this._currentModels;
         let oldViews = this._currentViews;
+        
         let newShapes = collection.currentShapes;
         let newModels = newShapes.map((el) => el.model);
 
@@ -1571,6 +1628,8 @@ class ShapeCollectionView {
         this._frameMarker = window.cvat.player.frames.current;
         this._updateLabelUIs();
 
+        
+
         function drawView(shape, model) {
             let view = buildShapeView(model, buildShapeController(model), this._frameContent, this._UIContent);
             view.draw(shape.interpolation);
@@ -1580,6 +1639,7 @@ class ShapeCollectionView {
             this._currentViews.push(view);
             this._currentModels.push(model);
         }
+
     }
 
     onPlayerUpdate(player) {

@@ -158,6 +158,13 @@ class PlayerModel extends Listener {
         this._frameProvider.subscribe(this);
     }
 
+    // add by jeff
+    setframes(mframe) {
+        this._frame.start = mframe;
+        this._frame.stop = mframe;
+        this._frame.current = mframe;
+    }
+
     get frames() {
         return {
             start: this._frame.start,
@@ -598,25 +605,31 @@ class PlayerController {
     }
 
     // add by jeff
-    myNext() {
-        console.log("in myNext");
-        let jid = window.location.href.match('id=[0-9]+')[0].slice(3);
-        let loadJobEvent = Logger.addContinuedEvent(Logger.EventType.loadJob);
-        serverRequest("/set/current/job/" + jid, function() {
-            console.log("fuckinginigingingi done set/current");
-            serverRequest("/get/job/" + jid, function(job) {
-                console.log("/get/job/");
-                serverRequest("get/annotation/job/" + jid, function(data) {
-                    console.log("/get/annotation/job/");
-                    $('#loadingOverlay').remove();
-                    setTimeout(() => {
-                        buildAnnotationUI(job, data, loadJobEvent);
-                    }, 0);
-                });
-            });
-        });
+    test(data) {
+        is_one_frame_mode = true;
+        one_frame_data = data.data;
+        console.log("pritn test one_frame_data",one_frame_data,"in",data.frame)
+        this._model.setframes(data.frame);
         this._model.shift(0);
         this._model.pause();
+        
+    }
+    myNext() {
+        console.log("in myNext");
+       
+        let jid = window.location.href.match('id=[0-9]+')[0].slice(3);
+        var tmp;
+        $.ajax({
+            url: "/set/current/job/" + jid,
+            dataType: "json",
+            async: false,
+            success: function(data) {
+                console.log("fuckinginigingingi done set/current", data);
+                tmp = data;
+            },
+            error: serverError
+        });
+        this.test(tmp);        
     }
 
     previous() {
@@ -706,20 +719,16 @@ class PlayerView {
         });
 
         // add by jeff
-        $('#nextButtonFlag').click(function(){
-            if($(this).is(':checked')) {
-                $('#nextButton_training')[0].setAttribute("class","playerButton_training");
+        this._nextButtonTraining.unbind('click').on('click', () => {
+            if($('#nextButtonFlag').is(':checked')) {
+                $('#nextButtonFlag').prop('checked',false);
+                $('#nextButton_training')[0].setAttribute("class","playerButton_training disabledPlayerButton");
+                this._controller.myNext();
             }
             else {
-                $('#nextButton_training')[0].setAttribute("class","disabled");
+                console.log("you can't do it before checkbox uncheck");
             }
-        });
-        this._nextButtonTraining.unbind('click').on('click', () => {
-            //callAnnotationUI(id);
-            console.log("fucking3333");
-            $('#nextButtonFlag').prop('checked',false);
-            $('#nextButton_training')[0].setAttribute("class","disabled");
-            this._controller.myNext();
+            
         });
 
         let shortkeys = window.cvat.config.shortkeys;
