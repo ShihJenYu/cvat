@@ -1051,8 +1051,16 @@ class ShapeCollectionController {
                     break;
                 }
             }
+
+            let index_detectpoint  = null
+            for (let i = 0; i < selectAtts.getElementsByClassName("uiAttr").length; i ++) {
+                if(selectAtts.getElementsByClassName("uiAttr")[i].getElementsByTagName("label")[0].innerText.includes('DetectPoints')) {
+                    index_detectpoint = i;
+                    break;
+                }
+            }
             
-            var inputDetectPoint = selectAtts.getElementsByClassName("uiAttr")[6].getElementsByClassName("regular textAttr")[0];
+            var inputDetectPoint = selectAtts.getElementsByClassName("uiAttr")[index_detectpoint].getElementsByClassName("regular textAttr")[0];
             var attrid = inputDetectPoint.getAttribute("attrid");
             attrid = parseInt(attrid);
             var detectpoint_str = inputDetectPoint.value.replace(/"/g, "");
@@ -1087,7 +1095,15 @@ class ShapeCollectionController {
                         break;
                     }
                 }
-                inputDetectPoint = selectAtts.getElementsByClassName("uiAttr")[6].getElementsByClassName("regular textAttr")[0];
+                let index_detectpoint  = null
+                for (let i = 0; i < selectAtts.getElementsByClassName("uiAttr").length; i ++) {
+                    if(selectAtts.getElementsByClassName("uiAttr")[i].getElementsByTagName("label")[0].innerText.includes('DetectPoints')) {
+                        index_detectpoint = i;
+                        break;
+                    }
+                }
+
+                inputDetectPoint = selectAtts.getElementsByClassName("uiAttr")[index_detectpoint].getElementsByClassName("regular textAttr")[0];
                 attrid = inputDetectPoint.getAttribute("attrid");
                 attrid = parseInt(attrid);
                 detectpoint_str = inputDetectPoint.value.replace(/"/g, "");
@@ -1122,7 +1138,15 @@ class ShapeCollectionController {
                         break;
                     }
                 }
-                inputDetectPoint = selectAtts.getElementsByClassName("uiAttr")[6].getElementsByClassName("regular textAttr")[0];
+                let index_detectpoint  = null
+                for (let i = 0; i < selectAtts.getElementsByClassName("uiAttr").length; i ++) {
+                    if(selectAtts.getElementsByClassName("uiAttr")[i].getElementsByTagName("label")[0].innerText.includes('DetectPoints')) {
+                        index_detectpoint = i;
+                        break;
+                    }
+                }
+
+                inputDetectPoint = selectAtts.getElementsByClassName("uiAttr")[index_detectpoint].getElementsByClassName("regular textAttr")[0];
                 attrid = inputDetectPoint.getAttribute("attrid");
                 attrid = parseInt(attrid);
                 detectpoint_str = inputDetectPoint.value.replace(/"/g, "");

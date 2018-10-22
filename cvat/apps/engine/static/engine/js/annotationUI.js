@@ -235,20 +235,31 @@ function buildAnnotationUI(job, shapeData, loadJobEvent) {
 
     // add by jeff
     $('#nextButtonFlag').click(function(e){
-
         if (shapeCollectionModel.hasUnsavedChanges())
         {
-            // var r = confirm("Press a button!");
             alert("Hello! Submit you made may not be saved !!!");
             $('#nextButtonFlag').prop('checked',false);
         } else {
-            if($('#nextButtonFlag').is(':checked')) {
-                $('#nextButton_training')[0].setAttribute("class","playerButton_training");
-            }
-            else {
-                $('#nextButton_training')[0].setAttribute("class","playerButton_training disabledPlayerButton");
-                
-            }
+            $.confirm({
+                title: 'Confirm!',
+                boxWidth: '30%',
+                draggable: false,
+                useBootstrap: false,
+                content: 'You didn\'t do anything.\nAre you sure?',
+                buttons: {
+                    ok: function () {
+                        if($('#nextButtonFlag').is(':checked')) {
+                            $('#nextButton_training')[0].setAttribute("class","playerButton_training");
+                        }
+                        else {
+                            $('#nextButton_training')[0].setAttribute("class","playerButton_training disabledPlayerButton");
+                        }
+                    },
+                    cancel: function () {
+                        $('#nextButtonFlag').prop('checked',false);
+                    }
+                }
+            });
         }        
     });
 }
