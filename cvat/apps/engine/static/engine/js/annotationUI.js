@@ -47,9 +47,9 @@ function buildAnnotationUI(job, shapeData, loadJobEvent) {
             },
             frames: {
                 // change by jeff
-                current: shapeData[1],
-                start: shapeData[1],
-                stop: shapeData[1],
+                current: (shapeData[1]!= null)? shapeData[1]: job.start,
+                start: (shapeData[1]!= null)? shapeData[1]: job.start,
+                stop:  (shapeData[1]!= null)? shapeData[1]: job.stop,
             }
         },
         mode: null,

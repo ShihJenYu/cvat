@@ -240,7 +240,7 @@ def get_annotation(request, jid):
     try:
         job_logger[jid].info("get annotation for {} job".format(jid))
         #change by jeff
-        response = annotation.get(jid, username=request.user.username)
+        response = annotation.get(jid, requestUser=request.user)
         
     except Exception as e:
         job_logger[jid].error("cannot get annotation for job {}".format(jid), exc_info=True)
@@ -255,7 +255,10 @@ def save_annotation_for_job(request, jid):
         job_logger[jid].info("save annotation for {} job".format(jid))
         data = json.loads(request.body.decode('utf-8'))
         if 'annotation' in data:
-            annotation.save_job(jid, json.loads(data['annotation']),oneFrameFlag=True,frame=data['current_frame'])
+            if request.user.groups.filter(name='admin').exists():
+                annotation.save_job(jid, json.loads(data['annotation']))
+            else:
+                annotation.save_job(jid, json.loads(data['annotation']),oneFrameFlag=True,frame=data['current_frame'])
         if 'logs' in data:
             for event in json.loads(data['logs']):
                 job_client_logger[jid].info(json.dumps(event))

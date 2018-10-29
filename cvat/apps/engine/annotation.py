@@ -66,19 +66,20 @@ def check(tid):
     return response
 
 @transaction.atomic
-def get(jid, username=None):
+def get(jid,requestUser=None):
     """
     Get annotations for the job.
     """
+    #requestUser.groups.filter(name='annotator').exists()
     db_job = models.Job.objects.select_for_update().get(id=jid)
-    
+
     frame = None
-    if not username is None:
+    if requestUser.groups.filter(name='annotator').exists():
         user_record = None
         try:
-            user_record = models.TaskFrameUserRecord.objects.get(task_id=db_job.segment.task.id,user=username,current=True)
+            user_record = models.TaskFrameUserRecord.objects.get(task_id=db_job.segment.task.id,user=requestUser.username,current=True)
             frame = user_record.frame
-            print ("user: {}, get frame: {} in job: {}".format(username,frame,jid))
+            print ("user: {}, get frame: {} in job: {}".format(requestUser.username,frame,jid))
         except ObjectDoesNotExist:
             try:
                 start_time = time.time()
@@ -102,12 +103,13 @@ def get(jid, username=None):
 
         if not user_record is None:
             print ("save current")
-            user_record.user = username
+            user_record.user = requestUser.username
             user_record.current = True
             user_record.save()
         else:
             print ("user_record is None, will error")
             raise Exception('user_record is None')
+
 
     annotation = _AnnotationForJob(db_job)
     annotation.init_from_db(frame=frame)
@@ -568,8 +570,8 @@ class _AnnotationForJob(_Annotation):
             db_shapes = list(self._get_shape_set(shape_type).prefetch_related(prefetch).
                 values(*values).order_by('frame'))
             db_shapes = self._merge_table_rows(db_shapes, merge_keys, 'id')
-            for db_shape in db_shapes:
-                if db_shape.frame == frame :
+            if frame is None:
+                for db_shape in db_shapes:                    
                     label = _Label(self.db_labels[db_shape.label_id])
                     if shape_type == 'boxes':
                         shape = _LabeledBox(label, db_shape.xtl, db_shape.ytl, db_shape.xbr, db_shape.ybr,
@@ -583,6 +585,22 @@ class _AnnotationForJob(_Annotation):
                             attr = _Attribute(spec, db_attr.value)
                             shape.add_attribute(attr)
                     getattr(self, shape_type).append(shape)
+            else:
+                for db_shape in db_shapes:
+                    if db_shape.frame == frame :
+                        label = _Label(self.db_labels[db_shape.label_id])
+                        if shape_type == 'boxes':
+                            shape = _LabeledBox(label, db_shape.xtl, db_shape.ytl, db_shape.xbr, db_shape.ybr,
+                                db_shape.frame, db_shape.group_id, db_shape.occluded, db_shape.z_order)
+                        else:
+                            shape = _LabeledPolyShape(label, db_shape.points, db_shape.frame,
+                                db_shape.group_id, db_shape.occluded, db_shape.z_order)
+                        for db_attr in db_shape.attributes:
+                            if db_attr.id != None:
+                                spec = self.db_attributes[db_attr.spec_id]
+                                attr = _Attribute(spec, db_attr.value)
+                                shape.add_attribute(attr)
+                        getattr(self, shape_type).append(shape)
 
 
         db_paths = self.db_job.objectpath_set
@@ -944,7 +962,7 @@ class _AnnotationForJob(_Annotation):
         if(oneFrameFlag):
             self.db_job.objectpath_set.filter(frame=frame).delete()
         else:
-            self.db_job.objectpath_set.delete()
+            self.db_job.objectpath_set.all().delete()
 
         for shape_type in ['polygon_paths', 'polyline_paths', 'points_paths', 'box_paths']:
             db_paths = []
@@ -1067,6 +1085,8 @@ class _AnnotationForJob(_Annotation):
         db_attrvals = []
 
         for shape_type in ['polygons', 'polylines', 'points', 'boxes']:
+
+            #self._get_shape_set(shape_type).all().delete()
             if(oneFrameFlag):
                 self._get_shape_set(shape_type).filter(frame=frame).delete()
             else:

@@ -10,7 +10,7 @@
 class FrameProvider extends Listener {
     constructor(stop, tid) {
         super('onFrameLoad', () => this._loaded);
-        this._MAX_LOAD = 1; //change by jeff
+        this._MAX_LOAD = 500; //change by jeff
 
         this._stack = [];
         this._loadInterval = null;
@@ -129,9 +129,9 @@ class PlayerModel extends Listener {
     constructor(job, playerSize, myframe) {
         super('onPlayerUpdate', () => this);
         this._frame = {
-            start: myframe,
-            stop: myframe,
-            current: myframe,
+            start: (myframe!= null)? myframe: job.start,
+            stop: (myframe!= null)? myframe: job.stop,
+            current: (myframe!= null)? myframe: job.start,
             previous: null
         };
 
@@ -604,32 +604,29 @@ class PlayerController {
         this._model.pause();
     }
 
-    // add by jeff
-    test(data) {
-        is_one_frame_mode = true;
-        one_frame_data = data.data;
-        console.log("pritn test one_frame_data",one_frame_data,"in",data.frame)
-        this._model.setframes(data.frame);
-        this._model.shift(0);
-        this._model.pause();
-        
-    }
-    myNext() {
-        console.log("in myNext");
+    next_random_frame() {
+        console.log("in next_random_frame");
        
         let jid = window.location.href.match('id=[0-9]+')[0].slice(3);
-        var tmp;
+        var data;
         $.ajax({
             url: "/set/current/job/" + jid,
             dataType: "json",
             async: false,
-            success: function(data) {
-                console.log("fuckinginigingingi done set/current", data);
-                tmp = data;
+            success: function(respone) {
+                console.log("done set/current", respone);
+                data = respone;
             },
             error: serverError
         });
-        this.test(tmp);        
+        if(data) {
+            is_one_frame_mode = true;
+            one_frame_data = data.data;
+            console.log("pritn test one_frame_data",one_frame_data,"in",data.frame)
+            this._model.setframes(data.frame);
+            this._model.shift(0);
+            this._model.pause();
+        }
     }
 
     previous() {
@@ -723,7 +720,7 @@ class PlayerView {
             if($('#nextButtonFlag').is(':checked')) {
                 $('#nextButtonFlag').prop('checked',false);
                 $('#nextButton_training')[0].setAttribute("class","playerButton_training disabledPlayerButton");
-                this._controller.myNext();
+                this._controller.next_random_frame();
             }
             else {
                 console.log("you can't do it before checkbox uncheck");
