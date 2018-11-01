@@ -9,6 +9,8 @@
 
 var is_one_frame_mode = false;
 var one_frame_data = null;
+
+
 class ShapeCollectionModel extends Listener {
     constructor() {
         super('onCollectionUpdate', () => this);
@@ -432,23 +434,17 @@ class ShapeCollectionModel extends Listener {
             this._activeShape = active;
             this._activeShape.active = true;
         }
+        
     }
 
     update() {
         this._interpolate();
     }
 
-    //add by jeff
-    removeDetectPoint() {
-        $('.detectpoint').remove();
-        $('.detectpointAim').remove();
-    }
-
     resetActive() {
         if (this._activeShape) {
             this._activeShape.active = false;
             this._activeShape = null;
-            this.removeDetectPoint();
         }
     }
 
@@ -890,6 +886,11 @@ class ShapeCollectionController {
                 this.setDetectPoint();
             }.bind(this));
 
+            //add by Eric
+            let removedetectPointHandler = Logger.shortkeyLogDecorator(function() {
+                this.removeDetectPoint();
+            }.bind(this));
+
             let incZHandler = Logger.shortkeyLogDecorator(function() {
                 if (window.cvat.mode === null) {
                     let activeShape = this._model.activeShape;
@@ -920,8 +921,10 @@ class ShapeCollectionController {
             Mousetrap.bind(shortkeys["change_shape_label"].value, switchLabelHandler.bind(this), 'keydown');
             Mousetrap.bind(shortkeys["delete_shape"].value, removeActiveHandler.bind(this), 'keydown');
             Mousetrap.bind(shortkeys["change_shape_color"].value, changeShapeColorHandler.bind(this), 'keydown');
+            
             // add by jeff
             Mousetrap.bind(shortkeys["detect_point"].value, detectPointHandler.bind(this), 'keydown');
+            Mousetrap.bind(shortkeys["remove_detect_point"].value, removedetectPointHandler.bind(this), 'keydown');
 
             if (window.cvat.job.z_order) {
                 Mousetrap.bind(shortkeys["inc_z"].value, incZHandler.bind(this), 'keydown');
@@ -1010,37 +1013,63 @@ class ShapeCollectionController {
         }
     }
 
-    //add by jeff
-    rmAllCollection() {
-        // is_one_frame_mode = false;
-        // console.log("in rmAllCollection");
-        // this._model.empty();
-        // try{
-        //     this._model.import(one_frame_data);
-        //     one_frame_data = null;
-        //     this._model.update();
-        // }
-        // catch (err) {
-        //     console.log("rmAllCollection error");
-        // }
-        
+    // Modify by eric
+    removeDetectPoint() {
 
-        // console.log("rmAllCollection done");
+        $('.detectpointAim').remove();
+        let activeShape = this._model.activeShape;
+
+        // modify by eric
+        // REMOVE only this id
+        var rm = "detectpoint";
+        rm = rm.concat(activeShape._id);
+        $("."+rm).remove();
+
+        if(activeShape) {
+            var selectAtts = null;
+            var objs = $("#uiContent .bold label")
+            for (let i = 0; i < objs.length; i ++) {
+                let str = objs[i].textContent;
+                let id = str.split(" ")[1];
+                if(activeShape._id==parseInt(id)) {
+                    selectAtts = $($(objs[i]).parent()).parent()[0];
+                    break;
+                }
+            }
+
+            let index_detectpoint  = null
+            for (let i = 0; i < selectAtts.getElementsByClassName("uiAttr").length; i ++) {
+                if(selectAtts.getElementsByClassName("uiAttr")[i].getElementsByTagName("label")[0].innerText.includes('DetectPoints')) {
+                    index_detectpoint = i;
+                    break;
+                }
+            }
+            var inputDetectPoint = selectAtts.getElementsByClassName("uiAttr")[index_detectpoint].getElementsByClassName("regular textAttr")[0];
+            var attrid = inputDetectPoint.getAttribute("attrid");
+            attrid = parseInt(attrid);
+
+            activeShape._attributes.mutable[activeShape._frame][attrid]= "\"" + "-1" + "," + "-1" + " " + "-1" + "," + "-1" + "\"";
+            inputDetectPoint.value = activeShape._attributes.mutable[activeShape._frame][attrid];
+        }
     }
 
-    //add by jeff
+    // Add by jeff
     setDetectPoint() {
-        console.log("in detect_point");
-        $('.detectpoint').remove();
-        $('.detectpointAim').remove();
 
+        $('.detectpointAim').remove();
         let activeShape = this._model.activeShape;
+
+        // modify by eric
+        // REMOVE only this id
+        var rm = "detectpoint";
+        rm = rm.concat(activeShape._id);
+        $("."+rm).remove();
+
         if(activeShape) {
             var xtl = activeShape._positions[activeShape._frame]['xtl'];
             var ytl = activeShape._positions[activeShape._frame]['ytl'];
             var xbr = activeShape._positions[activeShape._frame]['xbr'];
             var ybr = activeShape._positions[activeShape._frame]['ybr'];
-
             var selectAtts = null;
             var objs = $("#uiContent .bold label")
             for (let i = 0; i < objs.length; i ++) {
@@ -1063,25 +1092,43 @@ class ShapeCollectionController {
             var inputDetectPoint = selectAtts.getElementsByClassName("uiAttr")[index_detectpoint].getElementsByClassName("regular textAttr")[0];
             var attrid = inputDetectPoint.getAttribute("attrid");
             attrid = parseInt(attrid);
+
+            // modify by Eric
+            var Carside_Id = inputDetectPoint.getAttribute("caside_id");
+            var ADD_class = "detectpoint";
+            ADD_class = ADD_class.concat(Carside_Id);
+
             var detectpoint_str = inputDetectPoint.value.replace(/"/g, "");
             var detectpoints = detectpoint_str.split(/[\s,]+/); 
             var xdl=detectpoints[0],ydl=detectpoints[1],xdr=detectpoints[2],ydr=detectpoints[3];
-            
-            if(xdl == "-1")xdl=xtl+(xbr-xtl)/3;
+
+            if(xdl == "-1")xdl=1/3;
             if(ydl == "-1")ydl=ybr;
-            if(xdr == "-1")xdr=xtl+(xbr-xtl)/3*2;
+            if(xdr == "-1")xdr=2/3;
             if(ydr == "-1")ydr=ybr;
+
+            xdl = parseFloat(xdl);
+            ydl = parseFloat(ydl);
+            xdr = parseFloat(xdr);
+            ydr = parseFloat(ydr);
+
+            // modify by ericlou
+            // convert to draw x y axis
+            var xdl_draw = xtl + xdl * (xbr-xtl);
+            var xdr_draw = xtl + xdr * (xbr-xtl);
 
             let scaledR = POINT_RADIUS / window.cvat.player.geometry.scale;
             var thisframeContent = SVG.adopt($('#frameContent')[0]);
 
+            // for xdl, ydl
+            
             thisframeContent.rect(scaledR*2,scaledR*2).draggable({
                 minX: xtl-scaledR
                 , minY: ybr-scaledR
                 , maxX: xbr+scaledR
                 , maxY: ybr+scaledR
                 , snapToGrid: 0.1 
-                }).center(xdl,ydl).addClass("detectpoint").fill('#ffff00').attr({'stroke-width':  STROKE_WIDTH / window.cvat.player.geometry.scale,
+                }).center(xdl_draw,ydl).addClass(ADD_class).fill('#ffff00').attr({'stroke-width':  STROKE_WIDTH / window.cvat.player.geometry.scale,
             }).on('dragend', function(e){
                 e.preventDefault();
                 var x = (parseFloat(e.target.getAttribute('x'))+parseFloat(scaledR)).toFixed(2);
@@ -1095,6 +1142,7 @@ class ShapeCollectionController {
                         break;
                     }
                 }
+
                 let index_detectpoint  = null
                 for (let i = 0; i < selectAtts.getElementsByClassName("uiAttr").length; i ++) {
                     if(selectAtts.getElementsByClassName("uiAttr")[i].getElementsByTagName("label")[0].innerText.includes('DetectPoints')) {
@@ -1102,29 +1150,37 @@ class ShapeCollectionController {
                         break;
                     }
                 }
-
-                inputDetectPoint = selectAtts.getElementsByClassName("uiAttr")[index_detectpoint].getElementsByClassName("regular textAttr")[0];
+                
+                var inputDetectPoint = selectAtts.getElementsByClassName("uiAttr")[index_detectpoint].getElementsByClassName("regular textAttr")[0];
+                
                 attrid = inputDetectPoint.getAttribute("attrid");
                 attrid = parseInt(attrid);
                 detectpoint_str = inputDetectPoint.value.replace(/"/g, "");
                 detectpoints = detectpoint_str.split(/[\s,]+/); 
                 xdl=detectpoints[0];ydl=detectpoints[1];xdr=detectpoints[2];ydr=detectpoints[3];
                 
-                if(xdl == "-1")xdl=xtl+(xbr-xtl)/3;
+                // modify by ericlou
+
+                if(xdl == "-1")xdl=1/3;
                 if(ydl == "-1")ydl=ybr;
-                if(xdr == "-1")xdr=xtl+(xbr-xtl)/3*2;
+                if(xdr == "-1")xdr=2/3;
                 if(ydr == "-1")ydr=ybr;
+
+                var out_x = (x - xtl)/(xbr-xtl);
                 
-                activeShape._attributes.mutable[activeShape._frame][attrid]= "\"" + x + "," + y + " " + parseFloat(xdr).toFixed(2) + "," + parseFloat(ydr).toFixed(2) + "\"";
+                activeShape._attributes.mutable[activeShape._frame][attrid]= "\"" + out_x.toFixed(2) + "," + y + " " + parseFloat(xdr).toFixed(2) + "," + parseFloat(ydr).toFixed(2) + "\"";
                 inputDetectPoint.value = activeShape._attributes.mutable[activeShape._frame][attrid];
-                });
+            });
+
+            // for xdr, ydr
+
             thisframeContent.rect(scaledR*2,scaledR*2).draggable({
                 minX: xtl-scaledR
                 , minY: ybr-scaledR
                 , maxX: xbr+scaledR
                 , maxY: ybr+scaledR
                 , snapToGrid: 0.1 
-                }).center(xdr,ydr).addClass("detectpoint").fill('#ffff00').attr({'stroke-width':  STROKE_WIDTH / window.cvat.player.geometry.scale,
+                }).center(xdr_draw,ydr).addClass(ADD_class).fill('#ffff00').attr({'stroke-width':  STROKE_WIDTH / window.cvat.player.geometry.scale,
             }).on('dragend', function(e){
                 e.preventDefault();
                 var x = (parseFloat(e.target.getAttribute('x'))+parseFloat(scaledR)).toFixed(2);
@@ -1138,6 +1194,7 @@ class ShapeCollectionController {
                         break;
                     }
                 }
+
                 let index_detectpoint  = null
                 for (let i = 0; i < selectAtts.getElementsByClassName("uiAttr").length; i ++) {
                     if(selectAtts.getElementsByClassName("uiAttr")[i].getElementsByTagName("label")[0].innerText.includes('DetectPoints')) {
@@ -1145,24 +1202,30 @@ class ShapeCollectionController {
                         break;
                     }
                 }
-
-                inputDetectPoint = selectAtts.getElementsByClassName("uiAttr")[index_detectpoint].getElementsByClassName("regular textAttr")[0];
+                
+                var inputDetectPoint = selectAtts.getElementsByClassName("uiAttr")[index_detectpoint].getElementsByClassName("regular textAttr")[0];
+                
                 attrid = inputDetectPoint.getAttribute("attrid");
                 attrid = parseInt(attrid);
                 detectpoint_str = inputDetectPoint.value.replace(/"/g, "");
                 detectpoints = detectpoint_str.split(/[\s,]+/); 
                 xdl=detectpoints[0];ydl=detectpoints[1];xdr=detectpoints[2];ydr=detectpoints[3];
 
-                if(xdl == "-1")xdl=xtl+(xbr-xtl)/3;
+                // modify by ericlou
+
+                if(xdl == "-1")xdl=1/3;
                 if(ydl == "-1")ydl=ybr;
-                if(xdr == "-1")xdr=xtl+(xbr-xtl)/3*2;
+                if(xdr == "-1")xdr=2/3;
                 if(ydr == "-1")ydr=ybr;
+
+                var out_x = (x - xtl)/(xbr-xtl);
                 
-                activeShape._attributes.mutable[activeShape._frame][attrid] = "\"" + parseFloat(xdl).toFixed(2) + "," + parseFloat(ydl).toFixed(2) + " " + x + "," + y + "\"";
+                activeShape._attributes.mutable[activeShape._frame][attrid] = "\"" + parseFloat(xdl).toFixed(2) + "," + parseFloat(ydl).toFixed(2) + " " + out_x.toFixed(2) + "," + y + "\"";
                 inputDetectPoint.value = activeShape._attributes.mutable[activeShape._frame][attrid];
-                });
+            });
                 
-                $('.detectpoint').each(function() {
+            // for detectpointAim
+            $("."+ADD_class).each(function() {
                 $(this).on('dragstart dragmove', () => {
                     $('.detectpointAim').remove();
                     thisframeContent.line($(this)[0].getBBox().x+scaledR,ytl,$(this)[0].getBBox().x+scaledR,$(this)[0].getBBox().y).attr(
@@ -1176,6 +1239,7 @@ class ShapeCollectionController {
                     this.instance.attr('stroke-width', STROKE_WIDTH / window.cvat.player.geometry.scale);
                 });
             });
+
         }
     }
 
@@ -1399,6 +1463,10 @@ class ShapeCollectionView {
             case "detect_point":
                 this._controller.setDetectPoint();
                 break;
+            //add by eric
+            case "remove_detect_point":
+                this._controller.removeDetectPoint();
+                break;
             }
         });
 
@@ -1420,6 +1488,10 @@ class ShapeCollectionView {
             //add by jeff
             case "detect_point":
                 button.innerText = `Detect Point (${shortkeys['detect_point'].view_value})`;
+                break;
+            //add by Eric
+            case "remove_detect_point":
+                button.innerText = `Remove Detect Point (${shortkeys['remove_detect_point'].view_value})`;
                 break;
             }
         }
@@ -1559,37 +1631,12 @@ class ShapeCollectionView {
         // Save parents and detach elements from DOM
         // in order to increase performance in the buildShapeView function
 
-        console.log("onCollectionUpdate(collection) ");
-
-
-        // is_one_frame_mode = false;
-        // console.log("in rmAllCollection");
-        // this._model.empty();
-        // try{
-        //     this._model.import(one_frame_data);
-        //     one_frame_data = null;
-        //     this._model.update();
-        // }
-        // catch (err) {
-        //     console.log("rmAllCollection error");
-        // }
-        
-
-        // console.log("rmAllCollection done");
-
         // add by jeff
         if(is_one_frame_mode) {
-            // this._controller.rmAllCollection();
             is_one_frame_mode = false;
-            console.log("do empty");
             this._controller._model.empty();
-            console.log("done empty");
-            console.log("do import");
             this._controller._model.import(one_frame_data).updateHash();
-            console.log("done import");
-            console.log("do update");
             this._controller._model.update();
-            console.log("done update");
         }
 
         let parents = {
@@ -1656,7 +1703,8 @@ class ShapeCollectionView {
 
         function drawView(shape, model) {
             let view = buildShapeView(model, buildShapeController(model), this._frameContent, this._UIContent);
-            view.draw(shape.interpolation);
+            // Modify by Eric
+            view.draw(shape.interpolation, model._id);
             view.updateColorSettings(this._colorSettings);
             model.subscribe(view);
             view.subscribe(this);

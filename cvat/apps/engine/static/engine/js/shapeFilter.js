@@ -113,10 +113,11 @@ class FilterView {
             let value = $.trim(e.target.value);
             if (this._controller.updateFilter(value, false)) {
                 this._filterString.css('color', 'green');
+                setURISearchParameter('filter', value || null);
             }
             else {
                 this._filterString.css('color', 'red');
-                this._controller.updateFilter('', false);
+                setURISearchParameter('filter', null);
             }
         });
 
@@ -128,15 +129,17 @@ class FilterView {
         this._resetFilterButton.on('click', () => {
             this._filterString.prop('value', '');
             this._controller.updateFilter('', false);
+            setURISearchParameter('filter', null);
         });
 
-        let initialFilter = window.cvat.search.get('filter');
-        if (initialFilter) {
-            this._filterString.prop('value', initialFilter);
-            if (this._controller.updateFilter(initialFilter, true)) {
+        if (getURISearchParameter('filter')) {
+            let value = getURISearchParameter('filter');
+            this._filterString.prop('value', value);
+            if (this._controller.updateFilter(value, true)) {
                 this._filterString.css('color', 'green');
             }
             else {
+                setURISearchParameter('filter', null);
                 this._filterString.prop('value', '');
                 this._filterString.css('color', 'red');
             }

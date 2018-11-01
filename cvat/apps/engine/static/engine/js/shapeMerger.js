@@ -35,6 +35,7 @@ class ShapeMergerModel extends Listener {
         }
     }
 
+
     start() {
         if (!window.cvat.mode) {
             window.cvat.mode = 'merge';
@@ -224,7 +225,14 @@ class ShapeMergerController {
                 this.switch();
             }.bind(this));
 
+            let cancelMergeHandler = Logger.shortkeyLogDecorator(function() {
+                if (this._model.mergeMode) {
+                    this._model.cancel();
+                }
+            }.bind(this));
+
             Mousetrap.bind(shortkeys["switch_merge_mode"].value, switchMergeHandler.bind(this), 'keydown');
+            Mousetrap.bind(shortkeys["cancel_merge_mode"].value, cancelMergeHandler.bind(this), 'keydown');
         }
     }
 
@@ -251,7 +259,8 @@ class ShapeMergerView {
 
         let shortkeys = window.cvat.config.shortkeys;
         this._mergeButton.attr('title', `
-            ${shortkeys['switch_merge_mode'].view_value} - ${shortkeys['switch_merge_mode'].description}`);
+            ${shortkeys['switch_merge_mode'].view_value} - ${shortkeys['switch_merge_mode'].description}` + `\n` +
+            `${shortkeys['cancel_merge_mode'].view_value} - ${shortkeys['cancel_merge_mode'].description}`);
 
         model.subscribe(this);
     }

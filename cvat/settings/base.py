@@ -22,7 +22,7 @@ from pathlib import Path
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = str(Path(__file__).parents[2])
 
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1,*').split(',')
+ALLOWED_HOSTS = ['localhost', '192.168.2.71']
 INTERNAL_IPS = ['127.0.0.1']
 
 try:
@@ -187,39 +187,22 @@ LOGGING = {
             'class': 'logging.StreamHandler',
             'formatter': 'standard',
         },
-        'server_file': {
+        'file': {
             'class': 'logging.handlers.RotatingFileHandler',
-            'level': 'DEBUG',
-            'filename': os.path.join(BASE_DIR, 'logs', 'cvat_server.log'),
+            'level': os.getenv('DJANGO_LOG_LEVEL', 'DEBUG'),
+            'filename': os.path.join(BASE_DIR, 'logs', 'cvat.log'),
             'formatter': 'standard',
             'maxBytes': 1024*1024*50, # 50 MB
             'backupCount': 5,
-        },
-        'logstash': {
-            'level': 'INFO',
-            'class': 'logstash.TCPLogstashHandler',
-            'host': os.getenv('DJANGO_LOG_SERVER_HOST', 'localhost'),
-            'port': os.getenv('DJANGO_LOG_SERVER_PORT', 5000),
-            'version': 1,
-            'message_type': 'django',
         }
     },
     'loggers': {
-        'cvat.server': {
-            'handlers': ['console', 'server_file'],
-            'level': os.getenv('DJANGO_LOG_LEVEL', 'DEBUG'),
-        },
-
-        'cvat.client': {
-            'handlers': [],
+        'cvat': {
+            'handlers': ['console', 'file'],
             'level': os.getenv('DJANGO_LOG_LEVEL', 'DEBUG'),
         }
     },
 }
-
-if os.getenv('DJANGO_LOG_SERVER_HOST'):
-    LOGGING['loggers']['cvat.server']['handlers'] += ['logstash']
-    LOGGING['loggers']['cvat.client']['handlers'] += ['logstash']
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/2.0/howto/static-files/

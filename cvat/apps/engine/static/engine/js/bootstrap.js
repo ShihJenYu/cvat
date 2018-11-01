@@ -26,5 +26,10 @@ window.onload = function() {
     };
 
     let id = window.location.href.match('id=[0-9]+')[0].slice(3);
-    callAnnotationUI(id);
+    let setKey = false;
+    if (window.location.href.match(/setKey=true/gi)) {
+        setKey = true;
+    }
+    console.log("setKey",setKey);
+    callAnnotationUI(id,setKeyMode=setKey);
 };

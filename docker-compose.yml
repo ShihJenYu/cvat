@@ -16,9 +16,9 @@ services:
     restart: always
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_DB: cvat_my
+      POSTGRES_DB: cvat
     ports:
-      - "2347:5432"
+      - "2345:5432"
     volumes:
       - cvat_db:/var/lib/postgresql/data
 

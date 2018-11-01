@@ -25,4 +25,7 @@ urlpatterns = [
     path('save/exception/<int:jid>', views.catch_client_exception),
     # add by jeff
     path('set/current/job/<int:jid>', views.set_user_currnet),
+    path('get/isAdmin', views.get_isAdmin),
+    path('set/task/<str:tid>/frame/<int:frame>/isKeyFrame/<int:flag>', views.set_frame_isKeyFrame),
+    path('get/task/<str:tid>/frame/<int:frame>/isKeyFrame', views.get_frame_isKeyFrame),
 ]

@@ -513,6 +513,7 @@ class _AnnotationForJob(_Annotation):
             ))
         return ' '.join(verified)
 
+  #add by jeff
     def init_from_db(self,frame=None):
         def get_values(shape_type):
             if shape_type == 'polygons':

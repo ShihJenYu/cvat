@@ -7,8 +7,12 @@
 /* exported callAnnotationUI translateSVGPos blurAllElements drawBoxSize copyToClipboard */
 "use strict";
 
-function callAnnotationUI(jid) {
+var trainigsaveFlag = false;
+var setKeyFlag = false;
+var isAdminFlag = false;
+function callAnnotationUI(jid,setKeyMode=false) {
     initLogger(jid);
+    setKeyFlag = setKeyMode;
     let loadJobEvent = Logger.addContinuedEvent(Logger.EventType.loadJob);
     serverRequest("/get/job/" + jid, function(job) {
         serverRequest("get/annotation/job/" + jid, function(data) {
@@ -93,9 +97,22 @@ function buildAnnotationUI(job, shapeData, loadJobEvent) {
             }
         }
     };
-
+    console.log("window.location",window.location);
     // Remove external search parameters from url
-    window.history.replaceState(null, null, `${window.location.origin}/?id=${job.jobid}`);
+
+    if (setKeyFlag)
+            window.history.replaceState(null, null, `${window.location.origin}/?id=${job.jobid}&setKey=${setKeyFlag}`);
+        else
+            window.history.replaceState(null, null, `${window.location.origin}/?id=${job.jobid}`);
+
+    serverRequest('/get/isAdmin', function(response) {
+        isAdminFlag = response.isAdmin;
+        if(!isAdminFlag)
+            setKeyFlag = false;
+            window.history.replaceState(null, null, `${window.location.origin}/?id=${job.jobid}`);
+    });
+
+    
 
     window.cvat.config = new Config();
 
@@ -156,7 +173,7 @@ function buildAnnotationUI(job, shapeData, loadJobEvent) {
         width: $('#playerFrame').width(),
         height: $('#playerFrame').height(),
     };
-    
+
     // add by jeff, set frame in playermodel
     let playerModel = new PlayerModel(job, playerGeometry,shapeData[1]);
     //let playerModel = new PlayerModel(job, playerGeometry);
@@ -235,31 +252,29 @@ function buildAnnotationUI(job, shapeData, loadJobEvent) {
 
     // add by jeff
     $('#nextButtonFlag').click(function(e){
+
         if (shapeCollectionModel.hasUnsavedChanges())
         {
+            // var r = confirm("Press a button!");
             alert("Hello! Submit you made may not be saved !!!");
             $('#nextButtonFlag').prop('checked',false);
+
         } else {
-            $.confirm({
-                title: 'Confirm!',
-                boxWidth: '30%',
-                draggable: false,
-                useBootstrap: false,
-                content: 'You didn\'t do anything.\nAre you sure?',
-                buttons: {
-                    ok: function () {
-                        if($('#nextButtonFlag').is(':checked')) {
-                            $('#nextButton_training')[0].setAttribute("class","playerButton_training");
-                        }
-                        else {
-                            $('#nextButton_training')[0].setAttribute("class","playerButton_training disabledPlayerButton");
-                        }
-                    },
-                    cancel: function () {
-                        $('#nextButtonFlag').prop('checked',false);
-                    }
-                }
-            });
+
+            // modify by Eric.
+            if (trainigsaveFlag){
+                var content_txt = 'Cannot be changed after sending. Saving confirmed.';
+            } else {
+                var content_txt = 'Cannot be changed after sending. You didn\'t do anything Change.';
+            }
+            trainigsaveFlag = false;
+            document.getElementById("nextButtonFlag_text").textContent=content_txt;
+
+            if($('#nextButtonFlag').is(':checked')) {
+                $('#nextButton_training')[0].setAttribute("class","playerButton_training");
+            } else {
+                $('#nextButton_training')[0].setAttribute("class","playerButton_training disabledPlayerButton");
+            }
         }        
     });
 }
@@ -442,7 +457,19 @@ function setupSettingsWindow() {
         $('#settingsWindow').addClass('hidden');
     });
 
+    // modify by eric
+
     let saveInterval = null;
+    if (document.getElementById("autoSaveBox").checked) {
+        let time = +autoSaveTime.prop('value');
+        saveInterval = setInterval(() => {
+            let saveButton = $('#saveButton');
+            if (!saveButton.prop('disabled')) {
+                saveButton.click();
+            }
+        }, time * 1000 * 60);
+    }
+
     autoSaveBox.on('change', function(e) {
         if (saveInterval) {
             clearInterval(saveInterval);
@@ -593,6 +620,7 @@ function setupMenu(job, shapeCollectionModel, annotationParser, aamModel, player
     });
 
     $('#saveButton').on('click', () => {
+        trainigsaveFlag = true;
         saveAnnotation(shapeCollectionModel, job);
     });
     $('#saveButton').attr('title', `

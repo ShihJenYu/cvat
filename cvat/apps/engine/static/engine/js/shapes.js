@@ -195,17 +195,6 @@ class ShapeModel extends Listener {
         return counter;
     }
 
-    notify(updateReason) {
-        let oldReason = this._updateReason;
-        this._updateReason = updateReason;
-        try {
-            Listener.prototype.notify.call(this);
-        }
-        finally {
-            this._updateReason = oldReason;
-        }
-    }
-
     collectStatistic() {
         let collectObj = {};
         collectObj.type = this._type.split('_')[1];
@@ -240,7 +229,8 @@ class ShapeModel extends Listener {
         window.cvat.addAction('Change Attribute', () => {
             if (typeof(oldAttr) === 'undefined') {
                 delete this._attributes.mutable[frame][attrId];
-                this.notify('attributes');
+                this._updateReason = 'attributes';
+                this.notify();
             }
             else {
                 this.updateAttribute(frame, attrId, oldAttr);
@@ -259,7 +249,8 @@ class ShapeModel extends Listener {
             this._attributes.immutable[attrId] = labelsInfo.strToValues(attrInfo.type, value)[0];
         }
 
-        this.notify('attributes');
+        this._updateReason = 'attributes';
+        this.notify();
     }
 
     changeLabel(labelId) {
@@ -272,7 +263,8 @@ class ShapeModel extends Listener {
             this._label = +labelId;
             this._importAttributes([], []);
             this._setupKeyFrames();
-            this.notify('changelabel');
+            this._updateReason = 'changelabel';
+            this.notify();
         }
         else {
             throw Error(`Unknown label id value found: ${labelId}`);
@@ -281,7 +273,8 @@ class ShapeModel extends Listener {
 
     changeColor(color) {
         this._color = color;
-        this.notify('color');
+        this._updateReason = 'color';
+        this.notify();
     }
 
     interpolate(frame) {
@@ -304,12 +297,14 @@ class ShapeModel extends Listener {
         // End of undo/redo code
 
         this.updatePosition(frame, position, true);
-        this.notify('occluded');
+        this._updateReason = 'occluded';
+        this.notify();
     }
 
     switchLock() {
         this._locked = !this._locked;
-        this.notify('lock');
+        this._updateReason = 'lock';
+        this.notify();
     }
 
     switchHide() {
@@ -326,7 +321,8 @@ class ShapeModel extends Listener {
             this._hiddenText = false;
         }
 
-        this.notify('hidden');
+        this._updateReason = 'hidden';
+        this.notify();
     }
 
     switchOutside(frame) {
@@ -350,7 +346,8 @@ class ShapeModel extends Listener {
                     delete this._attributes.mutable[frame];
                 }
 
-                this.notify('outside');
+                this._updateReason = 'outside';
+                this.notify();
             }
             else {
                 this.switchOutside(frame);
@@ -373,7 +370,8 @@ class ShapeModel extends Listener {
             this._frame = frame;
         }
 
-        this.notify('outside');
+        this._updateReason = 'outside';
+        this.notify();
     }
 
     switchKeyFrame(frame) {
@@ -383,12 +381,8 @@ class ShapeModel extends Listener {
         }
 
         // Undo/redo code
-        let oldPos = Object.assign({}, this._positions[frame]);
         window.cvat.addAction('Change Keyframe', () => {
             this.switchKeyFrame(frame);
-            if (Object.keys(oldPos).length && oldPos.outside) {
-                this.switchOutside(frame);
-            }
         }, () => {
             this.switchKeyFrame(frame);
         }, frame);
@@ -417,12 +411,13 @@ class ShapeModel extends Listener {
                 this._frame = frame;
             }
         }
-
-        this.notify('keyframe');
+        this._updateReason = 'keyframe';
+        this.notify();
     }
 
     click() {
-        this.notify('click');
+        this._updateReason = 'click';
+        this.notify();
     }
 
     prevKeyFrame() {
@@ -442,20 +437,23 @@ class ShapeModel extends Listener {
     }
 
     aamAttributeFocus() {
-        this.notify('attributeFocus');
+        this._updateReason = 'attributeFocus';
+        this.notify();
     }
 
     select() {
         if (!this._selected) {
             this._selected = true;
-            this.notify('selection');
+            this._updateReason = 'selection';
+            this.notify();
         }
     }
 
     deselect() {
         if (this._selected) {
             this._selected = false;
-            this.notify('selection');
+            this._updateReason = 'selection';
+            this.notify();
         }
     }
 
@@ -482,7 +480,8 @@ class ShapeModel extends Listener {
             let position = this._interpolatePosition(frame);
             position.z_order = value;
             this.updatePosition(frame, position, true);
-            this.notify('z_order');
+            this._updateReason = 'z_order';
+            this.notify();
         }
     }
 
@@ -491,7 +490,8 @@ class ShapeModel extends Listener {
             this._active = false;
         }
         this._removed = value;
-        this.notify('remove');
+        this._updateReason = 'remove';
+        this.notify();
     }
 
     get removed() {
@@ -513,7 +513,8 @@ class ShapeModel extends Listener {
     set active(value) {
         this._active = value;
         if (!this._removed) {
-            this.notify('activation');
+            this._updateReason = 'activation';
+            this.notify();
         }
     }
 
@@ -524,7 +525,8 @@ class ShapeModel extends Listener {
     set activeAAM(active) {
         this._activeAAM = active.shape;
         this._activeAAMAttributeId = active.attribute;
-        this.notify('activeAAM');
+        this._updateReason = 'activeAAM';
+        this.notify();
     }
 
     get activeAAM() {
@@ -536,7 +538,8 @@ class ShapeModel extends Listener {
 
     set merge(value) {
         this._merge = value;
-        this.notify('merge');
+        this._updateReason = 'merge';
+        this.notify();
     }
 
     get merge() {
@@ -545,7 +548,8 @@ class ShapeModel extends Listener {
 
     set groupping(value) {
         this._groupping = value;
-        this.notify('groupping');
+        this._updateReason = 'groupping';
+        this.notify();
     }
 
     get groupping() {
@@ -664,7 +668,7 @@ class BoxModel extends ShapeModel {
             ybr: Math.clamp(position.ybr, 0, window.cvat.player.geometry.frameHeight),
             occluded: position.occluded,
             z_order: position.z_order,
-        };
+        }; 
 
         if (this._verifyArea(pos)) {
             if (this._type === 'annotation_box') {
@@ -679,7 +683,8 @@ class BoxModel extends ShapeModel {
                 window.cvat.addAction('Change Position', () => {
                     if (!Object.keys(oldPos).length) {
                         delete this._positions[frame];
-                        this.notify('position');
+                        this._updateReason = 'position';
+                        this.notify();
                     }
                     else {
                         this.updatePosition(frame, oldPos, false);
@@ -700,33 +705,57 @@ class BoxModel extends ShapeModel {
             }
         }
 
-        //add by jeff
-        $('.detectpoint').remove();
-        $('.detectpointAim').remove();
-        
+        // modify by ericlou
+        // add by Jeff
+
         var selectAtts = null;
-        console.log("upposition",this)
         var objs = $("#uiContent .bold label")
         for (let i = 0; i < objs.length; i ++) {
             let str = objs[i].textContent;
             let id = str.split(" ")[1];
             if(this._id==parseInt(id)) {
-                console.log($($(objs[i]).parent()).parent()[0]);
                 selectAtts = $($(objs[i]).parent()).parent()[0];
                 break;
             }
         }
+
+        // modify by ericlou
+        // only update positsion
+
         if(selectAtts != null) {
-            var inputDetectPoint = selectAtts.getElementsByClassName("uiAttr")[6].getElementsByClassName("regular textAttr")[0];
-            var attrid = inputDetectPoint.getAttribute("attrid");
-            attrid = parseInt(attrid);
-           
-            this._attributes.mutable[frame][attrid] = "\"-1,-1 -1,-1\"";
-            inputDetectPoint.value = this._attributes.mutable[frame][attrid];
+            let index_detectpoint  = null
+            for (let i = 0; i < selectAtts.getElementsByClassName("uiAttr").length; i ++) {
+                if(selectAtts.getElementsByClassName("uiAttr")[i].getElementsByTagName("label")[0].innerText.includes('DetectPoints')) {
+                    index_detectpoint = i;
+                    break;
+                }
+            }
+            var inputDetectPoint = selectAtts.getElementsByClassName("uiAttr")[index_detectpoint].getElementsByClassName("regular textAttr")[0];
+
+            var attrid = parseInt(inputDetectPoint.getAttribute("attrid"));
+            var old_value = this._attributes.mutable[frame][attrid];
+
+            var detectpoints = old_value.replace(/"/g, "").split(/[\s,]+/); 
+            var xdl=detectpoints[0],ydl=detectpoints[1],xdr=detectpoints[2],ydr=detectpoints[3];
+
+            if (ydl != "-1" && ydr != "-1") {
+                if(xdl == "-1")xdl=1/3;
+                if(xdr == "-1")xdr=2/3;
+    
+                xdl = parseFloat(xdl);
+                xdr = parseFloat(xdr);
+    
+                var new_ydl = pos.ybr;
+                var new_ydr = pos.ybr;
+    
+                this._attributes.mutable[frame][attrid] = "\"" + xdl.toFixed(2) + "," + new_ydl + " " + xdr.toFixed(2) + "," + new_ydr + "\"";
+                inputDetectPoint.value = this._attributes.mutable[frame][attrid];
+            }
         }
 
         if (!silent) {
-            this.notify('position');
+            this._updateReason = 'position';
+            this.notify();
         }
     }
 
@@ -952,7 +981,8 @@ class PolyShapeModel extends ShapeModel {
         }
 
         if (!silent) {
-            this.notify('position');
+            this._updateReason = 'position';
+            this.notify();
         }
     }
 
@@ -1022,6 +1052,7 @@ class PolyShapeModel extends ShapeModel {
             points.splice(idx, 1);
             position.points = PolyShapeModel.convertNumberArrayToString(points);
             this.updatePosition(frame, position);
+            
         }
     }
 
@@ -1227,7 +1258,8 @@ class PolygonModel extends PolyShapeModel {
 
     set draggable(value) {
         this._draggable = value;
-        this.notify('draggable');
+        this._updateReason = 'draggable';
+        this.notify();
     }
 
     get draggable() {
@@ -1243,11 +1275,18 @@ class ShapeController {
         this._model = shapeModel;
     }
 
+    // modify by Eric
     updatePosition(frame, position) {
+        trainigsaveFlag = false;
+        $('#nextButtonFlag').prop('checked',false);
+        $('#nextButton_training')[0].setAttribute("class","playerButton_training disabledPlayerButton");
         this._model.updatePosition(frame, position);
     }
 
     updateAttribute(frame, attrId, value) {
+        trainigsaveFlag = false;
+        $('#nextButtonFlag').prop('checked',false);
+        $('#nextButton_training')[0].setAttribute("class","playerButton_training disabledPlayerButton");
         this._model.updateAttribute(frame, attrId, value);
     }
 
@@ -1256,10 +1295,14 @@ class ShapeController {
     }
 
     changeLabel(labelId) {
+        trainigsaveFlag = false;
+        $('#nextButtonFlag').prop('checked',false);
+        $('#nextButton_training')[0].setAttribute("class","playerButton_training disabledPlayerButton");
         this._model.changeLabel(labelId);
     }
 
     remove(e) {
+        $('#nextButtonFlag').prop('checked',false);
         if (!window.cvat.mode) {
             if (!this._model.lock || e.shiftKey) {
                 this._model.remove();
@@ -1428,7 +1471,6 @@ class ShapeView extends Listener {
         };
 
         this._controller = shapeController;
-        this._updateReason = null;
 
         this._shapeContextMenu = $('#shapeContextMenu');
         this._pointContextMenu = $('#pointContextMenu');
@@ -1452,7 +1494,7 @@ class ShapeView extends Listener {
                     this._flags.dragging = true;
                     blurAllElements();
                     this._hideShapeText();
-                    this.notify('drag');
+                    this.notify();
                 }).on('dragend', (e) => {
                     let p1 = e.detail.handler.startPoints.point;
                     let p2 = e.detail.p;
@@ -1463,8 +1505,10 @@ class ShapeView extends Listener {
                     events.drag.close();
                     events.drag = null;
                     this._flags.dragging = false;
-                    this._showShapeText();
-                    this.notify('drag');
+                    // modify by Eric
+                    // this._showShapeText();
+                    // console.log("no show text");
+                    this.notify();
                 });
 
                 // Setup resize events
@@ -1482,7 +1526,7 @@ class ShapeView extends Listener {
                     events.resize = Logger.addContinuedEvent(Logger.EventType.resizeObject);
                     blurAllElements();
                     this._hideShapeText();
-                    this.notify('resize');
+                    this.notify();
                 }).on('resizing', () => {
                     objWasResized = true;
                 }).on('resizedone', () => {
@@ -1494,8 +1538,10 @@ class ShapeView extends Listener {
                     events.resize.close();
                     events.resize = null;
                     this._flags.resizing = false;
-                    this._showShapeText();
-                    this.notify('resize');
+                    // modify by Eric
+                    // this._showShapeText();
+                    // console.log("no show text");
+                    this.notify();
                 });
 
 
@@ -1518,7 +1564,8 @@ class ShapeView extends Listener {
             // Setup context menu
             this._uis.shape.on('mousedown.contextMenu', (e) => {
                 if (e.which === 1) {
-                    $('.custom-menu').hide(100);
+                    this._shapeContextMenu.hide(100);
+                    this._pointContextMenu.hide(100);
                 }
                 if (e.which === 3) {
                     e.stopPropagation();
@@ -1526,7 +1573,7 @@ class ShapeView extends Listener {
             });
 
             this._uis.shape.on('contextmenu.contextMenu', (e) => {
-                $('.custom-menu').hide(100);
+                this._pointContextMenu.hide(100);
                 let type = this._controller.type.split('_');
                 if (type[0] === 'interpolation') {
                     this._shapeContextMenu.find('.interpolationItem').removeClass('hidden');
@@ -1578,7 +1625,8 @@ class ShapeView extends Listener {
             this._flags.editable = false;
         }
 
-        $('.custom-menu').hide(100);
+        this._pointContextMenu.hide(100);
+        this._shapeContextMenu.hide(100);
     }
 
 
@@ -1806,7 +1854,7 @@ class ShapeView extends Listener {
         UI.style.backgroundColor = this._controller.color.ui;
 
         this._uis.menu = $(UI);
-        this._scenes.menus.prepend(this._uis.menu);
+        this._scenes.menus.append(this._uis.menu);
 
         function makeTitleBlock(id, label, type, shortkeys) {
             let title = document.createElement('div');
@@ -2141,15 +2189,17 @@ class ShapeView extends Listener {
             return block;
         }
 
-        function makeTextAttr(attrInfo, attrId) {
+        function makeTextAttr(attrInfo, attrId, objectId) {
             let block = document.createElement('div');
 
             let label = document.createElement('label');
             label.innerText = `${attrInfo.name.normalize()}: `;
 
             let text = document.createElement('input');
-            //add by jeff
+            // add by jeff
+            // modify by eric
             text.setAttribute('attrId', attrId);
+            text.setAttribute('caside_id', objectId)
             text.setAttribute('type', 'text');
             text.classList.add('regular', 'textAttr');
 
@@ -2381,29 +2431,22 @@ class ShapeView extends Listener {
     }
 
 
-    notify(newReason) {
-        let oldReason = this._updateReason;
-        this._updateReason = newReason;
-        try {
-            Listener.prototype.notify.call(this);
-        }
-        finally {
-            this._updateReason = oldReason;
-        }
-    }
-
-
     // Inteface methods
-    draw(interpolation) {
+    // Modify by Ericlou
+    draw(interpolation, id = null) {
         let outside = interpolation.position.outside;
 
         if (!outside) {
             if (!this._controller.hiddenShape) {
-                this._drawShapeUI(interpolation.position);
+                // Add by eric
+                // draw carside once load UI.
+                this._drawShapeUI(interpolation, id);
                 this._setupOccludedUI(interpolation.position.occluded);
                 this._setupMergeView(this._controller.merge);
                 if (!this._controller.hiddenText) {
-                    this._showShapeText();
+                    // modify by Eric
+                    // this._showShapeText();
+                    // console.log("no show text");
                 }
             }
         }
@@ -2483,8 +2526,9 @@ class ShapeView extends Listener {
             }
             break;
         case 'attributes':
+            // modify by eric
             this._updateMenuContent(interpolation);
-            setupHidden.call(this, hiddenShape, hiddenText, activeAAM, model.active, interpolation);
+            setupHidden.call(this, hiddenShape, hiddenText, activeAAM, model.active, interpolation, model._id);
             break;
         case 'merge':
             this._setupMergeView(model.merge);
@@ -2500,7 +2544,6 @@ class ShapeView extends Listener {
 
             this._setupLockedUI(locked);
             this._updateButtonsBlock(interpolation.position);
-            this.notify('lock');
             break;
         }
         case 'occluded':
@@ -2508,14 +2551,13 @@ class ShapeView extends Listener {
             this._updateButtonsBlock(interpolation.position);
             break;
         case 'hidden':
-            setupHidden.call(this, hiddenShape, hiddenText, activeAAM, model.active, interpolation);
+            // modify by eric
+            setupHidden.call(this, hiddenShape, hiddenText, activeAAM, model.active, interpolation, model._id);
             this._updateButtonsBlock(interpolation.position);
-            this.notify('hidden');
             break;
         case 'remove':
             if (model.removed) {
                 this.erase();
-                this.notify('remove');
             }
             break;
         case 'position':
@@ -2523,7 +2565,8 @@ class ShapeView extends Listener {
             let idx = this._uis.menu.index();
             this._controller.model().unsubscribe(this);
             this.erase();
-            this.draw(interpolation);
+            // modify by eric
+            this.draw(interpolation, model._id);
             this._controller.model().subscribe(this);
             this._uis.menu.detach();
             if (!idx) {
@@ -2537,7 +2580,6 @@ class ShapeView extends Listener {
             if (colorByLabel.prop('checked')) {
                 colorByLabel.trigger('change');
             }
-            this.notify('changelabel');
             break;
         }
         case 'attributeFocus': {
@@ -2591,19 +2633,28 @@ class ShapeView extends Listener {
         }
 
         if (model.active || !hiddenText) {
-            this._showShapeText();
+            // modify by Eric
+            // this._showShapeText();
+            // console.log("no show text");
         }
 
-        function setupHidden(hiddenShape, hiddenText, activeAAM, active, interpolation) {
+        function setupHidden(hiddenShape, hiddenText, activeAAM, active, interpolation, id) {
             this._makeNotEditable();
             this._removeShapeUI();
             this._removeShapeText();
 
+            var rm = "detectpoint";
+            rm = rm.concat(id);
+            $("."+rm).remove();
+            $('.detectpointAim').remove();
+
             if (!hiddenShape || activeAAM.shape) {
-                this._drawShapeUI(interpolation.position);
+                this._drawShapeUI(interpolation, id);
                 this._setupOccludedUI(interpolation.position.occluded);
                 if (!hiddenText || active || activeAAM.shape) {
-                    this._showShapeText();
+                    // modify by Eric
+                    // this._showShapeText();
+                    // console.log("no show text");
                 }
 
                 if (model.active || activeAAM.shape) {
@@ -2707,10 +2758,6 @@ class ShapeView extends Listener {
         return this._flags.resizing;
     }
 
-    get updateReason() {
-        return this._updateReason;
-    }
-
     // Used in shapeGrouper in order to get model via controller and set group id
     controller() {
         return this._controller;
@@ -2736,7 +2783,6 @@ class BoxView extends ShapeView {
     constructor(boxModel, boxController, svgScene, menusScene) {
         super(boxModel, boxController, svgScene, menusScene);
     }
-
 
     _makeEditable() {
         if (this._uis.shape && this._uis.shape.node.parentElement && !this._flags.editable) {
@@ -2768,12 +2814,46 @@ class BoxView extends ShapeView {
         };
     }
 
+    // modify by eric.
+    // draw carside once load UI.
 
-    _drawShapeUI(position) {
+    _drawShapeUI(interpolation, id_) {
+
+        var position = interpolation.position; var attributes = interpolation.attributes;
         let xtl = position.xtl;
         let ytl = position.ytl;
         let width = position.xbr - position.xtl;
         let height = position.ybr - position.ytl;
+
+        for (let attrId in attributes) {
+            var get_name = String(attributes[attrId]['name']) ;
+            if (get_name === "DetectPoints"){
+                var dectectpoin_value = attributes[attrId]['value'];
+            }
+        }
+        //Modify by Eric
+        
+        var rm = "detectpoint";
+        rm = rm.concat(id_);
+        $("."+rm).remove();
+        $('.detectpointAim').remove();
+
+        var detectpoints = dectectpoin_value.replace(/"/g, "").split(/[\s,]+/); 
+        var xdl=detectpoints[0],ydl=detectpoints[1],xdr=detectpoints[2],ydr=detectpoints[3];
+                
+        var scaledR = POINT_RADIUS / window.cvat.player.geometry.scale;
+    
+        var xdl_draw = xtl + xdl * (width);
+        var xdr_draw = xtl + xdr * (width);
+
+        if (ydl != "-1" && ydr != "-1") {
+            this._uis.shape = this._scenes.svg.rect(scaledR*2,scaledR*2).center(xdl_draw, ydl).addClass(rm).fill('#ffff00').attr({
+                'stroke-width':  STROKE_WIDTH / window.cvat.player.geometry.scale});
+    
+            this._uis.shape = this._scenes.svg.rect(scaledR*2,scaledR*2).center(xdr_draw, ydr).addClass(rm).fill('#ffff00').attr({
+                'stroke-width':  STROKE_WIDTH / window.cvat.player.geometry.scale});
+
+        }
 
         this._uis.shape = this._scenes.svg.rect().size(width, height).attr({
             'fill': this._appearance.fill || this._appearance.colors.shape,
@@ -2875,7 +2955,7 @@ class PolyShapeView extends ShapeView {
                 point = $(point);
 
                 point.on('contextmenu.contextMenu', (e) => {
-                    $('.custom-menu').hide(100);
+                    this._shapeContextMenu.hide(100);
                     this._pointContextMenu.attr('point_idx', point.index());
                     this._pointContextMenu.attr('dom_point_id', point.attr('id'));
 
@@ -2983,7 +3063,6 @@ class PolylineView extends PolyShapeView {
     constructor(polylineModel, polylineController, svgScene, menusScene) {
         super(polylineModel, polylineController, svgScene, menusScene);
     }
-
 
     _drawShapeUI(position) {
         this._uis.shape = this._scenes.svg.polyline(position.points).fill(this._appearance.colors.shape).attr({

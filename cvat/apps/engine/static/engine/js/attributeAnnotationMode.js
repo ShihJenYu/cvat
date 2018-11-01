@@ -91,10 +91,7 @@ class AAMModel extends Listener {
         for (let shape of  this._shapeCollection.currentShapes) {
             let labelAttributes = window.cvat.labelsInfo.labelAttributes(shape.model.label);
             if (Object.keys(labelAttributes).length && !shape.model.removed && !shape.interpolation.position.outside) {
-                this._currentShapes.push({
-                    model: shape.model,
-                    interpolation: shape.model.interpolate(window.cvat.player.frames.current),
-                });
+                this._currentShapes.push(shape);
             }
         }
 
@@ -185,7 +182,7 @@ class AAMModel extends Listener {
         }
 
         this._deactivate();
-        if (Math.sign(direction) < 0) {
+        if (Math.sign(direction) > 0) {
             // next
             this._activeIdx ++;
             if (this._activeIdx >= this._currentShapes.length) {

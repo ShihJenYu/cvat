@@ -10,7 +10,7 @@
 class FrameProvider extends Listener {
     constructor(stop, tid) {
         super('onFrameLoad', () => this._loaded);
-        this._MAX_LOAD = 500; //change by jeff
+        this._MAX_LOAD = 500;
 
         this._stack = [];
         this._loadInterval = null;
@@ -22,6 +22,9 @@ class FrameProvider extends Listener {
         this._frameCollection = {};
         this._stop = stop;
         this._tid = tid;
+    }
+    get tid() {
+        return this._tid;
     }
 
     require(frame) {
@@ -137,7 +140,7 @@ class PlayerModel extends Listener {
 
         this._settings = {
             multipleStep: 10,
-            fps: 25,
+            fps: 15,
             resetZoom: job.mode === 'annotation'
         };
 
@@ -188,6 +191,11 @@ class PlayerModel extends Listener {
 
     get image() {
         return this._frameProvider.require(this._frame.current);
+    }
+
+    get tid() {
+        
+        return this._frameProvider.tid;
     }
 
     get resetZoom() {
@@ -272,7 +280,6 @@ class PlayerModel extends Listener {
     }
 
     shift(delta, absolute) {
-        console.log("in shift");
         if (['resize', 'drag'].indexOf(window.cvat.mode) != -1) {
             return false;
         }
@@ -303,12 +310,10 @@ class PlayerModel extends Listener {
         let changed = this._frame.previous != this._frame.current;
         if (this._settings.resetZoom || this._frame.previous === null) {  // fit in annotation mode or once in interpolation mode
             this._frame.previous = this._frame.current;
-            console.log("next fit");
             this.fit();     // notify() inside the fit()
         }
         else {
             this._frame.previous = this._frame.current;
-            console.log("next notify");
             this.notify();
         }
 
@@ -604,9 +609,19 @@ class PlayerController {
         this._model.pause();
     }
 
+    // add by Jeff
     next_random_frame() {
-        console.log("in next_random_frame");
-       
+        // console.log("in next_random_frame");
+
+        // modify by eric
+        var all_dectect_points = window.document.querySelectorAll("*[class^=\"detect\"]");
+
+        for (var i = 0; i < all_dectect_points.length; i++){
+            let remove_detect_point = all_dectect_points[i].className.baseVal;
+            $("."+remove_detect_point).remove();
+        }
+        $('.detectpointAim').remove();
+
         let jid = window.location.href.match('id=[0-9]+')[0].slice(3);
         var data;
         $.ajax({
@@ -614,7 +629,7 @@ class PlayerController {
             dataType: "json",
             async: false,
             success: function(respone) {
-                console.log("done set/current", respone);
+                // console.log("done set/current", respone);
                 data = respone;
             },
             error: serverError
@@ -622,7 +637,7 @@ class PlayerController {
         if(data) {
             is_one_frame_mode = true;
             one_frame_data = data.data;
-            console.log("pritn test one_frame_data",one_frame_data,"in",data.frame)
+            // console.log("pritn test one_frame_data",one_frame_data,"in",data.frame)
             this._model.setframes(data.frame);
             this._model.shift(0);
             this._model.pause();
@@ -685,6 +700,7 @@ class PlayerView {
         this._playerGridPath = $('#playerGridPath');
         this._contextMenuUI = $('#playerContextMenu');
         // add by jeff
+        this._isKeyFrame = $('#isKeyFrame');
         this._nextButtonFlag = $('#nextButtonFlag');
         this._nextButtonTraining = $('#nextButton_training');
 
@@ -716,14 +732,23 @@ class PlayerView {
         });
 
         // add by jeff
+        this._isKeyFrame.unbind('click').on('click', () => {
+            $('#isKeyFrame').prop('disabled',true);
+            let flag = $('#isKeyFrame').prop('checked');
+            console.log(flag);
+            serverRequest(`set/task/${playerModel.tid}/frame/${playerModel.frames.current}/isKeyFrame/${+flag}`, function(response) {
+                console.log(response);
+                $('#isKeyFrame').prop('disabled',false);
+            });
+        });
         this._nextButtonTraining.unbind('click').on('click', () => {
             if($('#nextButtonFlag').is(':checked')) {
                 $('#nextButtonFlag').prop('checked',false);
                 $('#nextButton_training')[0].setAttribute("class","playerButton_training disabledPlayerButton");
                 this._controller.next_random_frame();
-            }
-            else {
-                console.log("you can't do it before checkbox uncheck");
+                trainigsaveFlag = false;
+            } else {
+                assert("you can't do it before checkbox uncheck");
             }
             
         });
@@ -914,5 +939,10 @@ class PlayerView {
 
         this._playerGridPath.attr('stroke-width', 2 / geometry.scale);
         this._frameNumber.prop('value', frames.current);
+        if(isAdminFlag)
+            serverRequest(`get/task/${model.tid}/frame/${frames.current}/isKeyFrame`, function(response) {
+                console.log(response);
+                $('#isKeyFrame').prop('checked',response.isKeyFrame);
+            });
     }
 }

@@ -33,7 +33,9 @@ from pyunpack import Archive
 from distutils.dir_util import copy_tree
 
 from . import models
-from .logging import task_logger, job_logger, global_logger
+from .logging import task_logger, job_logger
+
+global_logger = logging.getLogger(__name__)
 
 ############################# Low Level server API
 
@@ -595,14 +597,14 @@ def _save_task_to_db(db_task, task_params):
         db_job.save()
 
     #add by jeff to create user record
-    frame_list = list(range(0, db_task.size))
-    #random.shuffle(frame_list)
-    print ("list",frame_list)
-    for x in range(0, len(frame_list)):
-        db_taskFrameUserRecord = models.TaskFrameUserRecord()
-        db_taskFrameUserRecord.task = db_task
-        db_taskFrameUserRecord.frame = frame_list[x]
-        db_taskFrameUserRecord.save()
+    # frame_list = list(range(0, db_task.size))
+    # random.shuffle(frame_list)
+    # print ("list",frame_list)
+    # for x in range(0, len(frame_list)):
+    #     db_taskFrameUserRecord = models.TaskFrameUserRecord()
+    #     db_taskFrameUserRecord.task = db_task
+    #     db_taskFrameUserRecord.frame = frame_list[x]
+    #     db_taskFrameUserRecord.save()
 
     parsed_labels = _parse_labels(task_params['labels'])
     for label in parsed_labels:

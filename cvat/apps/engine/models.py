@@ -97,7 +97,7 @@ def parse_attribute(text):
 
 class AttributeSpec(models.Model):
     label = models.ForeignKey(Label, on_delete=models.CASCADE)
-    text  = models.CharField(max_length=2048) #change by jeff
+    text  = models.CharField(max_length=2084)
 
     def get_attribute(self):
         return parse_attribute(self.text)
@@ -225,7 +225,7 @@ class TrackedPoints(TrackedObject, PolyShape):
 class TrackedPointsAttributeVal(AttributeVal):
     points = models.ForeignKey(TrackedPoints, on_delete=models.CASCADE)
 
-#add by jeff
+# add by jeff
 class TaskFrameUserRecord(models.Model):
     task = models.ForeignKey(Task, on_delete=models.CASCADE)
     frame = models.PositiveIntegerField()

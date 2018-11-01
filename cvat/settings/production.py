@@ -27,8 +27,8 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
         'HOST': 'cvat_db',
-        'NAME': 'cvat_my',
+        'NAME': 'cvat',
         'USER': 'postgres',
-        'PASSWORD': os.getenv('POSTGRES_PASSWORD', 'cvat0000'),
+        'PASSWORD': os.getenv('POSTGRES_PASSWORD', 'postgres0000'),
     }
 }

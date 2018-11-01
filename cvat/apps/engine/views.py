@@ -6,7 +6,7 @@
 import os
 import json
 import traceback
-#add by jeff
+# add by jeff
 import time, random
 
 from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse
@@ -41,7 +41,21 @@ def catch_client_exception(request, jid):
 def dispatch_request(request):
     """An entry point to dispatch legacy requests"""
     if request.method == 'GET' and 'id' in request.GET:
-        return render(request, 'engine/annotation.html', {
+        if request.user.groups.filter(name='admin').exists() and 'setKey' in request.GET and request.GET['setKey'].upper() == "TRUE":
+            return render(request, 'engine/annotation_keyframe.html', {
+                'js_3rdparty': JS_3RDPARTY.get('engine', [])
+            })
+        else:
+            return render(request, 'engine/annotation_training.html', {
+                'js_3rdparty': JS_3RDPARTY.get('engine', [])
+            })
+    else:
+        return redirect('/dashboard/')
+@login_required
+def dispatch_request2(request):
+    """An entry point to dispatch legacy requests"""
+    if request.method == 'GET' and 'id' in request.GET:
+        return render(request, 'engine/annotation_keyframe.html', {
             'js_3rdparty': JS_3RDPARTY.get('engine', [])
         })
     else:
@@ -290,6 +304,11 @@ def get_username(request):
     response = {'username': request.user.username}
     return JsonResponse(response, safe=False)
 
+@login_required
+def get_isAdmin(request):
+    response = {'isAdmin': request.user.groups.filter(name='admin').exists()}
+    return JsonResponse(response, safe=False)
+
 def rq_handler(job, exc_type, exc_value, tb):
     job.exc_info = "".join(traceback.format_exception_only(exc_type, exc_value))
     job.save()
@@ -352,11 +371,16 @@ def set_user_currnet(request, jid):
                     if qs.count():
                         max_id = qs.aggregate(max_id=Max("id"))['max_id']
                         min_id = qs.aggregate(min_id=Min("id"))['min_id']
+                        print("max_id",max_id)
+                        print("min_id",min_id)
+                        iii = 0
 
                         while True:
+                            print(iii)
                             pk = random.randint(min_id, max_id)
                             user_record = models.TaskFrameUserRecord.objects.get(pk=pk)
                             if user_record:
+                                print("user_record is,",user_record)
                                 break
                     end_time = time.time()
                     print ("use random pk cost time : ",(end_time - start_time))
@@ -400,8 +424,43 @@ def set_user_currnet(request, jid):
         return HttpResponseBadRequest(str(e))
 
 
-    
-    
-    
+# add by jeff
+@login_required
+@permission_required('engine.add_task', raise_exception=True)
+def set_frame_isKeyFrame(request, tid, frame, flag):
+    try: 
+        if flag:
+            db_task = models.Task.objects.get(pk=tid)
+            db_taskFrameUserRecord = models.TaskFrameUserRecord()
+            db_taskFrameUserRecord.task = db_task
+            db_taskFrameUserRecord.frame = frame
+            db_taskFrameUserRecord.save()
+            print("tid:{} frame:{} is add".format(tid,frame))
+        else:
+            try:
+                keyframe = models.TaskFrameUserRecord.objects.get(task_id=tid,frame=frame)
+                keyframe.delete()
+            except ObjectDoesNotExist:
+                print("tid:{} frame:{} is delete".format(tid,frame))
 
-    
+        response = {'frame': frame,'add_del':flag}
+        return JsonResponse(response, safe=False)
+    except Exception as e:
+        print("error is !!!!",str(e))
+        return HttpResponseBadRequest(str(e))
+
+@login_required
+@permission_required('engine.add_task', raise_exception=True)
+def get_frame_isKeyFrame(request, tid, frame):
+    try: 
+        response = None
+        try:
+            keyframe = models.TaskFrameUserRecord.objects.get(task_id=tid,frame=frame)
+            response = {'isKeyFrame': True}
+        except ObjectDoesNotExist:
+            response = {'isKeyFrame': False}
+        
+        return JsonResponse(response, safe=False)
+    except Exception as e:
+        print("error is !!!!",str(e))
+        return HttpResponseBadRequest(str(e))
