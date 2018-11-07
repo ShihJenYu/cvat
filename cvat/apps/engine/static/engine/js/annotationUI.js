@@ -16,10 +16,22 @@ function callAnnotationUI(jid,setKeyMode=false) {
     let loadJobEvent = Logger.addContinuedEvent(Logger.EventType.loadJob);
     serverRequest("/get/job/" + jid, function(job) {
         serverRequest("get/annotation/job/" + jid, function(data) {
-            $('#loadingOverlay').remove();
-            setTimeout(() => {
-                buildAnnotationUI(job, data, loadJobEvent);
-            }, 0);
+            console.log("fucking get ann data 0 1 2",data); //[data, frame, new_jid]
+
+            if (data[2] == jid) {
+                $('#loadingOverlay').remove();
+                setTimeout(() => {
+                    buildAnnotationUI(job, data, loadJobEvent);
+                }, 0);
+            }
+            else {
+                serverRequest("/get/job/" + data[2], function(job) {
+                    $('#loadingOverlay').remove();
+                    setTimeout(() => {
+                        buildAnnotationUI(job, data, loadJobEvent);
+                    }, 0);
+                });
+            }
         });
     });
 }
@@ -100,17 +112,16 @@ function buildAnnotationUI(job, shapeData, loadJobEvent) {
     console.log("window.location",window.location);
     // Remove external search parameters from url
 
-    if (setKeyFlag)
-            window.history.replaceState(null, null, `${window.location.origin}/?id=${job.jobid}&setKey=${setKeyFlag}`);
-        else
-            window.history.replaceState(null, null, `${window.location.origin}/?id=${job.jobid}`);
-
-    serverRequest('/get/isAdmin', function(response) {
-        isAdminFlag = response.isAdmin;
-        if(!isAdminFlag)
-            setKeyFlag = false;
-            window.history.replaceState(null, null, `${window.location.origin}/?id=${job.jobid}`);
-    });
+    // serverRequest('/get/isAdmin', function(response) {
+    //     isAdminFlag = response.isAdmin;
+        
+    // });
+    if(isAdminFlag){
+        window.history.replaceState(null, null, `${window.location.origin}/fcw?id=${job.jobid}&setKey=${setKeyFlag}`);
+    }
+    else{
+        window.history.replaceState(null, null, `${window.location.origin}/fcw`);
+    }
 
     
 
@@ -620,8 +631,14 @@ function setupMenu(job, shapeCollectionModel, annotationParser, aamModel, player
     });
 
     $('#saveButton').on('click', () => {
-        trainigsaveFlag = true;
-        saveAnnotation(shapeCollectionModel, job);
+        if((isAdminFlag && keyframeStage.current) || $('#isRedo').prop("checked")){
+            alert("Hello! annotator is working !!!");
+        }
+        else {
+            trainigsaveFlag = true;
+            saveAnnotation(shapeCollectionModel, job);
+        }
+        
     });
     $('#saveButton').attr('title', `
         ${shortkeys['save_work'].view_value} - ${shortkeys['save_work'].description}`);

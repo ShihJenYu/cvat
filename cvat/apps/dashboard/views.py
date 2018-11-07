@@ -11,6 +11,7 @@ from django.contrib.auth.decorators import permission_required
 from cvat.apps.authentication.decorators import login_required
 
 from cvat.apps.engine.models import Task as TaskModel
+from cvat.apps.engine.models import FCWTrain as FCWTrainModel
 from cvat.settings.base import JS_3RDPARTY
 
 import os
@@ -78,11 +79,16 @@ def DetailTaskInfo(request, task, dst_dict):
     for segment in task.segment_set.all():
         for job in segment.job_set.all():
             segment_url = "{0}://{1}/?id={2}".format(scheme, host, job.id)
+            url_fcw = "{0}://{1}/fcw?id={2}".format(scheme, host, job.id)
+            url_fcw_key = "{0}://{1}/fcw?id={2}&setKey=true".format(scheme, host, job.id)
+            
             dst_dict["segments"].append({
                 'id': job.id,
                 'start': segment.start_frame,
                 'stop': segment.stop_frame,
-                'url': segment_url
+                'url': segment_url,
+                'url_fcw': url_fcw,
+                'url_fcw_key': url_fcw_key,
             })
 
     db_labels = task.label_set.prefetch_related('attributespec_set').all()
@@ -93,6 +99,18 @@ def DetailTaskInfo(request, task, dst_dict):
             attributes[db_label.id][db_attrspec.id] = db_attrspec.text
 
     dst_dict['labels'] = attributes
+
+    
+    db_FCWTrain = FCWTrainModel.objects.get(task_id=task.id)
+    dst_dict['videostage'] = {
+        'keyframe_count': db_FCWTrain.keyframe_count,
+        'unchecked_count': db_FCWTrain.unchecked_count,
+        'checked_count': db_FCWTrain.checked_count,
+        'need_modify_count': db_FCWTrain.need_modify_count,
+        'priority': db_FCWTrain.priority,
+    }
+    print ('fuckeinginginingingignignigngnggnigni',dst_dict['videostage'])
+
 
 @login_required
 @permission_required('engine.view_task', raise_exception=True)

@@ -112,6 +112,11 @@ function setupTaskCreator() {
     let submitCreate = $('#dashboardSubmitTask');
     let cancelCreate = $('#dashboardCancelTask');
 
+    //add by jeff
+    let seletcAllTask = $('#seletcAllTask');
+    let cancelAllTask = $('#cancelAllTask');
+    let setVideoPriority = $('#setVideoPriority');
+
     let name = nameInput.prop('value');
     let labels = labelsInput.prop('value');
     let bugTrackerLink = bugTrackerInput.prop('value');
@@ -125,6 +130,34 @@ function setupTaskCreator() {
 
     dashboardCreateTaskButton.on('click', function() {
         $('#dashboardCreateModal').removeClass('hidden');
+    });
+
+    seletcAllTask.on('click', function() {
+        $(".selectTask[id]").prop("checked",true);
+
+    });
+    cancelAllTask.on('click', function() {
+        $(".selectTask[id]").prop("checked",false);
+    });
+    
+    setVideoPriority.on('click', function() {
+        // $('#setVideoPriority').prop('disabled',true);
+        let priority = $('#priority').val();
+        if (priority == '' || priority < 0) priority = 0;
+        if (priority > 50) priority = 50;
+        console.log("priority",priority);
+        
+        var IDs = $(".selectTask[id]")         // find spans with ID attribute
+                    .map(function() { if($(this).prop("checked")) return this.id.split('_')[1]; }) // convert to set of IDs
+                    .get(); // convert to instance of Array (optional)
+        console.log("IDs",IDs.toString());
+        setPriorityRequest(IDs, priority, function(response) {
+            console.log(response);
+            $('#setVideoPriority').prop('disabled',false);
+            IDs.forEach(element => {
+                $(`#detailPriority_${element}`).html(priority);
+            });
+        });
     });
 
     nameInput.on('change', (e) => {name = e.target.value;});
@@ -405,6 +438,22 @@ function setupSearch() {
 
 
 /* Server requests */
+
+function setPriorityRequest(selectTasks, priority, successCallback)
+{
+    let priorityData = new FormData();
+    priorityData.append('selectTasks', selectTasks);
+    priorityData.append('priority', priority);
+    $.ajax({
+        url: '/set/tasks/priority',
+        type: 'POST',
+        data: priorityData,
+        contentType: false,
+        processData: false,
+        success: successCallback
+    });
+}
+
 function createTaskRequest(oData, onSuccessRequest, onSuccessCreate, onError, onComplete, onUpdateStatus) {
     $.ajax({
         url: '/create/task',

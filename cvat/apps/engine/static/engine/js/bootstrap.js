@@ -25,11 +25,32 @@ window.onload = function() {
         }).catch(() => { return; });
     };
 
-    let id = window.location.href.match('id=[0-9]+')[0].slice(3);
+    let id = null;
     let setKey = false;
     if (window.location.href.match(/setKey=true/gi)) {
         setKey = true;
     }
-    console.log("setKey",setKey);
-    callAnnotationUI(id,setKeyMode=setKey);
+
+    serverRequest('/get/isAdmin', function(response) {
+        isAdminFlag = response.isAdmin;
+        if(isAdminFlag){
+            setKeyFlag = true;
+            id = window.location.href.match('id=[0-9]+')[0].slice(3);
+            callAnnotationUI(id,setKeyMode=setKeyFlag);
+        }
+        else{
+            setKeyFlag = false;
+            serverRequest("/get/fcw/job", function(response) {
+                console.log("setKey",setKey);
+                callAnnotationUI(response.jid,setKeyMode=setKey);
+            });
+        }
+    });
+
+
+    // serverRequest("/get/fcw/job", function(response) {
+    //     console.log("setKey",setKey);
+    //     callAnnotationUI(response.jid,setKeyMode=setKey);
+    // });
+    
 };

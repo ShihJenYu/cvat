@@ -8,6 +8,7 @@ import json
 import traceback
 # add by jeff
 import time, random
+from django.utils import timezone
 
 from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.shortcuts import redirect, render
@@ -40,17 +41,27 @@ def catch_client_exception(request, jid):
 @login_required
 def dispatch_request(request):
     """An entry point to dispatch legacy requests"""
-    if request.method == 'GET' and 'id' in request.GET:
-        if request.user.groups.filter(name='admin').exists() and 'setKey' in request.GET and request.GET['setKey'].upper() == "TRUE":
-            return render(request, 'engine/annotation_keyframe.html', {
-                'js_3rdparty': JS_3RDPARTY.get('engine', [])
-            })
-        else:
-            return render(request, 'engine/annotation_training.html', {
-                'js_3rdparty': JS_3RDPARTY.get('engine', [])
-            })
+    # if request.method == 'GET' and 'id' in request.GET:
+    #     if request.user.groups.filter(name='admin').exists() and 'setKey' in request.GET and request.GET['setKey'].upper() == "TRUE":
+    #         return render(request, 'engine/annotation_keyframe.html', {
+    #             'js_3rdparty': JS_3RDPARTY.get('engine', [])
+    #         })
+    #     else:
+    #         return render(request, 'engine/annotation_training.html', {
+    #             'js_3rdparty': JS_3RDPARTY.get('engine', [])
+    #         })
+    # else:
+    #     return redirect('/dashboard/')
+    if request.user.groups.filter(name='admin').exists(): #and request.method == 'GET' and 'setKey' in request.GET and request.GET['setKey'].upper() == "TRUE":
+        return render(request, 'engine/annotation_keyframe.html', {
+            'js_3rdparty': JS_3RDPARTY.get('engine', [])
+        })
     else:
-        return redirect('/dashboard/')
+        return render(request, 'engine/annotation_training.html', {
+            'js_3rdparty': JS_3RDPARTY.get('engine', [])
+        })
+    # else:
+    #     return redirect('/dashboard/')
 @login_required
 def dispatch_request2(request):
     """An entry point to dispatch legacy requests"""
@@ -270,9 +281,18 @@ def save_annotation_for_job(request, jid):
         data = json.loads(request.body.decode('utf-8'))
         if 'annotation' in data:
             if request.user.groups.filter(name='admin').exists():
-                annotation.save_job(jid, json.loads(data['annotation']))
+                annotation.save_job(jid, json.loads(data['annotation']),oneFrameFlag=True,frame=data['current_frame'])
             else:
                 annotation.save_job(jid, json.loads(data['annotation']),oneFrameFlag=True,frame=data['current_frame'])
+
+                user_record = models.TaskFrameUserRecord.objects.get(user=request.user.username,current=True)
+                print ("user: {} find current {}".format(request.user.username,user_record.frame))
+                if user_record.need_modify:
+                    user_record.userModifySave_date = timezone.now()
+                else:
+                    user_record.userSave_date = timezone.now()
+                user_record.save()
+                  
         if 'logs' in data:
             for event in json.loads(data['logs']):
                 job_client_logger[jid].info(json.dumps(event))
@@ -330,15 +350,26 @@ def set_user_currnet(request, jid):
         db_job = models.Job.objects.get(id=jid)
         
         user_record = None
+        new_jid = None # use taskid
         
         # set current frame to submit
         try:
-            user_record = models.TaskFrameUserRecord.objects.get(task_id=db_job.segment.task.id,user=request.user.username,current=True)
+            user_record = models.TaskFrameUserRecord.objects.get(user=request.user.username,current=True)
+            db_fcwTrain = models.FCWTrain.objects.get(task_id=user_record.task_id)
             print ("user: {} find current {}".format(request.user.username,user_record.frame))
             user_record.current = False
             user_record.user_submit = True
+            if user_record.need_modify:
+                user_record.userModifySubmit_date = timezone.now()
+                tmp = db_fcwTrain.need_modify_count
+                db_fcwTrain.need_modify_count = tmp-1 if tmp-1>0 else 0
+            else:
+                user_record.userSubmit_date = timezone.now()
             user_record.need_modify = False
-            user_record.save()            
+
+            db_fcwTrain.unchecked_count += 1 
+            user_record.save()
+            db_fcwTrain.save()
             print ("user: {}'s user_record.save()".format(request.user.username))
         except ObjectDoesNotExist:
             print ("user: {}'s not found current frame".format(request.user.username))            
@@ -349,74 +380,78 @@ def set_user_currnet(request, jid):
             print("try get need_modify frame first")
             #user_record = models.TaskFrameUserRecord.objects.filter(task_id=db_job.segment.task.id,user=request.user.username,need_modify=True).first()
             start_time = time.time()
-            qs = models.TaskFrameUserRecord.objects.filter(task_id=db_job.segment.task.id,user=request.user.username,need_modify=True)
-            if qs.count():
-                max_id = qs.aggregate(max_id=Max("id"))['max_id']
-                min_id = qs.aggregate(min_id=Min("id"))['min_id']
+            db_fcwTrains = models.FCWTrain.objects.filter(~Q(priority=0)).order_by('-priority')
+            print ("db_fcwTrains,",db_fcwTrains)
+            print ("len  db_fcwTrains,",len(db_fcwTrains))
+            if db_fcwTrains and len(db_fcwTrains):
+                print ("db_fcwTrains has {} data".format(len(db_fcwTrains)))
+                for db_fcwTrain in db_fcwTrains:
+                    tmp_tid = db_fcwTrain.task.id
+                    qs = models.TaskFrameUserRecord.objects.filter(task_id=tmp_tid,user=request.user.username,need_modify=True)
+                    ids = qs.values_list('id', flat=True)
+                    if len(ids):
+                        index = random.randint(0, len(ids)-1)
+                        try:
+                            user_record = models.TaskFrameUserRecord.objects.get(pk=ids[index])
+                            new_jid = tmp_tid
 
-                while True:
-                    pk = random.randint(min_id, max_id)
-                    user_record = models.TaskFrameUserRecord.objects.get(pk=pk)
-                    if user_record:
-                        break
+                            user_record.user = request.user.username
+                            user_record.current = True
+                            user_record.userModifyGet_date = timezone.now()
+                            user_record.save()
+                            break
+                        except ObjectDoesNotExist:
+                            user_record = None
+                            new_jid = None
             end_time = time.time()
             print ("use random pk cost time : ",(end_time - start_time))
 
             if user_record is None:
-                try:
-                    print("need modify is none, try get new frame")
-                    #user_record = models.TaskFrameUserRecord.objects.filter(task_id=db_job.segment.task.id,user='').first()
-                    start_time = time.time()
-                    qs = models.TaskFrameUserRecord.objects.filter(task_id=db_job.segment.task.id,user='')
-                    if qs.count():
-                        max_id = qs.aggregate(max_id=Max("id"))['max_id']
-                        min_id = qs.aggregate(min_id=Min("id"))['min_id']
-                        print("max_id",max_id)
-                        print("min_id",min_id)
-                        iii = 0
-
-                        while True:
-                            print(iii)
-                            pk = random.randint(min_id, max_id)
-                            user_record = models.TaskFrameUserRecord.objects.get(pk=pk)
-                            if user_record:
-                                print("user_record is,",user_record)
-                                break
-                    end_time = time.time()
-                    print ("use random pk cost time : ",(end_time - start_time))
-                    print ("try get new frame is success",user_record.frame)
-                except ObjectDoesNotExist:
-                    print ("no user's need_modify or new can set current!!",user_record.frame)
-
-        except ObjectDoesNotExist:
-            try:
-                print("try get need_modify frame ObjectDoesNotExist try get new first")
+                print("need modify is none, try get new frame")
                 #user_record = models.TaskFrameUserRecord.objects.filter(task_id=db_job.segment.task.id,user='').first()
                 start_time = time.time()
-                qs = models.TaskFrameUserRecord.objects.filter(task_id=db_job.segment.task.id,user='')
-                if qs.count():
-                    max_id = qs.aggregate(max_id=Max("id"))['max_id']
-                    min_id = qs.aggregate(min_id=Min("id"))['min_id']
-    
-                    while True:
-                        pk = random.randint(min_id, max_id)
-                        user_record = models.TaskFrameUserRecord.objects.get(pk=pk)
-                        if user_record:
-                            break
+                db_fcwTrains = models.FCWTrain.objects.filter(~Q(priority=0)).order_by('-priority')
+                print ("db_fcwTrains,",db_fcwTrains)
+                print ("len  db_fcwTrains,",len(db_fcwTrains))
+                if db_fcwTrains and len(db_fcwTrains):
+                    print ("db_fcwTrains has {} data".format(len(db_fcwTrains)))
+                    for db_fcwTrain in db_fcwTrains:
+                        tmp_tid = db_fcwTrain.task.id
+                        qs = models.TaskFrameUserRecord.objects.filter(task_id=tmp_tid,user='')
+                        ids = qs.values_list('id', flat=True)
+                        if len(ids):
+                            index = random.randint(0, len(ids)-1)
+                            try:
+                                user_record = models.TaskFrameUserRecord.objects.get(pk=ids[index])
+                                new_jid = tmp_tid
+
+                                user_record.user = request.user.username
+                                user_record.current = True
+                                user_record.userGet_date = timezone.now()
+                                user_record.save()
+                                break
+                            except ObjectDoesNotExist:
+                                user_record = None
+                                new_jid = None
                 end_time = time.time()
                 print ("use random pk cost time : ",(end_time - start_time))
                 print ("try get new frame is success",user_record.frame)
-            except ObjectDoesNotExist:
-                print ("no user's need_modify or empty can set current!!",user_record.frame)
+
+        except Exception as e:
+            user_record = None
+            print("error is !!!!",str(e))
         
-        user_record.user = request.user.username
-        user_record.current = True
-        user_record.save()
-        print("finished to save user_record")
+        if user_record:
+            print ("have current")
+        else:
+            print ("user_record is None, will error")
+            raise Exception('user_record is None')
+
+        db_job = models.Job.objects.get(id=new_jid)
 
         mAnnotation = annotation._AnnotationForJob(db_job)
         mAnnotation.init_from_db(user_record.frame)
-        return JsonResponse({'data':mAnnotation.to_client(),'frame': user_record.frame})
+        return JsonResponse({'data':mAnnotation.to_client(),'jid':new_jid,'frame': user_record.frame})
 
     except Exception as e:
         print("error is !!!!",str(e))
@@ -434,12 +469,31 @@ def set_frame_isKeyFrame(request, tid, frame, flag):
             db_taskFrameUserRecord = models.TaskFrameUserRecord()
             db_taskFrameUserRecord.task = db_task
             db_taskFrameUserRecord.frame = frame
+            
+            db_fcwTrain = models.FCWTrain.objects.get(task_id=tid)
+            db_fcwTrain.keyframe_count += 1
+
+            db_fcwTrain.save()
             db_taskFrameUserRecord.save()
             print("tid:{} frame:{} is add".format(tid,frame))
         else:
             try:
                 keyframe = models.TaskFrameUserRecord.objects.get(task_id=tid,frame=frame)
                 keyframe.delete()
+                db_fcwTrain = models.FCWTrain.objects.get(task_id=tid)
+
+                tmp = db_fcwTrain.keyframe_count
+                db_fcwTrain.keyframe_count = tmp-1 if tmp-1>0 else 0
+
+                tmp = db_fcwTrain.unchecked_count
+                db_fcwTrain.unchecked_count = tmp-1 if tmp-1>0 else 0
+                tmp = db_fcwTrain.checked_count
+                db_fcwTrain.checked_count = tmp-1 if tmp-1>0 else 0
+                tmp = db_fcwTrain.need_modify_count
+                db_fcwTrain.need_modify_count = tmp-1 if tmp-1>0 else 0
+
+                db_fcwTrain.save()
+
             except ObjectDoesNotExist:
                 print("tid:{} frame:{} is delete".format(tid,frame))
 
@@ -459,6 +513,178 @@ def get_frame_isKeyFrame(request, tid, frame):
             response = {'isKeyFrame': True}
         except ObjectDoesNotExist:
             response = {'isKeyFrame': False}
+        
+        return JsonResponse(response, safe=False)
+    except Exception as e:
+        print("error is !!!!",str(e))
+        return HttpResponseBadRequest(str(e))
+
+
+@login_required
+@permission_required('engine.add_task', raise_exception=True)
+def get_keyFrame_stage(request, tid, frame):
+    try:
+        keyframe = models.TaskFrameUserRecord.objects.get(task_id=tid,frame=frame)
+        response = {
+            'annotator': keyframe.user,
+            'current': keyframe.current,
+            'user_submit': keyframe.user_submit,
+            'need_modify': keyframe.need_modify,
+            'checked': keyframe.checked,
+            'comment': keyframe.comment
+        }
+        return JsonResponse(response, safe=False)
+    except Exception as e:
+        print("error is !!!!",str(e))
+        return HttpResponseBadRequest(str(e))
+
+@login_required
+@permission_required('engine.add_task', raise_exception=True)
+def set_frame_isComplete(request, tid, frame, flag):
+    try: 
+        keyframe = models.TaskFrameUserRecord.objects.get(task_id=tid,frame=frame)
+        db_fcwTrain = models.FCWTrain.objects.get(task_id=tid)
+        if flag:
+            keyframe.checker = request.user.username
+            keyframe.checked = True
+            keyframe.user_submit = False
+            
+            db_fcwTrain.checked_count += 1
+
+            tmp = db_fcwTrain.unchecked_count
+            db_fcwTrain.unchecked_count = tmp-1 if tmp-1>0 else 0
+
+            db_fcwTrain.save()
+            keyframe.save()
+            print("tid:{} frame:{} is Complete".format(tid,frame))
+        else:
+            keyframe.checker = request.user.username
+            keyframe.checked = False
+            keyframe.user_submit = True
+
+            tmp = db_fcwTrain.checked_count
+            db_fcwTrain.checked_count = tmp-1 if tmp-1>0 else 0
+
+            db_fcwTrain.unchecked_count += 1
+
+            db_fcwTrain.save()
+            keyframe.save()
+
+
+        response = {'frame': frame,'isComplete':flag}
+        return JsonResponse(response, safe=False)
+    except Exception as e:
+        print("error is !!!!",str(e))
+        return HttpResponseBadRequest(str(e))
+
+@login_required
+@permission_required('engine.add_task', raise_exception=True)
+def set_frame_isRedo(request, tid, frame, flag):
+    try: 
+        keyframe = models.TaskFrameUserRecord.objects.get(task_id=tid,frame=frame)
+        db_fcwTrain = models.FCWTrain.objects.get(task_id=tid)
+        if flag:
+            keyframe.checker = request.user.username
+            keyframe.need_modify = True
+            keyframe.user_submit = False
+            
+            db_fcwTrain.need_modify_count += 1
+
+            tmp = db_fcwTrain.unchecked_count
+            db_fcwTrain.unchecked_count = tmp-1 if tmp-1>0 else 0
+
+            db_fcwTrain.save()
+            keyframe.save()
+            print("tid:{} frame:{} is Redo".format(tid,frame))
+        else:
+            keyframe.checker = request.user.username
+            keyframe.need_modify = False
+            keyframe.user_submit = True
+
+            tmp = db_fcwTrain.need_modify_count
+            db_fcwTrain.need_modify_count = tmp-1 if tmp-1>0 else 0
+
+            db_fcwTrain.unchecked_count += 1
+
+            db_fcwTrain.save()
+            keyframe.save()
+
+
+        response = {'frame': frame,'isRedo':flag}
+        return JsonResponse(response, safe=False)
+    except Exception as e:
+        print("error is !!!!",str(e))
+        return HttpResponseBadRequest(str(e))
+
+@login_required
+@permission_required('engine.add_task', raise_exception=True)
+def set_frame_redoComment(request, tid, frame, comment):
+    try:
+        if comment == 'ok':
+            comment = ''
+        keyframe = models.TaskFrameUserRecord.objects.get(task_id=tid,frame=frame)
+        db_fcwTrain = models.FCWTrain.objects.get(task_id=tid)
+        keyframe.checker = request.user.username
+        keyframe.comment = comment
+        keyframe.save()
+        print("tid:{} frame:{} is Redo".format(tid,frame))
+
+        response = {'frame': frame,'comment':comment}
+        return JsonResponse(response, safe=False)
+    except Exception as e:
+        print("error is !!!!",str(e))
+        return HttpResponseBadRequest(str(e))
+
+@login_required
+@permission_required('engine.add_task', raise_exception=True)
+def set_tasks_priority(request):
+    """Create a new annotation task"""
+    try:
+        db_task = None
+        params = request.POST.dict()
+        print("ssssss",params,type(params))
+        print ("fffffff,,,",params['priority'],',,,',params['selectTasks'])
+        priority = params['priority']
+
+        if(params['selectTasks'] != ''):
+            tasks = params['selectTasks'].split(',')
+            for tid in tasks:
+                print('fffffff',tid)
+                db_fcwTrain = models.FCWTrain.objects.get(task_id=int(tid))
+                db_fcwTrain.priority = priority
+                db_fcwTrain.save()
+
+    except Exception as e:
+        print("error is !!!!",str(e))
+        return HttpResponseBadRequest(str(e))
+
+    return JsonResponse({'data':params}, safe=False)
+
+@login_required
+def get_FCW_Job(request):
+    try: 
+        response = None
+
+        db_userRecord = None
+        try:
+            db_userRecord = models.TaskFrameUserRecord.objects.get(user=request.user.username,current=True)
+            response = {'jid': db_userRecord.task.id}
+            return JsonResponse(response, safe=False)
+        except ObjectDoesNotExist:
+            pass
+            
+
+        db_fcwTrains = models.FCWTrain.objects.filter(~Q(priority=0)).order_by('-priority')
+        print ("db_fcwTrains,",db_fcwTrains)
+        print ("len  db_fcwTrains,",len(db_fcwTrains))
+        db_fcwTrain = db_fcwTrains.first()
+
+        if db_fcwTrain:
+            print("~Q(undo=0),Q(priority=1)",db_fcwTrain.priority)
+            response = {'jid': db_fcwTrain.task.id}
+        else:
+            response = None
+            raise Exception('no priority > 0!') 
         
         return JsonResponse(response, safe=False)
     except Exception as e:

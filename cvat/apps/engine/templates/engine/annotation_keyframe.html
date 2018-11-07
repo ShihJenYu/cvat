@@ -94,7 +94,16 @@
             <!-- add by jeff -->
             <div>
                 <input type="checkbox" id="isKeyFrame" value="isKeyFrame" />
-                <label id="isKeyFrame_test" for="isKeyFrame">isKeyFrame</label>
+                <label id="isKeyFrame_text" for="isKeyFrame">isKeyFrame</label>
+            
+                <!-- <input type="checkbox" id="beAnnotatorUsing" value="beAnnotatorUsing" /> -->
+                <label id="beAnnotatorUsing_text" style="margin-left: 50px;"></label>
+                <input type="checkbox" id="isComplete" value="isComplete" style="margin-left: 50px;"/>
+                <label id="isComplete_text" for="isComplete">isComplete</label>
+                <input type="checkbox" id="isRedo" value="isRedo" style="margin-left: 50px;"/>
+                <label id="isRedo_text" for="isRedo">isRedo : comment &gt; </label>
+                <input type="text" id="redoComment" value="" placeholder="input your comment ..."><br>
+                <input type="button" id="saveRedoComment" value="save comment"/>
             </div>
 
             <svg id="firstButton" class="playerButton">

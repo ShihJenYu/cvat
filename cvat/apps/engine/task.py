@@ -596,6 +596,14 @@ def _save_task_to_db(db_task, task_params):
         db_job.segment = db_segment
         db_job.save()
 
+    db_FCWTrain = models.FCWTrain()
+    db_FCWTrain.task = db_task
+    db_FCWTrain.keyframe_count = 0
+    db_FCWTrain.unchecked_count = 0
+    db_FCWTrain.checked_count = 0
+    db_FCWTrain.need_modify_count = 0
+    db_FCWTrain.priority = 0
+    db_FCWTrain.save()
     #add by jeff to create user record
     # frame_list = list(range(0, db_task.size))
     # random.shuffle(frame_list)

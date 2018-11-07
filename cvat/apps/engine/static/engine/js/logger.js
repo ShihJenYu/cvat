@@ -335,12 +335,14 @@ var Logger = {
      */
     initializeLogger: function(applicationName, taskId)
     {
-        if (!this._logger)
-        {
-            this._logger = new LoggerHandler(applicationName, taskId);
-            return this._logger.isInitialized;
-        }
-        return false;
+        // if (!this._logger)
+        // {
+        //     this._logger = new LoggerHandler(applicationName, taskId);
+        //     return this._logger.isInitialized;
+        // }
+        this._logger = new LoggerHandler(applicationName, taskId);
+        return this._logger.isInitialized;
+        // return false;
     },
 
     /**

@@ -7,7 +7,7 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
-    path('', views.dispatch_request),
+    path('fcw', views.dispatch_request),
     path('create/task', views.create_task),
     path('get/task/<str:tid>/frame/<int:frame>', views.get_frame),
     path('check/task/<int:tid>', views.check_task),
@@ -28,4 +28,13 @@ urlpatterns = [
     path('get/isAdmin', views.get_isAdmin),
     path('set/task/<str:tid>/frame/<int:frame>/isKeyFrame/<int:flag>', views.set_frame_isKeyFrame),
     path('get/task/<str:tid>/frame/<int:frame>/isKeyFrame', views.get_frame_isKeyFrame),
+    path('get/task/<str:tid>/frame/<int:frame>/keyframeStage', views.get_keyFrame_stage),
+
+    path('set/task/<str:tid>/frame/<int:frame>/isComplete/<int:flag>', views.set_frame_isComplete),
+    path('set/task/<str:tid>/frame/<int:frame>/isRedo/<int:flag>', views.set_frame_isRedo),
+    path('set/task/<str:tid>/frame/<int:frame>/redoComment/<str:comment>', views.set_frame_redoComment),
+
+    path('set/tasks/priority', views.set_tasks_priority),
+
+    path('get/fcw/job', views.get_FCW_Job),
 ]
