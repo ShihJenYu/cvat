@@ -176,7 +176,7 @@ def save_job(jid, data, oneFrameFlag=False,frame=None):
     """
     db_job = models.Job.objects.select_for_update().get(id=jid)
     annotation = _AnnotationForJob(db_job)
-    annotation.init_from_client(data)
+    annotation.init_from_client(data,oneFrameFlag,frame)
     annotation.save_to_db(oneFrameFlag,frame)
     db_job.segment.task.updated_date = timezone.now()
     db_job.segment.task.save()
@@ -830,7 +830,7 @@ class _AnnotationForJob(_Annotation):
 
                 getattr(self, paths_type).append(path)
     
-    def init_from_client(self, data):
+    def init_from_client(self, data, oneFrameFlag=False, frame=None):
         # All fields inside data should be converted to correct type explicitly.
         # We cannot trust that client will send 23 as integer. Here we also
         # accept "23".
@@ -839,39 +839,42 @@ class _AnnotationForJob(_Annotation):
         self.reset()
 
         for box in data['boxes']:
-            label = _Label(self.db_labels[int(box['label_id'])])
+            if int(box['frame']) == frame:
+                label = _Label(self.db_labels[int(box['label_id'])])
 
-            frame_idx = int(box['frame']) if db_task.mode == 'annotation' else 0
-            xtl, ytl, xbr, ybr = self._clamp_box(float(box['xtl']), float(box['ytl']),
-                float(box['xbr']), float(box['ybr']),
-                image_meta['original_size'][frame_idx])
-            labeled_box = _LabeledBox(label, xtl, ytl, xbr, ybr, int(box['frame']),
-                int(box['group_id']), strtobool(str(box['occluded'])), int(box['z_order']))
+                frame_idx = int(box['frame']) if db_task.mode == 'annotation' else 0
+                xtl, ytl, xbr, ybr = self._clamp_box(float(box['xtl']), float(box['ytl']),
+                    float(box['xbr']), float(box['ybr']),
+                    image_meta['original_size'][frame_idx])
+                labeled_box = _LabeledBox(label, xtl, ytl, xbr, ybr, int(box['frame']),
+                    int(box['group_id']), strtobool(str(box['occluded'])), int(box['z_order']))
 
-            for attr in box['attributes']:
-                spec = self.db_attributes[int(attr['id'])]
-                attr = _Attribute(spec, str(attr['value']))
-                labeled_box.add_attribute(attr)
+                for attr in box['attributes']:
+                    spec = self.db_attributes[int(attr['id'])]
+                    attr = _Attribute(spec, str(attr['value']))
+                    labeled_box.add_attribute(attr)
 
-            self.boxes.append(labeled_box)
+                self.boxes.append(labeled_box)
 
         for poly_shape_type in ['points', 'polygons', 'polylines']:
             for poly_shape in data[poly_shape_type]:
-                label = _Label(self.db_labels[int(poly_shape['label_id'])])
+                if int(poly_shape['frame']) == frame:
+                    label = _Label(self.db_labels[int(poly_shape['label_id'])])
 
-                frame_idx = int(poly_shape['frame']) if db_task.mode == 'annotation' else 0
-                points = self._clamp_poly(poly_shape['points'], image_meta['original_size'][frame_idx])
-                labeled_poly_shape = _LabeledPolyShape(label, points, int(poly_shape['frame']),
-                    int(poly_shape['group_id']), poly_shape['occluded'], int(poly_shape['z_order']))
+                    frame_idx = int(poly_shape['frame']) if db_task.mode == 'annotation' else 0
+                    points = self._clamp_poly(poly_shape['points'], image_meta['original_size'][frame_idx])
+                    labeled_poly_shape = _LabeledPolyShape(label, points, int(poly_shape['frame']),
+                        int(poly_shape['group_id']), poly_shape['occluded'], int(poly_shape['z_order']))
 
-                for attr in poly_shape['attributes']:
-                    spec = self.db_attributes[int(attr['id'])]
-                    attr = _Attribute(spec, str(attr['value']))
-                    labeled_poly_shape.add_attribute(attr)
+                    for attr in poly_shape['attributes']:
+                        spec = self.db_attributes[int(attr['id'])]
+                        attr = _Attribute(spec, str(attr['value']))
+                        labeled_poly_shape.add_attribute(attr)
 
-                getattr(self, poly_shape_type).append(labeled_poly_shape)
+                    getattr(self, poly_shape_type).append(labeled_poly_shape)
 
         for path in data['box_paths']:
+            
             label = _Label(self.db_labels[int(path['label_id'])])
             boxes = []
             frame = -1
@@ -1139,7 +1142,7 @@ class _AnnotationForJob(_Annotation):
         db_attrvals = []
 
         for shape_type in ['polygons', 'polylines', 'points', 'boxes']:
-
+            print("dddddddddddddddddddddddddddddddddddddddddddddddddddddd oneFrameFlag",oneFrameFlag)
             #self._get_shape_set(shape_type).all().delete()
             if(oneFrameFlag):
                 self._get_shape_set(shape_type).filter(frame=frame).delete()

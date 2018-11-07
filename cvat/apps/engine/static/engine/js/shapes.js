@@ -1278,15 +1278,15 @@ class ShapeController {
     // modify by Eric
     updatePosition(frame, position) {
         trainigsaveFlag = false;
-        $('#nextButtonFlag').prop('checked',false);
-        $('#nextButton_training')[0].setAttribute("class","playerButton_training disabledPlayerButton");
+        if($('#nextButtonFlag').length) $('#nextButtonFlag').prop('checked',false);
+        if($('#nextButton_training').length) $('#nextButton_training')[0].setAttribute("class","playerButton_training disabledPlayerButton");
         this._model.updatePosition(frame, position);
     }
 
     updateAttribute(frame, attrId, value) {
         trainigsaveFlag = false;
-        $('#nextButtonFlag').prop('checked',false);
-        $('#nextButton_training')[0].setAttribute("class","playerButton_training disabledPlayerButton");
+        if($('#nextButtonFlag').length) $('#nextButtonFlag').prop('checked',false);
+        if($('#nextButton_training').length) $('#nextButton_training')[0].setAttribute("class","playerButton_training disabledPlayerButton");
         this._model.updateAttribute(frame, attrId, value);
     }
 
@@ -1296,13 +1296,13 @@ class ShapeController {
 
     changeLabel(labelId) {
         trainigsaveFlag = false;
-        $('#nextButtonFlag').prop('checked',false);
-        $('#nextButton_training')[0].setAttribute("class","playerButton_training disabledPlayerButton");
+        if($('#nextButtonFlag').length) $('#nextButtonFlag').prop('checked',false);
+        if($('#nextButton_training').length) $('#nextButton_training')[0].setAttribute("class","playerButton_training disabledPlayerButton");
         this._model.changeLabel(labelId);
     }
 
     remove(e) {
-        $('#nextButtonFlag').prop('checked',false);
+        if($('#nextButtonFlag').length) $('#nextButtonFlag').prop('checked',false);
         if (!window.cvat.mode) {
             if (!this._model.lock || e.shiftKey) {
                 this._model.remove();
