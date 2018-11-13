@@ -9,6 +9,10 @@
         <input type="checkbox" id="selectTask_{{item.task_id}}" class="selectTask" style="margin-left: 10px;"/>
     </center>
     <center class="dashboardTitleWrapper">
+        <!-- <label class="semiBold h2 dashboardNickNameLabel"> {{ item.nickName }} </label> -->
+        <input type="text" id="dashboardNickName_{{item.task_id}}" class="dashboardNickName" value="{{item.nickname}}" placeholder="nick name..">
+    </center>
+    <center class="dashboardTitleWrapper">
         <label class="regular dashboardStatusLabel"> {{ item.status }} </label>
     </center>
     <div class="dashboardTaskIntro" style='background-image: url("/get/task/{{item.task_id}}/frame/0")'>  </div>
@@ -45,16 +49,18 @@
         <br><br>
         <table class="dashboardJobList regular">
             <tr>
-                <td> Priority: </td>
+                <td> 優先權: </td>
                 <td> KeyFrame: </td>
-                <td> UnChecked: </td>
-                <td> Checked: </td>
-                <td> Redo: </td>
+                <td> 未標記: </td>
+                <td> 未檢查: </td>
+                <td> 已檢查: </td>
+                <td> 退件中: </td>
             </tr>
             <tr>
                 <!-- <td> <input type="number" name="priority" min="0" max="50" value="{{item.videostage.priority}}"> </td> -->
                 <td id="detailPriority_{{item.task_id}}" > {{item.videostage.priority}} </td>
                 <td> {{item.videostage.keyframe_count}} </td>
+                <td> {{item.videostage.undo_count}} </td>
                 <td> {{item.videostage.unchecked_count}} </td>
                 <td> {{item.videostage.checked_count}} </td>
                 <td> {{item.videostage.need_modify_count}} </td>

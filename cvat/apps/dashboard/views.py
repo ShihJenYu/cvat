@@ -15,6 +15,7 @@ from cvat.apps.engine.models import FCWTrain as FCWTrainModel
 from cvat.settings.base import JS_3RDPARTY
 
 import os
+from datetime import datetime
 
 def ScanNode(directory):
     if '..' in directory.split(os.path.sep):
@@ -62,6 +63,7 @@ def MainTaskInfo(task, dst_dict):
     dst_dict["num_of_segments"] = task.segment_set.count()
     dst_dict["mode"] = task.mode.capitalize()
     dst_dict["name"] = task.name
+    dst_dict["nickname"] = task.nickname
     dst_dict["task_id"] = task.id
     dst_dict["created_date"] = task.created_date
     dst_dict["updated_date"] = task.updated_date
@@ -79,7 +81,8 @@ def DetailTaskInfo(request, task, dst_dict):
     for segment in task.segment_set.all():
         for job in segment.job_set.all():
             segment_url = "{0}://{1}/?id={2}".format(scheme, host, job.id)
-            url_fcw = "{0}://{1}/fcw?id={2}".format(scheme, host, job.id)
+            #url_fcw = "{0}://{1}/fcw?id={2}".format(scheme, host, job.id)
+            url_fcw = "{0}://{1}/fcw".format(scheme, host)
             url_fcw_key = "{0}://{1}/fcw?id={2}&setKey=true".format(scheme, host, job.id)
             
             dst_dict["segments"].append({
@@ -104,22 +107,26 @@ def DetailTaskInfo(request, task, dst_dict):
     db_FCWTrain = FCWTrainModel.objects.get(task_id=task.id)
     dst_dict['videostage'] = {
         'keyframe_count': db_FCWTrain.keyframe_count,
+        'undo_count': db_FCWTrain.keyframe_count - db_FCWTrain.unchecked_count - db_FCWTrain.checked_count - db_FCWTrain.need_modify_count,
         'unchecked_count': db_FCWTrain.unchecked_count,
         'checked_count': db_FCWTrain.checked_count,
         'need_modify_count': db_FCWTrain.need_modify_count,
         'priority': db_FCWTrain.priority,
     }
-    print ('fuckeinginginingingignignigngnggnigni',dst_dict['videostage'])
 
 
 @login_required
 @permission_required('engine.view_task', raise_exception=True)
 def DashboardView(request):
-    filter_name = request.GET['search'] if 'search' in request.GET else None
+    filter_name = request.GET['name'] if 'name' in request.GET else None
+    filter_nickname = request.GET['nickname'] if 'nickname' in request.GET else None
+    filter_createdate = request.GET['createdate'] if 'createdate' in request.GET else None
+
     tasks_query_set = list(TaskModel.objects.prefetch_related('segment_set').order_by('-created_date').all())
     if filter_name is not None:
-        tasks_query_set = list(filter(lambda x: filter_name.lower() in x.name.lower(), tasks_query_set))
-
+        tasks_query_set = list(filter(lambda x: filter_name.lower() in x.name.lower() and \
+                                                 filter_nickname.lower() in x.nickname.lower() and \
+                                                 filter_createdate in datetime.strftime(x.created_date, '%Y/%m/%d'), tasks_query_set))
     data = []
     for task in tasks_query_set:
         task_info = {}

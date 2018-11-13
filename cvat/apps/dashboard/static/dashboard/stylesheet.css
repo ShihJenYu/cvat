@@ -61,7 +61,7 @@
     overflow: hidden;
 }
 
-#dashboardSearchInput {
+#dashboardSearchInput, #dashboardSearchInput_nickname, #dashboardSearchInput_createdate {
     padding: 10px;
     border: 1px solid grey;
     float: left;

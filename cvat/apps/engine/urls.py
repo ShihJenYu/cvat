@@ -35,6 +35,7 @@ urlpatterns = [
     path('set/task/<str:tid>/frame/<int:frame>/redoComment/<str:comment>', views.set_frame_redoComment),
 
     path('set/tasks/priority', views.set_tasks_priority),
+    path('set/task/<int:tid>/nickname/<str:nickname>', views.set_task_nickname),
 
     path('get/fcw/job', views.get_FCW_Job),
 ]

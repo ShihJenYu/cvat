@@ -17,6 +17,8 @@ import os
 
 class Task(models.Model):
     name = models.CharField(max_length=256)
+    nickname = models.CharField(max_length=256)
+    category = models.CharField(max_length=256)
     size = models.PositiveIntegerField()
     path = models.CharField(max_length=256)
     mode = models.CharField(max_length=32)
@@ -243,6 +245,8 @@ class TaskFrameUserRecord(models.Model):
     userModifyGet_date = models.DateTimeField(null=True, blank=True)
     userModifySave_date = models.DateTimeField(null=True, blank=True)
     userModifySubmit_date = models.DateTimeField(null=True, blank=True)
+    extraCategory = models.CharField(max_length=256)
+    defaultCategory = models.CharField(max_length=256)
 
 class FCWTrain(models.Model):
     task = models.ForeignKey(Task, on_delete=models.CASCADE)

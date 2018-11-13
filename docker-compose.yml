@@ -61,6 +61,22 @@ services:
 
 volumes:
   cvat_db:
+    driver_opts:
+        type: none
+        device: /home/jeff/TestGit/CVAT_Volumes/cvat_db
+        o: bind
   cvat_data:
+    driver_opts:
+        type: none
+        device: /home/jeff/TestGit/CVAT_Volumes/cvat_data
+        o: bind
   cvat_keys:
+    driver_opts:
+        type: none
+        device: /home/jeff/TestGit/CVAT_Volumes/cvat_keys
+        o: bind
   cvat_logs:
+    driver_opts:
+        type: none
+        device: /home/jeff/TestGit/CVAT_Volumes/cvat_logs
+        o: bind

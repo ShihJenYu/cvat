@@ -105,13 +105,12 @@
             <!-- add by jeff -->
             <div>
                 <input type="checkbox" id="nextButtonFlag" value="nextButtonFlag" />
-                <label id="nextButtonFlag_text" for="nextButtonFlag">Cannot be changed after sending</label>
-            </div>
-            
-            <!-- Add by Ericlou -->
+                <label class="regular h1" id="nextButtonFlag_text" for="nextButtonFlag">Cannot be changed after sending</label>
+                <!-- Add by Ericlou -->
             <svg id="nextButton_training" class="playerButton_training disabledPlayerButton">
                 <polygon points="10,20 10,60 50,60 50,80 90,40 50,0 50,20" transform="scale(0.4)"/>
             </svg>
+            </div>
 
             <input type = "hidden" id = "playerProgress"/>
         </div>  <!-- END of PLAYER PANEL -->
@@ -131,7 +130,7 @@
                 <input class="regular h2" style="width: 3.5em;" type="number" id="frameNumber">
             </div>
             <hr>
-            <table class="regular" cellpadding="20">
+            <table class="regular hidden" cellpadding="20">
                 <tr>
                 <td style="width: auto;">
                         <div style="float: left;"> <label class="semiBold"> Fill Opacity: </label> </div>
@@ -375,7 +374,7 @@
 <div id="taskAnnotationRightPanel">
     <div id="uiContent"> </div>
     <div id="labelsContent" class="hidden"> </div>
-    <div id="trackManagement">
+    <div id="trackManagement" class="hidden">
         <button id="createShapeButton" class="regular h2" style="width: 80%;"> Create Shape </button>
         <button id="mergeTracksButton" class="regular h2" style="width: 80%; margin-top: 5px;"> Merge Shapes </button>
         <button id="groupShapesButton" class="regular h2" style="width: 80%; margin-top: 5px;"> Group Shapes </button>

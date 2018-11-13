@@ -18,6 +18,8 @@ from django.views.decorators.gzip import gzip_page
 from sendfile import sendfile
 
 #add by jeff
+
+from django.db import transaction
 from django.db.models import Q, Max, Min
 from django.core.exceptions import ObjectDoesNotExist
 
@@ -76,7 +78,6 @@ def dispatch_request2(request):
 @permission_required('engine.add_task', raise_exception=True)
 def create_task(request):
     """Create a new annotation task"""
-
     db_task = None
     params = request.POST.dict()
     params['owner'] = request.user
@@ -95,6 +96,7 @@ def create_task(request):
                 if '..' in relpath.split(os.path.sep):
                     raise Exception('Permission denied')
                 abspath = os.path.abspath(os.path.join(share_root, relpath))
+                
                 if os.path.commonprefix([share_root, abspath]) != share_root:
                     raise Exception('Bad file path on share: ' + abspath)
                 source_paths.append(abspath)
@@ -285,13 +287,14 @@ def save_annotation_for_job(request, jid):
             else:
                 annotation.save_job(jid, json.loads(data['annotation']),oneFrameFlag=True,frame=data['current_frame'])
 
-                user_record = models.TaskFrameUserRecord.objects.get(user=request.user.username,current=True)
-                print ("user: {} find current {}".format(request.user.username,user_record.frame))
-                if user_record.need_modify:
-                    user_record.userModifySave_date = timezone.now()
-                else:
-                    user_record.userSave_date = timezone.now()
-                user_record.save()
+                with transaction.atomic():
+                    user_record = models.TaskFrameUserRecord.objects.select_for_update().get(user=request.user.username,current=True)
+                    print ("user: {} find current {}".format(request.user.username,user_record.frame))
+                    if user_record.need_modify:
+                        user_record.userModifySave_date = timezone.now()
+                    else:
+                        user_record.userSave_date = timezone.now()
+                    user_record.save()
                   
         if 'logs' in data:
             for event in json.loads(data['logs']):
@@ -347,29 +350,31 @@ def set_user_currnet(request, jid):
     try:        
         job_logger[jid].info("set {} currnet for {} job".format(request.user.username,jid))
         
-        db_job = models.Job.objects.get(id=jid)
+        #db_job = models.Job.objects.get(id=jid)
         
         user_record = None
         new_jid = None # use taskid
         
         # set current frame to submit
         try:
-            user_record = models.TaskFrameUserRecord.objects.get(user=request.user.username,current=True)
-            db_fcwTrain = models.FCWTrain.objects.get(task_id=user_record.task_id)
-            print ("user: {} find current {}".format(request.user.username,user_record.frame))
-            user_record.current = False
-            user_record.user_submit = True
-            if user_record.need_modify:
-                user_record.userModifySubmit_date = timezone.now()
-                tmp = db_fcwTrain.need_modify_count
-                db_fcwTrain.need_modify_count = tmp-1 if tmp-1>0 else 0
-            else:
-                user_record.userSubmit_date = timezone.now()
-            user_record.need_modify = False
+            with transaction.atomic():
+                user_record = models.TaskFrameUserRecord.objects.select_for_update().get(user=request.user.username,current=True)
+                db_fcwTrain = models.FCWTrain.objects.select_for_update().get(task_id=user_record.task_id)
+                print ("user: {} find current {}".format(request.user.username,user_record.frame))
+                user_record.current = False
+                user_record.user_submit = True
+                
+                if user_record.need_modify:
+                    user_record.userModifySubmit_date = timezone.now()
+                    tmp = db_fcwTrain.need_modify_count
+                    db_fcwTrain.need_modify_count = tmp-1 if tmp-1>0 else 0
+                else:
+                    user_record.userSubmit_date = timezone.now()
+                user_record.need_modify = False
 
-            db_fcwTrain.unchecked_count += 1 
-            user_record.save()
-            db_fcwTrain.save()
+                db_fcwTrain.unchecked_count += 1 
+                user_record.save()
+                db_fcwTrain.save()
             print ("user: {}'s user_record.save()".format(request.user.username))
         except ObjectDoesNotExist:
             print ("user: {}'s not found current frame".format(request.user.username))            
@@ -387,22 +392,23 @@ def set_user_currnet(request, jid):
                 print ("db_fcwTrains has {} data".format(len(db_fcwTrains)))
                 for db_fcwTrain in db_fcwTrains:
                     tmp_tid = db_fcwTrain.task.id
-                    qs = models.TaskFrameUserRecord.objects.filter(task_id=tmp_tid,user=request.user.username,need_modify=True)
-                    ids = qs.values_list('id', flat=True)
-                    if len(ids):
-                        index = random.randint(0, len(ids)-1)
-                        try:
-                            user_record = models.TaskFrameUserRecord.objects.get(pk=ids[index])
-                            new_jid = tmp_tid
+                    with transaction.atomic():
+                        qs = models.TaskFrameUserRecord.objects.filter(task_id=tmp_tid,user=request.user.username,need_modify=True)
+                        ids = qs.values_list('id', flat=True)
+                        if len(ids):
+                            index = random.randint(0, len(ids)-1)
+                            try:
+                                user_record = qs[index]#models.TaskFrameUserRecord.objects.select_for_update().get(pk=ids[index])
+                                new_jid = tmp_tid
 
-                            user_record.user = request.user.username
-                            user_record.current = True
-                            user_record.userModifyGet_date = timezone.now()
-                            user_record.save()
-                            break
-                        except ObjectDoesNotExist:
-                            user_record = None
-                            new_jid = None
+                                user_record.user = request.user.username
+                                user_record.current = True
+                                user_record.userModifyGet_date = timezone.now()
+                                user_record.save()
+                                break
+                            except ObjectDoesNotExist:
+                                user_record = None
+                                new_jid = None
             end_time = time.time()
             print ("use random pk cost time : ",(end_time - start_time))
 
@@ -417,22 +423,23 @@ def set_user_currnet(request, jid):
                     print ("db_fcwTrains has {} data".format(len(db_fcwTrains)))
                     for db_fcwTrain in db_fcwTrains:
                         tmp_tid = db_fcwTrain.task.id
-                        qs = models.TaskFrameUserRecord.objects.filter(task_id=tmp_tid,user='')
-                        ids = qs.values_list('id', flat=True)
-                        if len(ids):
-                            index = random.randint(0, len(ids)-1)
-                            try:
-                                user_record = models.TaskFrameUserRecord.objects.get(pk=ids[index])
-                                new_jid = tmp_tid
+                        with transaction.atomic():
+                            qs = models.TaskFrameUserRecord.objects.select_for_update().filter(task_id=tmp_tid,user='')
+                            ids = qs.values_list('id', flat=True)
+                            if len(ids):
+                                index = random.randint(0, len(ids)-1)
+                                try:
+                                    user_record = qs[index]# models.TaskFrameUserRecord.objects.get(pk=ids[index])
+                                    new_jid = tmp_tid
 
-                                user_record.user = request.user.username
-                                user_record.current = True
-                                user_record.userGet_date = timezone.now()
-                                user_record.save()
-                                break
-                            except ObjectDoesNotExist:
-                                user_record = None
-                                new_jid = None
+                                    user_record.user = request.user.username
+                                    user_record.current = True
+                                    user_record.userGet_date = timezone.now()
+                                    user_record.save()
+                                    break
+                                except ObjectDoesNotExist:
+                                    user_record = None
+                                    new_jid = None
                 end_time = time.time()
                 print ("use random pk cost time : ",(end_time - start_time))
                 print ("try get new frame is success",user_record.frame)
@@ -461,38 +468,42 @@ def set_user_currnet(request, jid):
 
 # add by jeff
 @login_required
+@transaction.atomic
 @permission_required('engine.add_task', raise_exception=True)
 def set_frame_isKeyFrame(request, tid, frame, flag):
     try: 
         if flag:
-            db_task = models.Task.objects.get(pk=tid)
+            db_task = models.Task.objects.select_for_update().get(pk=tid)
             db_taskFrameUserRecord = models.TaskFrameUserRecord()
             db_taskFrameUserRecord.task = db_task
             db_taskFrameUserRecord.frame = frame
             
-            db_fcwTrain = models.FCWTrain.objects.get(task_id=tid)
+            db_fcwTrain = models.FCWTrain.objects.select_for_update().get(task_id=tid)
             db_fcwTrain.keyframe_count += 1
+            db_fcwTrain.priority = 0
 
             db_fcwTrain.save()
             db_taskFrameUserRecord.save()
             print("tid:{} frame:{} is add".format(tid,frame))
         else:
             try:
-                keyframe = models.TaskFrameUserRecord.objects.get(task_id=tid,frame=frame)
-                keyframe.delete()
-                db_fcwTrain = models.FCWTrain.objects.get(task_id=tid)
-
+                db_fcwTrain = models.FCWTrain.objects.select_for_update().get(task_id=tid)
                 tmp = db_fcwTrain.keyframe_count
                 db_fcwTrain.keyframe_count = tmp-1 if tmp-1>0 else 0
 
-                tmp = db_fcwTrain.unchecked_count
-                db_fcwTrain.unchecked_count = tmp-1 if tmp-1>0 else 0
-                tmp = db_fcwTrain.checked_count
-                db_fcwTrain.checked_count = tmp-1 if tmp-1>0 else 0
-                tmp = db_fcwTrain.need_modify_count
-                db_fcwTrain.need_modify_count = tmp-1 if tmp-1>0 else 0
-
+                keyframe = models.TaskFrameUserRecord.objects.select_for_update().get(task_id=tid,frame=frame)
+                if keyframe.user_submit:
+                    tmp = db_fcwTrain.unchecked_count
+                    db_fcwTrain.unchecked_count = tmp-1 if tmp-1>0 else 0
+                elif keyframe.checked:
+                    tmp = db_fcwTrain.checked_count
+                    db_fcwTrain.checked_count = tmp-1 if tmp-1>0 else 0
+                elif keyframe.need_modify:
+                    tmp = db_fcwTrain.need_modify_count
+                    db_fcwTrain.need_modify_count = tmp-1 if tmp-1>0 else 0
+                
                 db_fcwTrain.save()
+                keyframe.delete()
 
             except ObjectDoesNotExist:
                 print("tid:{} frame:{} is delete".format(tid,frame))
@@ -504,12 +515,13 @@ def set_frame_isKeyFrame(request, tid, frame, flag):
         return HttpResponseBadRequest(str(e))
 
 @login_required
+@transaction.atomic
 @permission_required('engine.add_task', raise_exception=True)
 def get_frame_isKeyFrame(request, tid, frame):
     try: 
         response = None
         try:
-            keyframe = models.TaskFrameUserRecord.objects.get(task_id=tid,frame=frame)
+            keyframe = models.TaskFrameUserRecord.objects.select_for_update().get(task_id=tid,frame=frame)
             response = {'isKeyFrame': True}
         except ObjectDoesNotExist:
             response = {'isKeyFrame': False}
@@ -521,10 +533,11 @@ def get_frame_isKeyFrame(request, tid, frame):
 
 
 @login_required
+@transaction.atomic
 @permission_required('engine.add_task', raise_exception=True)
 def get_keyFrame_stage(request, tid, frame):
     try:
-        keyframe = models.TaskFrameUserRecord.objects.get(task_id=tid,frame=frame)
+        keyframe = models.TaskFrameUserRecord.objects.select_for_update().get(task_id=tid,frame=frame)
         response = {
             'annotator': keyframe.user,
             'current': keyframe.current,
@@ -539,11 +552,12 @@ def get_keyFrame_stage(request, tid, frame):
         return HttpResponseBadRequest(str(e))
 
 @login_required
+@transaction.atomic
 @permission_required('engine.add_task', raise_exception=True)
 def set_frame_isComplete(request, tid, frame, flag):
     try: 
-        keyframe = models.TaskFrameUserRecord.objects.get(task_id=tid,frame=frame)
-        db_fcwTrain = models.FCWTrain.objects.get(task_id=tid)
+        keyframe = models.TaskFrameUserRecord.objects.select_for_update().get(task_id=tid,frame=frame)
+        db_fcwTrain = models.FCWTrain.objects.select_for_update().get(task_id=tid)
         if flag:
             keyframe.checker = request.user.username
             keyframe.checked = True
@@ -553,6 +567,9 @@ def set_frame_isComplete(request, tid, frame, flag):
 
             tmp = db_fcwTrain.unchecked_count
             db_fcwTrain.unchecked_count = tmp-1 if tmp-1>0 else 0
+
+            if db_fcwTrain.keyframe_count == db_fcwTrain.checked_count:
+                db_fcwTrain.priority = 0
 
             db_fcwTrain.save()
             keyframe.save()
@@ -578,11 +595,12 @@ def set_frame_isComplete(request, tid, frame, flag):
         return HttpResponseBadRequest(str(e))
 
 @login_required
+@transaction.atomic
 @permission_required('engine.add_task', raise_exception=True)
 def set_frame_isRedo(request, tid, frame, flag):
     try: 
-        keyframe = models.TaskFrameUserRecord.objects.get(task_id=tid,frame=frame)
-        db_fcwTrain = models.FCWTrain.objects.get(task_id=tid)
+        keyframe = models.TaskFrameUserRecord.objects.select_for_update().get(task_id=tid,frame=frame)
+        db_fcwTrain = models.FCWTrain.objects.select_for_update().get(task_id=tid)
         if flag:
             keyframe.checker = request.user.username
             keyframe.need_modify = True
@@ -617,13 +635,14 @@ def set_frame_isRedo(request, tid, frame, flag):
         return HttpResponseBadRequest(str(e))
 
 @login_required
+@transaction.atomic
 @permission_required('engine.add_task', raise_exception=True)
 def set_frame_redoComment(request, tid, frame, comment):
     try:
         if comment == 'ok':
             comment = ''
-        keyframe = models.TaskFrameUserRecord.objects.get(task_id=tid,frame=frame)
-        db_fcwTrain = models.FCWTrain.objects.get(task_id=tid)
+        keyframe = models.TaskFrameUserRecord.objects.select_for_update().get(task_id=tid,frame=frame)
+        db_fcwTrain = models.FCWTrain.objects.select_for_update().get(task_id=tid)
         keyframe.checker = request.user.username
         keyframe.comment = comment
         keyframe.save()
@@ -636,6 +655,7 @@ def set_frame_redoComment(request, tid, frame, comment):
         return HttpResponseBadRequest(str(e))
 
 @login_required
+@transaction.atomic
 @permission_required('engine.add_task', raise_exception=True)
 def set_tasks_priority(request):
     """Create a new annotation task"""
@@ -650,7 +670,7 @@ def set_tasks_priority(request):
             tasks = params['selectTasks'].split(',')
             for tid in tasks:
                 print('fffffff',tid)
-                db_fcwTrain = models.FCWTrain.objects.get(task_id=int(tid))
+                db_fcwTrain = models.FCWTrain.objects.select_for_update().get(task_id=int(tid))
                 db_fcwTrain.priority = priority
                 db_fcwTrain.save()
 
@@ -659,6 +679,22 @@ def set_tasks_priority(request):
         return HttpResponseBadRequest(str(e))
 
     return JsonResponse({'data':params}, safe=False)
+
+@login_required
+@transaction.atomic
+@permission_required('engine.add_task', raise_exception=True)
+def set_task_nickname(request, tid, nickname):
+    try:
+        if nickname == 'default' :
+            nickname = ''
+        task = models.Task.objects.select_for_update().get(pk=tid)
+        task.nickname = nickname
+        task.save()
+    except Exception as e:
+        print("error is !!!!",str(e))
+        return HttpResponseBadRequest(str(e))
+
+    return JsonResponse({'nickname':nickname}, safe=False)
 
 @login_required
 def get_FCW_Job(request):

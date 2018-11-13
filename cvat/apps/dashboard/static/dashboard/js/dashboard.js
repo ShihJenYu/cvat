@@ -140,6 +140,39 @@ function setupTaskCreator() {
         $(".selectTask[id]").prop("checked",false);
     });
     
+    $('.dashboardNickName[id]').on('focusout', (e) => {
+        let tid = parseInt(e.target.id.split('_')[1]);
+        let nickname = (e.target.value=='')? 'default': e.target.value;
+        console.log(tid, nickname);
+        $.ajax ({
+            url: `/set/task/${tid}/nickname/${nickname}`,
+            success: function(response) {
+                console.log(response);
+            },
+            error: function(response) {
+                let message = 'Abort. Reason: ' + response.responseText;
+                showMessage(message);
+            }
+        });
+    });
+
+    $('.dashboardNickName[id]').on('keypress',(e) => {
+        if (e.keyCode != 13) return;
+        let tid = parseInt(e.target.id.split('_')[1]);
+        let nickname = (e.target.value=='')? 'default': e.target.value;
+        console.log(tid, nickname);
+        $.ajax ({
+            url: `/set/task/${tid}/nickname/${nickname}`,
+            success: function(response) {
+                console.log(response);
+            },
+            error: function(response) {
+                let message = 'Abort. Reason: ' + response.responseText;
+                showMessage(message);
+            }
+        });
+    });
+
     setVideoPriority.on('click', function() {
         // $('#setVideoPriority').prop('disabled',true);
         let priority = $('#priority').val();
@@ -155,7 +188,7 @@ function setupTaskCreator() {
             console.log(response);
             $('#setVideoPriority').prop('disabled',false);
             IDs.forEach(element => {
-                $(`#detailPriority_${element}`).html(priority);
+                $(`#detailPriority_${element}`).html(parseInt(priority));
             });
         });
     });
@@ -321,7 +354,9 @@ function setupTaskCreator() {
 
         for (let file of files) {
             taskData.append('data', file);
+            console.log("taskData",file);
         }
+        
 
         submitCreate.prop('disabled', true);
         createTaskRequest(taskData,
@@ -410,23 +445,31 @@ function setupTaskUpdater() {
 
 
 function setupSearch() {
-    let searchInput = $("#dashboardSearchInput");
+    let searchInput_name = $("#dashboardSearchInput");
+    let searchInput_nickname = $("#dashboardSearchInput_nickname");
+    let searchInput_createdate = $("#dashboardSearchInput_createdate");
     let searchSubmit = $("#dashboardSearchSubmit");
 
-    let line = getUrlParameter('search') || "";
-    searchInput.val(line);
+    let name = getUrlParameter('name') || "";
+    searchInput_name.val(name);
+    let nickname = getUrlParameter('nickname') || "";
+    searchInput_nickname.val(nickname);
+    let createdate = getUrlParameter('createdate') || "";
+    searchInput_createdate.val(createdate);
 
     searchSubmit.on('click', function() {
         let e = $.Event('keypress');
         e.keyCode = 13;
-        searchInput.trigger(e);
+        searchInput_name.trigger(e);
     });
 
-    searchInput.on('keypress', function(e) {
+    $( "input[name*='search']" ).on('keypress', function(e) {
         if (e.keyCode != 13) return;
-        let filter = e.target.value;
-        if (!filter) window.location.search = "";
-        else window.location.search = `search=${filter}`;
+        let filter_name = searchInput_name.val();
+        let filter_nickname = searchInput_nickname.val();
+        let filter_createdate = searchInput_createdate.val();
+        if (!filter_name && !filter_nickname && !filter_createdate) window.location.search = "";
+        else window.location.search = `name=${filter_name}&nickname=${filter_nickname}&createdate=${filter_createdate}`;
     });
 
     function getUrlParameter(name) {

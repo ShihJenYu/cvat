@@ -707,6 +707,8 @@ class PlayerView {
         this._isComplete = $('#isComplete');
         this._isRedo = $('#isRedo');
         this._saveRedoComment = $('#saveRedoComment');
+        this._redoComment = $('#redoComment');
+        this._redoComment.on('keypress keydown keyup', (e) => e.stopPropagation());
         this._nextButtonFlag = $('#nextButtonFlag');
         this._nextButtonTraining = $('#nextButton_training');
 
@@ -743,39 +745,67 @@ class PlayerView {
             let flag = $('#isKeyFrame').prop('checked');
             console.log(flag);
             if(flag) {
-                $('#isComplete').prop('disabled',false);
-                $('#isRedo').prop('disabled',false);
-                $('#redoComment').prop('disabled',false);
-                $('#saveRedoComment').prop('disabled',false);
+                serverRequest(`set/task/${playerModel.tid}/frame/${playerModel.frames.current}/isKeyFrame/${+flag}`, function(response) {
+                    console.log(response);
+                    resetAdminCheckBox(playerModel.tid, playerModel.frames.current);
+                    $('#isKeyFrame').prop('disabled',false);
+                });
             }
             else {
-                $('#isComplete').prop('disabled',true);
-                $('#isRedo').prop('disabled',true);
-                $('#redoComment').prop('disabled',true);
-                $('#saveRedoComment').prop('disabled',true);
-            }
+                // $('#isComplete').prop('disabled',true);
+                // $('#isRedo').prop('disabled',true);
+                // $('#redoComment').prop('disabled',true);
+                // $('#saveRedoComment').prop('disabled',true);
+                //resetAdminCheckBox(playerModel.tid, playerModel.frames.current);
 
-            serverRequest(`set/task/${playerModel.tid}/frame/${playerModel.frames.current}/isKeyFrame/${+flag}`, function(response) {
-                console.log(response);
-                $('#isKeyFrame').prop('disabled',false);
-            });
+                serverRequest(`get/task/${playerModel.tid}/frame/${playerModel.frames.current}/keyframeStage`, function(response) {
+                    console.log("in get keyframe stage",response);
+                    if(response.current||response.need_modify||response.annotator!='')
+                    {
+                        $('#isKeyFrame').prop('checked',true);
+                        $('#isKeyFrame').prop('disabled',false);
+                        resetAdminCheckBox(playerModel.tid, playerModel.frames.current);
+                        $.dialog({
+                            title: 'You can not do it !',
+                            content: '已有標記員使用過',
+                            boxWidth: '30%',
+                            useBootstrap: false,
+                        });
+                    }
+                    else
+                    {
+                        serverRequest(`set/task/${playerModel.tid}/frame/${playerModel.frames.current}/isKeyFrame/${+flag}`, function(response) {
+                            console.log(response);
+                            $('#isComplete').prop('disabled',false);
+                            $('#isComplete_text').prop('disabled',false);
+                            $('#isRedo').prop('disabled',false);
+                            $('#isRedo_text').prop('disabled',false);
+                            $('#redoComment').prop('disabled',false);
+                            $('#saveRedoComment').prop('disabled',false);
+
+                            $('#isKeyFrame').prop('disabled',false);
+                        });
+                    }
+                });
+            }
         });
         this._isComplete.unbind('click').on('click', () => {
             $('#isComplete').prop('disabled',true);
             let flag = $('#isComplete').prop('checked');
             console.log(flag);
-            if(flag) {
-                $('#isRedo').prop('disabled',true);
-                $('#redoComment').prop('disabled',true);
-                $('#saveRedoComment').prop('disabled',true);
-            }
-            else {
-                $('#isRedo').prop('disabled',false);
-                $('#redoComment').prop('disabled',false);
-                $('#saveRedoComment').prop('disabled',false);
-            }
+            // if(flag) {
+            //     $('#isRedo').prop('disabled',true);
+            //     $('#redoComment').prop('disabled',true);
+            //     $('#saveRedoComment').prop('disabled',true);
+            // }
+            // else {
+            //     $('#isRedo').prop('disabled',false);
+            //     $('#redoComment').prop('disabled',false);
+            //     $('#saveRedoComment').prop('disabled',false);
+            // }
             serverRequest(`set/task/${playerModel.tid}/frame/${playerModel.frames.current}/isComplete/${+flag}`, function(response) {
                 console.log(response);
+                resetAdminCheckBox(playerModel.tid, playerModel.frames.current);
                 $('#isComplete').prop('disabled',false);
             });
         });
@@ -787,23 +817,64 @@ class PlayerView {
             }
             serverRequest(`set/task/${playerModel.tid}/frame/${playerModel.frames.current}/redoComment/${comment}`, function(response) {
                 console.log(response);
+                resetAdminCheckBox(playerModel.tid, playerModel.frames.current);
                 $('#saveRedoComment').prop('disabled',false);
             });
         });
         this._isRedo.unbind('click').on('click', () => {
-            $('#isRedo').prop('disabled',true);
-            let flag = $('#isRedo').prop('checked');
-            console.log(flag);
-            if(flag) {
-                $('#isComplete').prop('disabled',true);
+            if($('#isRedo').prop('checked')!=false){
+                $('#isRedo').prop('checked',false);
+                $.confirm({
+                    title: 'Comment!',
+                    content: '' +
+                    '<form action="" class="formComment">' +
+                    '<div class="form-group">' +
+                    '<label>Enter something here </label>' +
+                    '<input type="text" placeholder="your comment ..." class="comment form-control" required />' +
+                    '</div>' +
+                    '</form>',
+                    boxWidth: '30%',
+                    useBootstrap: false,
+                    buttons: {
+                        formSubmit: {
+                            text: 'Submit',
+                            btnClass: 'btn-blue',
+                            action: function () {
+                                let comment = this.$content.find('.comment').val();
+                                if(!comment){
+                                    $.alert('provide a valid comment');
+                                    return false;
+                                }
+                                // $('#redoComment').prop('value',comment);
+                                // $('#isRedo').prop('checked',true);
+                                // $('#isRedo').prop('disabled',true);
+                                // $('#isComplete').prop('disabled',true);
+                                
+                                serverRequest(`set/task/${playerModel.tid}/frame/${playerModel.frames.current}/isRedo/${+true}`, function(response) {
+                                    console.log(response);
+                                    serverRequest(`set/task/${playerModel.tid}/frame/${playerModel.frames.current}/redoComment/${comment}`, function(response) {
+                                        console.log(response);
+                                        resetAdminCheckBox(playerModel.tid, playerModel.frames.current);
+                                    });
+                                });
+                            }
+                        },
+                        cancel: function () {
+                            //close
+                        },
+                    },
+                    onContentReady: function () {
+                        // bind to events
+                        var jc = this;
+                        this.$content.find('.comment').on('keypress keydown keyup', (e) => e.stopPropagation());
+                        this.$content.find('form').on('submit', function (e) {
+                            // if the user submits the form by pressing enter in the field.
+                            e.preventDefault();
+                            jc.$$formSubmit.trigger('click'); // reference the button and click it
+                        });
+                    }
+                });
             }
-            else {
-                $('#isComplete').prop('disabled',false);
-            }
-            serverRequest(`set/task/${playerModel.tid}/frame/${playerModel.frames.current}/isRedo/${+flag}`, function(response) {
-                console.log(response);
-                $('#isRedo').prop('disabled',false);
-            });
         });
         this._nextButtonTraining.unbind('click').on('click', () => {
             if($('#nextButtonFlag').is(':checked')) {
@@ -1009,54 +1080,90 @@ class PlayerView {
                 $('#isKeyFrame').prop('checked',response.isKeyFrame);
                 if(response.isKeyFrame) {
                     console.log("start get keyframe stage");
-                    serverRequest(`get/task/${model.tid}/frame/${frames.current}/keyframeStage`, function(response) {
-                        console.log("in get keyframe stage",response);
-                        keyframeStage = response;
-                        let keyframeStage_str = "";
-                        keyframeStage_str += "annotator: " + response.annotator + ", " +
-                                        "current: " + response.current + ", " +
-                                        'user_submit: ' + response.user_submit + ", " +
-                                        'need_modify: ' + response.need_modify + ", " +
-                                        'comment: ' + response.comment;
-                        $('#beAnnotatorUsing_text').text(keyframeStage_str);
-
-                        $('#isComplete').prop('checked',response.checked);
-                        $('#isRedo').prop('checked',response.need_modify);
-                        $('#redoComment').prop('value',response.comment);
-
-                        
-
-                        if(response.current==false && response.annotator!='') {
-                            if($('#isRedo').prop('checked')) {
-                                $('#isComplete').prop('disabled',true);
-                            }else {
-                                $('#isComplete').prop('disabled',false);
-                            }
-
-                            if($('#isComplete').prop('checked')) {
-                                $('#isRedo').prop('disabled',true);
-                                $('#redoComment').prop('disabled',true);
-                                $('#saveRedoComment').prop('disabled',true);
-                            }else {
-                                $('#isRedo').prop('disabled',false);
-                                $('#redoComment').prop('disabled',false);
-                                $('#saveRedoComment').prop('disabled',false);
-                            }
-                        }else{
-                            $('#isComplete').prop('disabled',true);
-                            $('#isRedo').prop('disabled',true);
-                            $('#redoComment').prop('disabled',true);
-                            $('#saveRedoComment').prop('disabled',true);
-                        }
-                    });
+                    resetAdminCheckBox(model.tid, frames.current);
                 }
                 else {
-                    $('#beAnnotatorUsing_text').text("");
+                    $('#isKeyFrame').prop('disabled',false);
                     $('#isComplete').prop('disabled',true);
+                    $('#isComplete_text').prop('disabled',true);
                     $('#isRedo').prop('disabled',true);
+                    $('#isRedo_text').prop('disabled',true);
                     $('#redoComment').prop('disabled',true);
                     $('#saveRedoComment').prop('disabled',true);
+                    let keyframeStage_str = "annotator: None";
+                    $('#beAnnotatorUsing_text').text(keyframeStage_str);
                 }
             });
     }
+}
+
+
+function resetAdminCheckBox(tid,frame){
+    serverRequest(`get/task/${tid}/frame/${frame}/keyframeStage`, function(response) {
+        console.log("in get keyframe stage",response);
+        keyframeStage = response;
+
+        let annotator_name = (keyframeStage.annotator!='')? keyframeStage.annotator : "None";
+        let current_str = (keyframeStage.current!='')? "標記中" : "未檢查";
+        if (keyframeStage.checked)
+            current_str = "已檢查"
+
+        let keyframeStage_str = "annotator: " + annotator_name + ', ' + current_str;
+        $('#beAnnotatorUsing_text').text(keyframeStage_str);
+
+        $('#isComplete').prop('checked',keyframeStage.checked);
+        $('#isRedo').prop('checked',keyframeStage.need_modify);
+        $('#redoComment').prop('value',keyframeStage.comment);
+
+        if(keyframeStage.annotator == '') {
+            console.log("keyframeStage.annotator == ''");
+            $('#isKeyFrame').prop('disabled',false);
+            $('#isComplete').prop('disabled',true);
+            $('#isComplete_text').prop('disabled',true);
+            $('#isRedo').prop('disabled',true);
+            $('#isRedo_text').prop('disabled',true);
+            $('#redoComment').prop('disabled',true);
+            $('#saveRedoComment').prop('disabled',true);
+        }
+        else if(keyframeStage.current || keyframeStage.need_modify) {
+            console.log("keyframeStage.current || keyframeStage.need_modify");
+            $('#isKeyFrame').prop('disabled',true);
+            $('#isComplete').prop('disabled',true);
+            $('#isComplete_text').prop('disabled',true);
+            $('#isRedo').prop('disabled',true);
+            $('#isRedo_text').prop('disabled',true);
+            $('#redoComment').prop('disabled',false);
+            $('#saveRedoComment').prop('disabled',false);
+        }
+        else if(keyframeStage.checked) {
+            console.log("keyframeStage.checked");
+            $('#isKeyFrame').prop('disabled',false);
+            $('#isComplete').prop('disabled',false);
+            $('#isComplete_text').prop('disabled',false);
+            $('#isRedo').prop('disabled',true);
+            $('#isRedo_text').prop('disabled',true);
+            $('#redoComment').prop('disabled',true);
+            $('#saveRedoComment').prop('disabled',true);
+        }
+        else if(keyframeStage.user_submit) {
+            console.log("keyframeStage.user_submit");
+            $('#isKeyFrame').prop('disabled',false);
+            $('#isComplete').prop('disabled',false);
+            $('#isComplete_text').prop('disabled',false);
+            $('#isRedo').prop('disabled',false);
+            $('#isRedo_text').prop('disabled',false);
+            $('#redoComment').prop('disabled',false);
+            $('#saveRedoComment').prop('disabled',false);
+        }
+        else if(!keyframeStage.current && !keyframeStage.need_modify) {
+            console.log("!keyframeStage.current && !keyframeStage.need_modify");
+            $('#isKeyFrame').prop('disabled',false);
+            $('#isComplete').prop('disabled',false);
+            $('#isComplete_text').prop('disabled',false);
+            $('#isRedo').prop('disabled',false);
+            $('#isRedo_text').prop('disabled',false);
+            $('#redoComment').prop('disabled',false);
+            $('#saveRedoComment').prop('disabled',false);
+        }
+    });
 }

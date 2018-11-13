@@ -77,7 +77,7 @@ def get(jid,requestUser=None):
     if requestUser.groups.filter(name='annotator').exists():
         user_record = None
         try:
-            user_record = models.TaskFrameUserRecord.objects.get(user=requestUser.username,current=True)
+            user_record = models.TaskFrameUserRecord.objects.select_for_update().get(user=requestUser.username,current=True)
             frame = user_record.frame
             new_jid  = user_record.task_id
 
@@ -97,12 +97,12 @@ def get(jid,requestUser=None):
                     print ("db_fcwTrains has {} data".format(len(db_fcwTrains)))
                     for db_fcwTrain in db_fcwTrains:
                         tmp_tid = db_fcwTrain.task.id
-                        qs = models.TaskFrameUserRecord.objects.filter(task_id=tmp_tid,user=requestUser.username,need_modify=True)
+                        qs = models.TaskFrameUserRecord.objects.select_for_update().filter(task_id=tmp_tid,user=requestUser.username,need_modify=True)
                         ids = qs.values_list('id', flat=True)
                         if len(ids):
                             index = random.randint(0, len(ids)-1)
                             try:
-                                user_record = models.TaskFrameUserRecord.objects.get(pk=ids[index])
+                                user_record = qs[index]#models.TaskFrameUserRecord.objects.get(pk=ids[index])
                                 new_jid = tmp_tid
                                 frame = user_record.frame
 
@@ -129,12 +129,12 @@ def get(jid,requestUser=None):
                             tmp_tid = db_fcwTrain.task.id
                             print ("try get job {} anntation".format(tmp_tid))
 
-                            qs = models.TaskFrameUserRecord.objects.filter(task_id=tmp_tid,user='')
+                            qs = models.TaskFrameUserRecord.objects.select_for_update().filter(task_id=tmp_tid,user='')
                             ids = qs.values_list('id', flat=True)
                             if len(ids):
                                 index = random.randint(0, len(ids)-1)
                                 try:
-                                    user_record = models.TaskFrameUserRecord.objects.get(pk=ids[index])
+                                    user_record = qs[index]#models.TaskFrameUserRecord.objects.get(pk=ids[index])
                                     frame = user_record.frame
                                     new_jid = tmp_tid
 

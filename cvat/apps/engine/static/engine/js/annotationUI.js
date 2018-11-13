@@ -631,8 +631,11 @@ function setupMenu(job, shapeCollectionModel, annotationParser, aamModel, player
     });
 
     $('#saveButton').on('click', () => {
-        if((isAdminFlag && keyframeStage.current) || $('#isRedo').prop("checked")){
-            alert("Hello! annotator is working !!!");
+        if((isAdminFlag ) && ( keyframeStage.current || keyframeStage.annotator=='' || $('#isRedo').prop("checked"))){
+            let annotator = '';
+            if (keyframeStage.annotator=='')annotator="none"
+            else annotator=keyframeStage.annotator
+            alert(`Hello! annotator is working !!! Current:${keyframeStage.current} Annotator:${annotator} Redo:${$('#isRedo').prop("checked")}`);
         }
         else {
             trainigsaveFlag = true;
