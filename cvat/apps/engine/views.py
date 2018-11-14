@@ -55,24 +55,30 @@ def dispatch_request(request):
     # else:
     #     return redirect('/dashboard/')
     if request.user.groups.filter(name='admin').exists(): #and request.method == 'GET' and 'setKey' in request.GET and request.GET['setKey'].upper() == "TRUE":
-        return render(request, 'engine/annotation_keyframe.html', {
-            'js_3rdparty': JS_3RDPARTY.get('engine', [])
-        })
+        if request.method == 'GET' and 'id' in request.GET:
+            return render(request, 'engine/annotation_keyframe.html', {
+                'js_3rdparty': JS_3RDPARTY.get('engine', [])
+            })
+        else:
+            return redirect('/dashboard/')
     else:
-        return render(request, 'engine/annotation_training.html', {
-            'js_3rdparty': JS_3RDPARTY.get('engine', [])
-        })
+        if request.method == 'GET' and 'id' in request.GET:
+            return render(request, 'engine/annotation_training.html', {
+                'js_3rdparty': JS_3RDPARTY.get('engine', [])
+            })
+        else:
+            return redirect('/fcw')
     # else:
     #     return redirect('/dashboard/')
 @login_required
 def dispatch_request2(request):
     """An entry point to dispatch legacy requests"""
-    if request.method == 'GET' and 'id' in request.GET:
-        return render(request, 'engine/annotation_keyframe.html', {
-            'js_3rdparty': JS_3RDPARTY.get('engine', [])
-        })
-    else:
-        return redirect('/dashboard/')
+    # if request.method == 'GET' and 'id' in request.GET:
+    #     return render(request, 'engine/annotation_keyframe.html', {
+    #         'js_3rdparty': JS_3RDPARTY.get('engine', [])
+    #     })
+    # else:
+    return redirect('/dashboard/')
 
 @login_required
 @permission_required('engine.add_task', raise_exception=True)
@@ -83,15 +89,43 @@ def create_task(request):
     params['owner'] = request.user
     global_logger.info("create task with params = {}".format(params))
     try:
-        db_task = task.create_empty(params)
-        target_paths = []
-        source_paths = []
-        upload_dir = db_task.get_upload_dirname()
+        projects = ['/FCW_Train/','/FCW_Test/','/LVSA_Train/','/LVSA_Test/','/APA_Corner/','/APA_Segment/','/LDWS/']
         share_root = settings.SHARE_ROOT
         if params['storage'] == 'share':
             data_list = request.POST.getlist('data')
             data_list.sort(key=len)
-            for share_path in data_list:
+            tmp = []
+            data_list_len = 1 if len(data_list) == 1 else 0
+            task_list = {}
+            if len(data_list)==1 and (data_list[0] in projects):
+                relpath = os.path.normpath(data_list[0]).lstrip('/')
+                if '..' in relpath.split(os.path.sep):
+                    raise Exception('Permission denied')
+                abspath = os.path.abspath(os.path.join(share_root, relpath))
+                if os.path.commonprefix([share_root, abspath]) != share_root:
+                    raise Exception('Bad file path on share: ' + abspath)
+                for name in os.listdir(abspath):
+                    path = os.path.join(abspath, name)
+                    if os.path.isdir(path):
+                        path = path.replace(share_root,'') + '/'
+                        tmp.append(path)
+            else:
+                for share_path in data_list:
+                    if share_path.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp')):
+                        share_path = share_path.rsplit('/')[0] + '/'
+                        print("share_path:",share_path)
+                    if (not share_path in tmp) and (not share_path in projects) and (share_path != '/'):
+                        tmp.append(share_path)
+
+            print("\n\n\n\n\ntmp:{}\n\n\n\n\n".format(tmp))
+
+            for share_path in tmp:
+                params['task_name'] = os.path.split(share_path.rstrip('/'))[-1]
+                db_task = task.create_empty(params)
+                target_paths = []
+                source_paths = []
+                upload_dir = db_task.get_upload_dirname()
+
                 relpath = os.path.normpath(share_path).lstrip('/')
                 if '..' in relpath.split(os.path.sep):
                     raise Exception('Permission denied')
@@ -100,8 +134,22 @@ def create_task(request):
                 if os.path.commonprefix([share_root, abspath]) != share_root:
                     raise Exception('Bad file path on share: ' + abspath)
                 source_paths.append(abspath)
+                print("------------source_paths; ",abspath,"------------\n\n\n\n")
                 target_paths.append(os.path.join(upload_dir, relpath))
+                print("------------target_paths; ",os.path.join(upload_dir, relpath),"------------\n\n\n\n")
+                
+                params['SOURCE_PATHS'] = source_paths
+                params['TARGET_PATHS'] = target_paths
+                task.create(db_task.id, params)
+                task_list['tid'] = db_task.id
+
+            return JsonResponse(task_list)
         else:
+
+            db_task = task.create_empty(params)
+            target_paths = []
+            source_paths = []
+            upload_dir = db_task.get_upload_dirname()
             data_list = request.FILES.getlist('data')
 
             if len(data_list) > settings.LOCAL_LOAD_MAX_FILES_COUNT:
@@ -120,12 +168,13 @@ def create_task(request):
                     for chunk in data_file.chunks():
                         upload_file.write(chunk)
 
-        params['SOURCE_PATHS'] = source_paths
-        params['TARGET_PATHS'] = target_paths
+            params['SOURCE_PATHS'] = source_paths
+            params['TARGET_PATHS'] = target_paths
 
-        task.create(db_task.id, params)
+            task.create(db_task.id, params)
+            return JsonResponse({'tid': db_task.id})
 
-        return JsonResponse({'tid': db_task.id})
+        
     except Exception as exc:
         global_logger.error("cannot create task {}".format(params['task_name']), exc_info=True)
         db_task.delete()

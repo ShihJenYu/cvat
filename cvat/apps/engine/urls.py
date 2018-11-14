@@ -8,6 +8,7 @@ from . import views
 
 urlpatterns = [
     path('fcw', views.dispatch_request),
+    path('', views.dispatch_request2),
     path('create/task', views.create_task),
     path('get/task/<str:tid>/frame/<int:frame>', views.get_frame),
     path('check/task/<int:tid>', views.check_task),
