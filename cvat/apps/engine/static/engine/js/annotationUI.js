@@ -8,6 +8,9 @@
 "use strict";
 
 var trainigsaveFlag = false;
+var goNextRandom = false;
+var goNext = false;
+var saveByShift = false;
 var setKeyFlag = false;
 var isAdminFlag = false;
 function callAnnotationUI(jid,setKeyMode=false) {
@@ -16,7 +19,7 @@ function callAnnotationUI(jid,setKeyMode=false) {
     let loadJobEvent = Logger.addContinuedEvent(Logger.EventType.loadJob);
     serverRequest("/get/job/" + jid, function(job) {
         serverRequest("get/annotation/job/" + jid, function(data) {
-            console.log("fucking get ann data 0 1 2",data); //[data, frame, new_jid]
+            // console.log("get ann data 0 1 2",data); //[data, frame, new_jid]
 
             if (data[2] == jid) {
                 $('#loadingOverlay').remove();
@@ -55,6 +58,8 @@ function initLogger(jobID) {
 function buildAnnotationUI(job, shapeData, loadJobEvent) {
     // Setup some API
     // shapeData = [data, frame], change by jeff
+    console.log("sssssssssss",shapeData[0]);
+    console.log(job.start,job.stop);
     window.cvat = {
         labelsInfo: new LabelsInfo(job),
         player: {
@@ -118,6 +123,67 @@ function buildAnnotationUI(job, shapeData, loadJobEvent) {
     // });
     if(isAdminFlag){
         window.history.replaceState(null, null, `${window.location.origin}/fcw?id=${job.jobid}&setKey=${setKeyFlag}`);
+        $('#task_name').text(job.slug);
+        serverRequest(`get/task/${job.jobid}/keyframes`, function(response) {
+            let keyframes = response.frames.sort((a, b) => a - b)
+            console.log("frames",keyframes);
+            $("#select_keyframes").empty();
+            $('#select_keyframes').append($("<option></option>").attr("value","null").text("null"));
+            keyframes.forEach(function(value) {
+                $('#select_keyframes').append($("<option></option>").attr("value",value+1).text(value+1));
+            });
+           
+            document.getElementById('select_keyframes').addEventListener('click', onClickHandler);
+            document.getElementById('select_keyframes').addEventListener('mousedown', onMouseDownHandler);
+            document.getElementById('select_keyframes').addEventListener("focusout", onFocusOutHandler);
+            document.getElementById('select_keyframes').addEventListener("change", onChangeHandler);
+
+            function onChangeHandler(e){
+                var el = e.currentTarget;
+                
+                $('#select_keyframes').trigger('focusout');
+                window.setTimeout(function() {
+                    var value = $('#select_keyframes').prop('value');
+                    if (value != 'null') {
+                        $('#frameNumber_show').val(value);
+                        $('#frameNumber_show').trigger('change');
+                    }
+                    else {
+                        $('#select_keyframes').prop('value',$('#frameNumber_show').prop('value'));
+                    }
+                }, 0);
+                
+                
+            }
+            function onFocusOutHandler(e){
+                var el = e.currentTarget;
+                el.className = '';
+                el.setAttribute('size', '1');
+            }
+            function onMouseDownHandler(e){
+                var el = e.currentTarget;
+                el.focus();
+                
+                if(el.hasAttribute('size') && el.getAttribute('size') == '1'){
+                    e.preventDefault();    
+                }
+            }
+            function onClickHandler(e) {
+                var el = e.currentTarget;
+                el.focus();
+
+                if (el.getAttribute('size') == '1') {
+                    el.className += " selectOpen";
+                    el.setAttribute('size', '10');
+                }
+                else {
+                    el.className = '';
+                    el.setAttribute('size', '1');
+                }
+            }
+
+        });
+        
     }
     else{
         window.history.replaceState(null, null, `${window.location.origin}/fcw`);
@@ -133,6 +199,7 @@ function buildAnnotationUI(job, shapeData, loadJobEvent) {
     let shapeCollectionModel = new ShapeCollectionModel().import(shapeData[0]).updateHash();
     let shapeCollectionController = new ShapeCollectionController(shapeCollectionModel);
     let shapeCollectionView = new ShapeCollectionView(shapeCollectionModel, shapeCollectionController);
+    console.log("shapeData",shapeData[0])
 
     window.cvat.data = {
         get: () => shapeCollectionModel.export(),
@@ -261,33 +328,37 @@ function buildAnnotationUI(job, shapeData, loadJobEvent) {
         }
     });
 
+    // this._nextButtonTraining.unbind('click').on('click', () => {
+        
+    // });
+
     // add by jeff
-    $('#nextButtonFlag').click(function(e){
+    // $('#nextButtonFlag').click(function(e){
 
-        if (shapeCollectionModel.hasUnsavedChanges())
-        {
-            // var r = confirm("Press a button!");
-            alert("Hello! Submit you made may not be saved !!!");
-            $('#nextButtonFlag').prop('checked',false);
+    //     if (shapeCollectionModel.hasUnsavedChanges())
+    //     {
+    //         // var r = confirm("Press a button!");
+    //         alert("Hello! Submit you made may not be saved !!!");
+    //         $('#nextButtonFlag').prop('checked',false);
 
-        } else {
+    //     } else {
 
-            // modify by Eric.
-            if (trainigsaveFlag){
-                var content_txt = 'Cannot be changed after sending. Saving confirmed.';
-            } else {
-                var content_txt = 'Cannot be changed after sending. You didn\'t do anything Change.';
-            }
-            trainigsaveFlag = false;
-            document.getElementById("nextButtonFlag_text").textContent=content_txt;
+    //         // modify by Eric.
+    //         if (trainigsaveFlag){
+    //             var content_txt = 'Cannot be changed after sending. Saving confirmed.';
+    //         } else {
+    //             var content_txt = 'Cannot be changed after sending. You didn\'t do anything Change.';
+    //         }
+    //         trainigsaveFlag = false;
+    //         document.getElementById("nextButtonFlag_text").textContent=content_txt;
 
-            if($('#nextButtonFlag').is(':checked')) {
-                $('#nextButton_training')[0].setAttribute("class","playerButton_training");
-            } else {
-                $('#nextButton_training')[0].setAttribute("class","playerButton_training disabledPlayerButton");
-            }
-        }        
-    });
+    //         if($('#nextButtonFlag').is(':checked')) {
+    //             $('#nextButton_training')[0].setAttribute("class","playerButton_training");
+    //         } else {
+    //             $('#nextButton_training')[0].setAttribute("class","playerButton_training disabledPlayerButton");
+    //         }
+    //     }        
+    // });
 }
 
 
@@ -631,17 +702,26 @@ function setupMenu(job, shapeCollectionModel, annotationParser, aamModel, player
     });
 
     $('#saveButton').on('click', () => {
-        if((isAdminFlag ) && ( keyframeStage.current || keyframeStage.annotator=='' || $('#isRedo').prop("checked"))){
-            let annotator = '';
-            if (keyframeStage.annotator=='')annotator="none"
-            else annotator=keyframeStage.annotator
-            alert(`Hello! annotator is working !!! Current:${keyframeStage.current} Annotator:${annotator} Redo:${$('#isRedo').prop("checked")}`);
+        trainigsaveFlag = true;
+        if(keyframeStage!=null) {
+            if((isAdminFlag ) && ( keyframeStage.current || keyframeStage.annotator=='' || $('#isRedo').prop("checked"))){
+                if(saveByShift) {goNext = true; saveByShift = false; }
+                else {
+                    let annotator = '';
+                    if (keyframeStage.annotator=='')annotator="none"
+                    else annotator = keyframeStage.annotator
+                    alert(`Hello! annotator is working !!! Current:${keyframeStage.current} Annotator:${annotator} Redo:${$('#isRedo').prop("checked")}`);
+                }
+            }
+            else {
+                trainigsaveFlag = true;
+                goNext = true;
+                saveAnnotation(shapeCollectionModel, job);
+            }
         }
         else {
-            trainigsaveFlag = true;
-            saveAnnotation(shapeCollectionModel, job);
+            goNext = true;
         }
-        
     });
     $('#saveButton').attr('title', `
         ${shortkeys['save_work'].view_value} - ${shortkeys['save_work'].description}`);
@@ -783,16 +863,19 @@ function saveAnnotation(shapeCollectionModel, job) {
     saveButton.prop('disabled', true);
     saveButton.text('Saving..');
     console.log("this data is will save in db",data);
-    saveJobRequest(job.jobid, data, () => {
+    saveJobRequest(job.jobid, data, (response) => {
+        console.log("saveJobRequest is success",response);
         // success
         shapeCollectionModel.updateHash();
         saveButton.text('Success!');
+        goNextRandom = true;
         setTimeout(() => {
             saveButton.prop('disabled', false);
             saveButton.text('Save Work');
         }, 3000);
     }, (response) => {
         // error
+        console.log("saveJobRequest is error",response);
         saveButton.prop('disabled', false);
         saveButton.text('Save Work');
         let message = `Impossible to save job. Errors was occured. Status: ${response.status}`;

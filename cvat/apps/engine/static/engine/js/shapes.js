@@ -459,11 +459,24 @@ class ShapeModel extends Listener {
 
     // Explicit remove by user
     remove() {
+        // modify by eric
+        trainigsaveFlag = false;
+        $('#nextButtonFlag').prop('checked',false);
+        $('#nextButton_training')[0].setAttribute("class","playerButton_training");
+        
         Logger.addEvent(Logger.EventType.deleteObject, {
             count: 1,
         });
 
         this.removed = true;
+
+        var rm_point = "detectpoint";
+        rm_point = rm_point.concat(this._id);
+        $("."+rm_point).remove();
+
+        var rm_pointAim = "detectpointAim";
+        rm_pointAim = rm_pointAim.concat(this._id);
+        $("."+rm_pointAim).remove();
 
         // Undo/redo code
         window.cvat.addAction('Remove Object', () => {
@@ -1279,14 +1292,14 @@ class ShapeController {
     updatePosition(frame, position) {
         trainigsaveFlag = false;
         if($('#nextButtonFlag').length) $('#nextButtonFlag').prop('checked',false);
-        if($('#nextButton_training').length) $('#nextButton_training')[0].setAttribute("class","playerButton_training disabledPlayerButton");
+        if($('#nextButton_training').length) $('#nextButton_training')[0].setAttribute("class","playerButton_training");
         this._model.updatePosition(frame, position);
     }
 
     updateAttribute(frame, attrId, value) {
         trainigsaveFlag = false;
         if($('#nextButtonFlag').length) $('#nextButtonFlag').prop('checked',false);
-        if($('#nextButton_training').length) $('#nextButton_training')[0].setAttribute("class","playerButton_training disabledPlayerButton");
+        if($('#nextButton_training').length) $('#nextButton_training')[0].setAttribute("class","playerButton_training");
         this._model.updateAttribute(frame, attrId, value);
     }
 
@@ -1297,7 +1310,7 @@ class ShapeController {
     changeLabel(labelId) {
         trainigsaveFlag = false;
         if($('#nextButtonFlag').length) $('#nextButtonFlag').prop('checked',false);
-        if($('#nextButton_training').length) $('#nextButton_training')[0].setAttribute("class","playerButton_training disabledPlayerButton");
+        if($('#nextButton_training').length) $('#nextButton_training')[0].setAttribute("class","playerButton_training");
         this._model.changeLabel(labelId);
     }
 
@@ -2508,6 +2521,7 @@ class ShapeView extends Listener {
     }
 
     onShapeUpdate(model) {
+
         let interpolation = model.interpolate(window.cvat.player.frames.current);
         let hiddenText = model.hiddenText;
         let hiddenShape = model.hiddenShape;
@@ -2526,7 +2540,6 @@ class ShapeView extends Listener {
             }
             break;
         case 'attributes':
-            // modify by eric
             this._updateMenuContent(interpolation);
             setupHidden.call(this, hiddenShape, hiddenText, activeAAM, model.active, interpolation, model._id);
             break;
@@ -2541,7 +2554,6 @@ class ShapeView extends Listener {
             if (locked) {
                 ShapeCollectionView.sortByZOrder();
             }
-
             this._setupLockedUI(locked);
             this._updateButtonsBlock(interpolation.position);
             break;
@@ -2551,7 +2563,6 @@ class ShapeView extends Listener {
             this._updateButtonsBlock(interpolation.position);
             break;
         case 'hidden':
-            // modify by eric
             setupHidden.call(this, hiddenShape, hiddenText, activeAAM, model.active, interpolation, model._id);
             this._updateButtonsBlock(interpolation.position);
             break;
@@ -2565,7 +2576,7 @@ class ShapeView extends Listener {
             let idx = this._uis.menu.index();
             this._controller.model().unsubscribe(this);
             this.erase();
-            // modify by eric
+
             this.draw(interpolation, model._id);
             this._controller.model().subscribe(this);
             this._uis.menu.detach();
@@ -2639,13 +2650,12 @@ class ShapeView extends Listener {
         }
 
         function setupHidden(hiddenShape, hiddenText, activeAAM, active, interpolation, id) {
+            console.log("ffffffffffffffffffff");
             this._makeNotEditable();
             this._removeShapeUI();
             this._removeShapeText();
 
-            var rm = "detectpoint";
-            rm = rm.concat(id);
-            $("."+rm).remove();
+            $('[class*="detectpoint"]').remove();
             $('.detectpointAim').remove();
 
             if (!hiddenShape || activeAAM.shape) {
@@ -2821,6 +2831,7 @@ class BoxView extends ShapeView {
 
         var position = interpolation.position; var attributes = interpolation.attributes;
         let xtl = position.xtl;
+        let ybr = position.ybr;
         let ytl = position.ytl;
         let width = position.xbr - position.xtl;
         let height = position.ybr - position.ytl;
@@ -2831,12 +2842,16 @@ class BoxView extends ShapeView {
                 var dectectpoin_value = attributes[attrId]['value'];
             }
         }
-        //Modify by Eric
-        
-        var rm = "detectpoint";
-        rm = rm.concat(id_);
-        $("."+rm).remove();
-        $('.detectpointAim').remove();
+
+        var rm_point = "detectpoint";
+        rm_point = rm_point.concat(id_);
+        $("."+rm_point).remove();
+
+        var rm_pointAim = "detectpointAim";
+        rm_pointAim = rm_pointAim.concat(id_);
+        $("."+rm_pointAim).remove();
+
+        console.log("GGGGGGGGGGGGGGGGGGGTTTTT, outside")
 
         var detectpoints = dectectpoin_value.replace(/"/g, "").split(/[\s,]+/); 
         var xdl=detectpoints[0],ydl=detectpoints[1],xdr=detectpoints[2],ydr=detectpoints[3];
@@ -2847,14 +2862,28 @@ class BoxView extends ShapeView {
         var xdr_draw = xtl + xdr * (width);
 
         if (ydl != "-1" && ydr != "-1") {
-            this._uis.shape = this._scenes.svg.rect(scaledR*2,scaledR*2).center(xdl_draw, ydl).addClass(rm).fill('#ffff00').attr({
+            this._uis.shape = this._scenes.svg.rect(scaledR*2,scaledR*2).center(xdl_draw, ybr).addClass(rm_point).fill('#ffff00').attr({
                 'stroke-width':  STROKE_WIDTH / window.cvat.player.geometry.scale});
+            
+            this._uis.shape = this._scenes.svg.line(xdl_draw,ytl,xdl_draw,ybr).attr(
+                    {
+                        'stroke-width': STROKE_WIDTH / 2 / window.cvat.player.geometry.scale ,'stroke': '#ffff00',
+                    }
+                ).addClass(rm_pointAim);
     
-            this._uis.shape = this._scenes.svg.rect(scaledR*2,scaledR*2).center(xdr_draw, ydr).addClass(rm).fill('#ffff00').attr({
+            this._uis.shape = this._scenes.svg.rect(scaledR*2,scaledR*2).center(xdr_draw, ybr).addClass(rm_point).fill('#ffff00').attr({
                 'stroke-width':  STROKE_WIDTH / window.cvat.player.geometry.scale});
+
+            this._uis.shape = this._scenes.svg.line(xdr_draw,ytl,xdr_draw,ybr).attr(
+                    {
+                        'stroke-width': STROKE_WIDTH / 2 / window.cvat.player.geometry.scale ,'stroke': '#ffff00',
+                    }
+            ).addClass(rm_pointAim);
 
         }
-
+        
+        // console.log($('[class*="detectpoint"]'), "AAAAAAAAAAAA");
+        // console.log("DARWDARWDARWDARWDARWDARWDARWDARW")
         this._uis.shape = this._scenes.svg.rect().size(width, height).attr({
             'fill': this._appearance.fill || this._appearance.colors.shape,
             'stroke': this._appearance.stroke || this._appearance.colors.shape,
@@ -3046,6 +3075,8 @@ class PolygonView extends PolyShapeView {
     }
 
     onShapeUpdate(model) {
+
+
         ShapeView.prototype.onShapeUpdate.call(this, model);
         if (model.updateReason === 'draggable' && this._flags.editable) {
             if (model.draggable) {

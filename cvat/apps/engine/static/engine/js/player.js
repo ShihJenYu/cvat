@@ -10,7 +10,7 @@ var keyframeStage = null;
 class FrameProvider extends Listener {
     constructor(stop, tid) {
         super('onFrameLoad', () => this._loaded);
-        this._MAX_LOAD = 500;
+        this._MAX_LOAD = 20;
 
         this._stack = [];
         this._loadInterval = null;
@@ -59,7 +59,8 @@ class FrameProvider extends Listener {
 
         let last = Math.min(this._stop, frame + Math.ceil(this._MAX_LOAD / 2));
         if (!(last in this._frameCollection)) {
-            for (let idx = frame + 1; idx <= last; idx ++) {
+            // modify by Eric, original idx = frame + 1
+            for (let idx = frame; idx <= last; idx ++) {
                 if (!(idx in this._frameCollection)) {
                     this._loadCounter = this._MAX_LOAD - (idx - frame);
                     this._stack.push(idx);
@@ -159,6 +160,7 @@ class PlayerModel extends Listener {
         };
 
         this._frameProvider.subscribe(this);
+
     }
 
     // add by jeff
@@ -166,6 +168,10 @@ class PlayerModel extends Listener {
         this._frame.start = mframe;
         this._frame.stop = mframe;
         this._frame.current = mframe;
+    }
+
+    do(){
+        console.log(this._frame.current);
     }
 
     get frames() {
@@ -280,6 +286,10 @@ class PlayerModel extends Listener {
     }
 
     shift(delta, absolute) {
+        // Modify by ericlou.
+        
+        console.log(delta);
+
         if (['resize', 'drag'].indexOf(window.cvat.mode) != -1) {
             return false;
         }
@@ -308,6 +318,41 @@ class PlayerModel extends Listener {
         });
 
         let changed = this._frame.previous != this._frame.current;
+        if (changed){
+            $('[class*="detectpoint"]').remove();
+            saveByShift = true;
+            $('#saveButton').click();
+            
+            var me = $(this);
+            function checkFlag() {
+                if(goNext ==false) {
+                    console.log("QQ");
+                    window.setTimeout(checkFlag, 50); /* this checks the flag every 100 milliseconds*/
+                } else {
+                    goNext = false;
+                    var data;
+                    $.ajax({
+                        url: `get/annotation/job/${me[0].tid}/frame/${me[0]._frame.current}`,
+                        dataType: "json",
+                        async: false,
+                        success: function(respone) {
+                            console.log("get/annotation/job/${tid}/frame/${this._frame.current}", respone);
+                            data = respone[0];
+                        },
+                        error: function(respone){
+                            console.log(respone);
+                        }
+                    });
+                    window.cvat.data.set(data);
+                }
+            }
+            checkFlag();
+            //shapeCollectionModel.empty();
+            
+            //shapeCollectionModel.import(data);
+            //shapeCollectionModel.update();
+
+        }
         if (this._settings.resetZoom || this._frame.previous === null) {  // fit in annotation mode or once in interpolation mode
             this._frame.previous = this._frame.current;
             this.fit();     // notify() inside the fit()
@@ -620,7 +665,6 @@ class PlayerController {
             let remove_detect_point = all_dectect_points[i].className.baseVal;
             $("."+remove_detect_point).remove();
         }
-        $('.detectpointAim').remove();
 
         let jid = this._model.tid;//window.location.href.match('id=[0-9]+')[0].slice(3);
         var data;
@@ -698,7 +742,8 @@ class PlayerView {
         this._playerStepUI = $('#playerStep');
         this._playerSpeedUI = $('#speedSelect');
         this._resetZoomUI = $('#resetZoomBox');
-        this._frameNumber = $('#frameNumber');
+        // add by eric
+        this._frameNumber = $('#frameNumber'); 
         this._playerGridPattern = $('#playerGridPattern');
         this._playerGridPath = $('#playerGridPath');
         this._contextMenuUI = $('#playerContextMenu');
@@ -736,7 +781,20 @@ class PlayerView {
             if (Number.isInteger(+e.target.value)) {
                 this._controller.seek(+e.target.value);
                 blurAllElements();
+                console.log("papapapapapapaapapp");
+                $("#frameNumber_show").prop("value", parseInt($("#frameNumber").prop("value"))+1);
+                console.log( $("#frameNumber_show").prop("value"));
             }
+        });
+
+        $("#frameNumber_show").on('change', (e) => {
+            $("#frameNumber").prop("value", +e.target.value - 1);
+            this._controller.seek(parseInt($("#frameNumber").prop("value")));
+            blurAllElements();
+            console.log("asdasdasddasdsad");
+            console.log( $("#frameNumber").prop("value"));
+            //$('#select_keyframes').trigger('focusout');
+            console.log("dsadsadsadsa");
         });
 
         // add by jeff
@@ -747,6 +805,16 @@ class PlayerView {
             if(flag) {
                 serverRequest(`set/task/${playerModel.tid}/frame/${playerModel.frames.current}/isKeyFrame/${+flag}`, function(response) {
                     console.log(response);
+                    let keyframes = response.frames.sort((a, b) => a - b)
+                    console.log("frames",keyframes);
+                    $("#select_keyframes").empty();
+                    $('#select_keyframes').append($("<option></option>").attr("value","null").text("null"));
+                    keyframes.forEach(function(value) {
+                        $('#select_keyframes').append($("<option></option>").attr("value",value+1).text(value+1));
+                    });
+                    $("#select_keyframes").prop("value",playerModel.frames.current+1);
+                    
+
                     resetAdminCheckBox(playerModel.tid, playerModel.frames.current);
                     $('#isKeyFrame').prop('disabled',false);
                 });
@@ -759,7 +827,7 @@ class PlayerView {
                 //resetAdminCheckBox(playerModel.tid, playerModel.frames.current);
 
                 serverRequest(`get/task/${playerModel.tid}/frame/${playerModel.frames.current}/keyframeStage`, function(response) {
-                    console.log("in get keyframe stage",response);
+                    // console.log("in get keyframe stage",response);
                     if(response.current||response.need_modify||response.annotator!='')
                     {
                         $('#isKeyFrame').prop('checked',true);
@@ -776,6 +844,15 @@ class PlayerView {
                     {
                         serverRequest(`set/task/${playerModel.tid}/frame/${playerModel.frames.current}/isKeyFrame/${+flag}`, function(response) {
                             console.log(response);
+                            let keyframes = response.frames.sort((a, b) => a - b)
+                            console.log("frames",keyframes);
+                            $("#select_keyframes").empty();
+                            $('#select_keyframes').append($("<option></option>").attr("value","null").text("null"));
+                            keyframes.forEach(function(value) {
+                                $('#select_keyframes').append($("<option></option>").attr("value",value+1).text(value+1));
+                            });
+                            $("#select_keyframes").prop("value","null");
+
                             $('#isComplete').prop('disabled',false);
                             $('#isComplete_text').prop('disabled',false);
                             $('#isRedo').prop('disabled',false);
@@ -835,6 +912,7 @@ class PlayerView {
                     '</form>',
                     boxWidth: '30%',
                     useBootstrap: false,
+                    draggable: false,
                     buttons: {
                         formSubmit: {
                             text: 'Submit',
@@ -876,15 +954,50 @@ class PlayerView {
                 });
             }
         });
+
         this._nextButtonTraining.unbind('click').on('click', () => {
-            if($('#nextButtonFlag').is(':checked')) {
-                $('#nextButtonFlag').prop('checked',false);
-                $('#nextButton_training')[0].setAttribute("class","playerButton_training disabledPlayerButton");
-                this._controller.next_random_frame();
-                trainigsaveFlag = false;
-            } else {
-                assert("you can't do it before checkbox uncheck");
-            }
+            var me = $(this);
+            $.confirm({
+                title: '是否要送出？',
+                content: '送出後將無法再次修改',
+                boxWidth: '30%',
+                useBootstrap: false,
+                draggable: false,
+                buttons: {
+                    confirm: {
+                        keys: ['enter'],
+                        action: function(){
+                            console.log('confirm');
+                            $('#saveButton').click();
+                            function checkFlag() {
+                                if(goNextRandom == false) {
+                                    console.log("QQ");
+                                    window.setTimeout(checkFlag, 100); /* this checks the flag every 100 milliseconds*/
+                                } else {
+                                    goNextRandom = false;
+                                    me[0]._controller.next_random_frame();
+                                }
+                            }
+                            checkFlag();
+                        }
+                    },
+                    cancel: {
+                        keys: ['enter'],
+                        action: function(){
+                            console.log('cancel');
+                        }
+                    }
+                }
+            });
+            console.log("dddddddddddddddddddd");
+            // if($('#nextButtonFlag').is(':checked')) {
+            //     $('#nextButtonFlag').prop('checked',false);
+            //     $('#nextButton_training')[0].setAttribute("class","playerButton_training disabledPlayerButton");
+            //     this._controller.next_random_frame();
+            //     trainigsaveFlag = false;
+            // } else {
+            //     assert("you can't do it before checkbox uncheck");
+            // }
             
         });
 
@@ -1072,35 +1185,47 @@ class PlayerView {
             obj.css('transform', 'scale(' + geometry.scale + ')');
         }
 
+        // Modify by jeff/ericlou.
         this._playerGridPath.attr('stroke-width', 2 / geometry.scale);
         this._frameNumber.prop('value', frames.current);
-        if(isAdminFlag)
-            serverRequest(`get/task/${model.tid}/frame/${frames.current}/isKeyFrame`, function(response) {
-                console.log(response);
-                $('#isKeyFrame').prop('checked',response.isKeyFrame);
-                if(response.isKeyFrame) {
-                    console.log("start get keyframe stage");
+        $("#frameNumber_show").prop("value", (frames.current+1));
+
+        
+        
+        serverRequest(`get/task/${model.tid}/frame/${frames.current}/isKeyFrame`, function(response) {
+            console.log(response);
+            $('#isKeyFrame').prop('checked',response.isKeyFrame);
+            if(response.isKeyFrame) {
+                // console.log("start get keyframe stage");
+                $('#select_keyframes').prop("value", (frames.current+1));
+                if(isAdminFlag)
                     resetAdminCheckBox(model.tid, frames.current);
-                }
                 else {
-                    $('#isKeyFrame').prop('disabled',false);
-                    $('#isComplete').prop('disabled',true);
-                    $('#isComplete_text').prop('disabled',true);
-                    $('#isRedo').prop('disabled',true);
-                    $('#isRedo_text').prop('disabled',true);
-                    $('#redoComment').prop('disabled',true);
-                    $('#saveRedoComment').prop('disabled',true);
-                    let keyframeStage_str = "annotator: None";
-                    $('#beAnnotatorUsing_text').text(keyframeStage_str);
+                    serverRequest(`get/task/${model.tid}/frame/${frames.current}/keyframeStage`, function(response) {
+                        $('#redoComment_readonly').text(response.comment);
+                    });
                 }
-            });
+            }
+            else {
+                $('#select_keyframes').prop("value", "null");
+                $('#isKeyFrame').prop('disabled',false);
+                $('#isComplete').prop('disabled',true);
+                $('#isComplete_text').prop('disabled',true);
+                $('#isRedo').prop('disabled',true);
+                $('#isRedo_text').prop('disabled',true);
+                $('#redoComment').prop('disabled',true);
+                $('#saveRedoComment').prop('disabled',true);
+                let keyframeStage_str = "annotator: None";
+                $('#beAnnotatorUsing_text').text(keyframeStage_str);
+            }
+        });
     }
 }
 
 
 function resetAdminCheckBox(tid,frame){
     serverRequest(`get/task/${tid}/frame/${frame}/keyframeStage`, function(response) {
-        console.log("in get keyframe stage",response);
+        // console.log("in get keyframe stage",response);
         keyframeStage = response;
 
         let annotator_name = (keyframeStage.annotator!='')? keyframeStage.annotator : "None";
@@ -1126,7 +1251,7 @@ function resetAdminCheckBox(tid,frame){
             $('#saveRedoComment').prop('disabled',true);
         }
         else if(keyframeStage.current || keyframeStage.need_modify) {
-            console.log("keyframeStage.current || keyframeStage.need_modify");
+            // console.log("keyframeStage.current || keyframeStage.need_modify");
             $('#isKeyFrame').prop('disabled',true);
             $('#isComplete').prop('disabled',true);
             $('#isComplete_text').prop('disabled',true);
@@ -1146,7 +1271,7 @@ function resetAdminCheckBox(tid,frame){
             $('#saveRedoComment').prop('disabled',true);
         }
         else if(keyframeStage.user_submit) {
-            console.log("keyframeStage.user_submit");
+            // console.log("keyframeStage.user_submit");
             $('#isKeyFrame').prop('disabled',false);
             $('#isComplete').prop('disabled',false);
             $('#isComplete_text').prop('disabled',false);
@@ -1156,7 +1281,7 @@ function resetAdminCheckBox(tid,frame){
             $('#saveRedoComment').prop('disabled',false);
         }
         else if(!keyframeStage.current && !keyframeStage.need_modify) {
-            console.log("!keyframeStage.current && !keyframeStage.need_modify");
+            // console.log("!keyframeStage.current && !keyframeStage.need_modify");
             $('#isKeyFrame').prop('disabled',false);
             $('#isComplete').prop('disabled',false);
             $('#isComplete_text').prop('disabled',false);

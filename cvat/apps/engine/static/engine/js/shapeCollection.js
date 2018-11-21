@@ -255,7 +255,8 @@ class ShapeCollectionModel extends Listener {
         };
 
         for (let shape of this._shapes) {
-            if (shape.removed) continue;
+            if (shape.removed || shape._frame!=this._frame) continue;
+            
             switch (shape.type) {
             case 'annotation_box':
                 response.boxes.push(shape.export());
@@ -287,29 +288,20 @@ class ShapeCollectionModel extends Listener {
     }
 
     find(direction) {
+        let max = $('#select_keyframes > option').length-1;
+        if (!max && !direction) return null;
+
+        let index = $('#select_keyframes').prop('selectedIndex');
+
         if (Math.sign(direction) > 0) {
-            let frame = this._frame + 1;
-            while (frame <= window.cvat.player.frames.stop) {
-                let shapes = this._computeInterpolation(frame);
-                shapes = this._filter.filter(shapes);
-                if (shapes.length) {
-                    return frame;
-                }
-                frame ++;
-            }
+            if(index >= max) index = 0;
+            $('#select_keyframes option').eq(index+1).prop('selected', true);
         }
         else {
-            let frame = this._frame - 1;
-            while (frame >= window.cvat.player.frames.start) {
-                let shapes = this._computeInterpolation(frame);
-                shapes = this._filter.filter(shapes);
-                if (shapes.length) {
-                    return frame;
-                }
-                frame --;
-            }
+            if(index <= 1) index = max+1;
+            $('#select_keyframes option').eq(index-1).prop('selected', true);
         }
-        return null;
+        return $('#select_keyframes').prop('value')-1;
     }
 
     zOrder(frame) {
@@ -1025,6 +1017,10 @@ class ShapeCollectionController {
         rm = rm.concat(activeShape._id);
         $("."+rm).remove();
 
+        var rm_pointAim = "detectpointAim";
+        rm_pointAim = rm_pointAim.concat(id_);
+        $("."+rm_pointAim).remove();
+
         if(activeShape) {
             var selectAtts = null;
             var objs = $("#uiContent .bold label")
@@ -1064,6 +1060,10 @@ class ShapeCollectionController {
         var rm = "detectpoint";
         rm = rm.concat(activeShape._id);
         $("."+rm).remove();
+
+        var rm_pointAim = "detectpointAim";
+        rm_pointAim = rm_pointAim.concat(activeShape._id);
+        $("."+rm_pointAim).remove();
 
         if(activeShape) {
             var xtl = activeShape._positions[activeShape._frame]['xtl'];
@@ -1224,15 +1224,28 @@ class ShapeCollectionController {
                 inputDetectPoint.value = activeShape._attributes.mutable[activeShape._frame][attrid];
             });
                 
+            thisframeContent.line(xdl_draw,ytl,xdl_draw,ybr).attr(
+                {
+                    'stroke-width': STROKE_WIDTH / 2 / window.cvat.player.geometry.scale ,'stroke': '#ffff00',
+                }
+            ).addClass(rm_pointAim);
+
+            thisframeContent.line(xdr_draw,ytl,xdr_draw,ybr).attr(
+                {
+                    'stroke-width': STROKE_WIDTH / 2 / window.cvat.player.geometry.scale ,'stroke': '#ffff00',
+                }
+            ).addClass(rm_pointAim);
+
+
             // for detectpointAim
             $("."+ADD_class).each(function() {
                 $(this).on('dragstart dragmove', () => {
-                    $('.detectpointAim').remove();
+                    $("."+rm_pointAim).remove();
                     thisframeContent.line($(this)[0].getBBox().x+scaledR,ytl,$(this)[0].getBBox().x+scaledR,$(this)[0].getBBox().y).attr(
                         {
                             'stroke-width': STROKE_WIDTH / 2 / window.cvat.player.geometry.scale ,'stroke': '#ffff00',
                         }
-                    ).addClass('detectpointAim');
+                    ).addClass(rm_pointAim);
                 }).on('mouseover', () => {
                     this.instance.attr('stroke-width', STROKE_WIDTH * 2 / window.cvat.player.geometry.scale);
                 }).on('mouseout', () => {
@@ -1632,12 +1645,12 @@ class ShapeCollectionView {
         // in order to increase performance in the buildShapeView function
 
         // add by jeff
-        if(is_one_frame_mode) {
-            is_one_frame_mode = false;
-            this._controller._model.empty();
-            this._controller._model.import(one_frame_data).updateHash();
-            this._controller._model.update();
-        }
+        // if(is_one_frame_mode) {
+        //     is_one_frame_mode = false;
+        //     this._controller._model.empty();
+        //     this._controller._model.import(one_frame_data).updateHash();
+        //     this._controller._model.update();
+        // }
 
         let parents = {
             uis: this._UIContent.parent(),

@@ -545,23 +545,22 @@ def _find_and_compress_images(upload_dir, output_dir, db_task, compress_quality,
         images = filter(lambda x: _get_mime(x) == 'image', fullnames)
         filenames.extend(images)
     filenames.sort()
-
     if len(filenames):
         for idx, name in enumerate(filenames):
             job.meta['status'] = 'Images are being compressed.. {}%'.format(idx * 100 // len(filenames))
             job.save_meta()
-            compressed_name = os.path.splitext(name)[0] + '.jpg'
+            compressed_name = os.path.splitext(name)[0] + '.bmp'
             image = Image.open(name).convert('RGB')
             if flip_flag:
                 image = image.transpose(Image.ROTATE_180)
             image.save(compressed_name, quality=compress_quality, optimize=True)
             image.close()
             if compressed_name != name:
-                os.remove(name)
+               os.remove(name)
                 # PIL::save uses filename in order to define image extension.
                 # We need save it as jpeg for compression and after rename the file
                 # Else annotation file will contain invalid file names (with other extensions)
-                os.rename(compressed_name, name)
+               os.rename(compressed_name, name)
 
         for frame, image_orig_path in enumerate(filenames):
             image_dest_path = _get_frame_path(frame, output_dir)
@@ -580,6 +579,7 @@ def _save_task_to_db(db_task, task_params):
     db_task.z_order = task_params['z_order']
     db_task.flipped = task_params['flip']
 
+    # modify by eric, frame number start from 1.
     segment_step = task_params['segment'] - db_task.overlap
     for x in range(0, db_task.size, segment_step):
         start_frame = x
@@ -590,10 +590,14 @@ def _save_task_to_db(db_task, task_params):
         db_segment.task = db_task
         db_segment.start_frame = start_frame
         db_segment.stop_frame = stop_frame
+        # modify to fix id between seg, task ,job id
+        db_segment.id = db_task.id
         db_segment.save()
 
         db_job = models.Job()
         db_job.segment = db_segment
+        # modify to fix id between seg, task ,job id
+        db_job.id = db_task.id
         db_job.save()
 
     db_FCWTrain = models.FCWTrain()
@@ -674,14 +678,13 @@ def _create_thread(tid, params):
         'mode': 'annotation' if counters['image'] or counters['directory'] or counters['archive'] else 'interpolation',
         'flip': params['flip_flag'].lower() == 'true',
         'z_order': params['z_order'].lower() == 'true',
-        'compress': int(params.get('compress_quality', 50)),
+        'compress': int(params.get('compress_quality', 100)),
         'segment': int(params.get('segment_size', sys.maxsize)),
         'labels': params['labels'],
     }
     task_params['overlap'] = int(params.get('overlap_size', 5 if task_params['mode'] == 'interpolation' else 0))
     task_params['overlap'] = min(task_params['overlap'], task_params['segment'] - 1)
     global_logger.info("Task #{} parameters: {}".format(tid, task_params))
-
     if task_params['mode'] == 'interpolation':
         _find_and_extract_video(upload_dir, output_dir, db_task, task_params['compress'], task_params['flip'], job)
     else:

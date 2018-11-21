@@ -372,6 +372,11 @@ class ShapeCreatorView {
 
 
     _create() {
+        // modify by eric
+        trainigsaveFlag = false;
+        $('#nextButtonFlag').prop('checked',false);
+        $('#nextButton_training')[0].setAttribute("class","playerButton_training");
+        
         let sizeUI = null;
         switch(this._type) {
         case 'box':

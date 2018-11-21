@@ -106,10 +106,14 @@
             <div>
                 <input type="checkbox" id="nextButtonFlag" value="nextButtonFlag" />
                 <label class="regular h1" id="nextButtonFlag_text" for="nextButtonFlag">Cannot be changed after sending</label>
-                <!-- Add by Ericlou -->
-            <svg id="nextButton_training" class="playerButton_training disabledPlayerButton">
-                <polygon points="10,20 10,60 50,60 50,80 90,40 50,0 50,20" transform="scale(0.4)"/>
-            </svg>
+                <!-- Add by Ericlou disabledPlayerButton--> 
+                <svg id="nextButton_training" class="playerButton_training">
+                    <polygon points="10,20 10,60 50,60 50,80 90,40 50,0 50,20" transform="scale(0.4)"/>
+                </svg>
+            </div>
+            <div>
+                <label class="regular h2"> 建議：</label>
+                <label class="regular h2" id="redoComment_readonly"></label>
             </div>
 
             <input type = "hidden" id = "playerProgress"/>
@@ -125,12 +129,12 @@
                 <option id="lastRedoText" title="Redo Action"> None </option>
             </select>
             <button class="regular h1" id="redoButton" disabled> &#10227; </button>
-            <div style="float: right;">
+            <div style="float: right;">   
                 <label class="regular h1"> Frame </label>
                 <input class="regular h2" style="width: 3.5em;" type="number" id="frameNumber">
             </div>
             <hr>
-            <table class="regular hidden" cellpadding="20">
+            <table class="regular" cellpadding="20">
                 <tr>
                 <td style="width: auto;">
                         <div style="float: left;"> <label class="semiBold"> Fill Opacity: </label> </div>

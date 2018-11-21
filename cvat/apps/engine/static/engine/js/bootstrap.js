@@ -35,6 +35,7 @@ window.onload = function() {
         isAdminFlag = response.isAdmin;
         if(isAdminFlag){
             setKeyFlag = true;
+            console.log(window.location.href)
             id = window.location.href.match('id=[0-9]+')[0].slice(3);
             callAnnotationUI(id,setKeyMode=setKeyFlag);
         }

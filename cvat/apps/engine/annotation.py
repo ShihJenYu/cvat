@@ -66,13 +66,12 @@ def check(tid):
     return response
 
 @transaction.atomic
-def get(jid,requestUser=None):
+def get(jid,requestUser=None,frame=None):
     """
     Get annotations for the job.
     """
     #requestUser.groups.filter(name='annotator').exists()
     db_job = models.Job.objects.select_for_update().get(id=jid)
-    frame = None
     new_jid = jid # use taskid
     if requestUser.groups.filter(name='annotator').exists():
         user_record = None
@@ -156,6 +155,8 @@ def get(jid,requestUser=None):
                 user_record = None
                 print("error is !!!!",str(e))
                 print ("no user's current or empty can set current!!")
+        
+        print(user_record)
 
         if user_record:
             print ("have current")
@@ -165,7 +166,13 @@ def get(jid,requestUser=None):
 
 
     annotation = _AnnotationForJob(db_job)
-    annotation.init_from_db(frame=frame)
+    if requestUser.groups.filter(name='annotator').exists():
+        annotation.init_from_db(frame=frame)
+    elif requestUser.groups.filter(name='admin').exists():
+        if frame:
+            annotation.init_from_db(frame=frame)
+        else:
+            annotation.init_from_db(frame=0)
 
     return annotation.to_client(),frame,new_jid
 

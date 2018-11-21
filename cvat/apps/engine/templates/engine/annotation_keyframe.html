@@ -60,6 +60,9 @@
 
 
 {% block content %}
+<div style="margin-bottom: 5px;text-align:center;">
+    <label id="task_name" class="regular h1" style="text-align:center;">Default</label>
+    <select name="keyframes" id="select_keyframes" size="1" style="position:absolute; text-align:center;"></select> </div>
 <div id="taskAnnotationCenterPanel">
     <div id="player">
         <div id="playerFrame">
@@ -93,6 +96,7 @@
         <div id="playerPanel">
             <!-- add by jeff -->
             <div>
+
                 <input type="checkbox" id="isKeyFrame" value="isKeyFrame" />
                 <label class="regular h1" id="isKeyFrame_text" for="isKeyFrame">isKeyFrame</label>
             
@@ -104,6 +108,7 @@
                 <label class="regular h1" id="isRedo_text" for="isRedo">isRedo : comment &gt; </label>
                 <input type="text" id="redoComment" value="" placeholder="input your comment ...">
                 <input type="button" id="saveRedoComment" value="save comment"/>
+
             </div>
 
             <svg id="firstButton" class="playerButton">
@@ -139,7 +144,7 @@
             </svg>
             <input type = "range" id = "playerProgress"/>
         </div>  <!-- END of PLAYER PANEL -->
-        <div style="margin-top: 20px">
+        <div style="margin-top: 30px">
             <button id="menuButton" class="regular h1"> Open Menu </button>
             <label class="regular h1" style="margin-left: 50px"> Filter: </label>
             <input type="text" id="filterInputString" class="regular h2"/>
@@ -152,10 +157,14 @@
             <button class="regular h1" id="redoButton" disabled> &#10227; </button>
             <div style="float: right;">
                 <label class="regular h1"> Frame </label>
-                <input class="regular h2" style="width: 3.5em;" type="number" id="frameNumber">
+                <input class="regular h2" style="width: 3.5em;" type="number" id="frameNumber_show", value="1">
+                <input class="regular h2" style="display: none; width: 3.5em;" type="number" id="frameNumber">
             </div>
             <hr>
-            <table class="regular hidden" cellpadding="20">
+            <div>
+                <select name="keyframes" id="select_keyframes" size="1" style="position: absolute;"></select>
+            </div>
+            <table class="regular" cellpadding="20">
                 <tr>
                 <td style="width: auto;">
                         <div style="float: left;"> <label class="semiBold"> Fill Opacity: </label> </div>
@@ -426,4 +435,9 @@
         </div>
     </div>
 </div>
+
+<!-- Hide for bug, add by ericlou-->
+<svg id="nextButton_training" class="playerButton_training disabledPlayerButton">
+        <polygon points="0,0"/>
+</svg>
 {% endblock %}

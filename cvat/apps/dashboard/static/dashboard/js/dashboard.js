@@ -64,6 +64,7 @@ document.addEventListener("DOMContentLoaded", buildDashboard);
 
 function buildDashboard() {
     /* Setup static content */
+    console.log('ttttttttttttttttttttttttttttttttt')
     setupTaskCreator();
     setupTaskUpdater();
     setupSearch();
@@ -127,6 +128,8 @@ function setupTaskCreator() {
     let overlapSize = 0;
     let compressQuality = 50;
     let files = [];
+
+    console.log("GGGGGGGGGGGGGGGGGGGGGG Create")
 
     dashboardCreateTaskButton.on('click', function() {
         $('#dashboardCreateModal').removeClass('hidden');

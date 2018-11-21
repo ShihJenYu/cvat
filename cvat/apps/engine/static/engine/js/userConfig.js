@@ -195,13 +195,13 @@ class Config {
             },
 
             prev_filter_frame: {
-                value: 'left',
+                value: 'pageup',
                 view_value: 'Left Arrow',
                 description: 'move to prev frame which satisfies the filter'
             },
 
             next_filter_frame: {
-                value: 'right',
+                value: 'pagedown',
                 view_value: 'Right Arrow',
                 description: 'move to next frame which satisfies the filter'
             },

@@ -27,9 +27,11 @@ urlpatterns = [
     # add by jeff
     path('set/current/job/<int:jid>', views.set_user_currnet),
     path('get/isAdmin', views.get_isAdmin),
+    path('get/task/<str:tid>/keyframes', views.get_keyFrames),
     path('set/task/<str:tid>/frame/<int:frame>/isKeyFrame/<int:flag>', views.set_frame_isKeyFrame),
     path('get/task/<str:tid>/frame/<int:frame>/isKeyFrame', views.get_frame_isKeyFrame),
     path('get/task/<str:tid>/frame/<int:frame>/keyframeStage', views.get_keyFrame_stage),
+    path('get/annotation/job/<int:jid>/frame/<int:frame>', views.get_annotation_frame),
 
     path('set/task/<str:tid>/frame/<int:frame>/isComplete/<int:flag>', views.set_frame_isComplete),
     path('set/task/<str:tid>/frame/<int:frame>/isRedo/<int:flag>', views.set_frame_isRedo),
@@ -39,4 +41,5 @@ urlpatterns = [
     path('set/task/<int:tid>/nickname/<str:nickname>', views.set_task_nickname),
 
     path('get/fcw/job', views.get_FCW_Job),
+    path('get/fcw/job/name/<int:jid>', views.get_FCW_Job_Name),
 ]

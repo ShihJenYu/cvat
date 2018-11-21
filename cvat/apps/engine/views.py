@@ -62,12 +62,10 @@ def dispatch_request(request):
         else:
             return redirect('/dashboard/')
     else:
-        if request.method == 'GET' and 'id' in request.GET:
-            return render(request, 'engine/annotation_training.html', {
-                'js_3rdparty': JS_3RDPARTY.get('engine', [])
-            })
-        else:
-            return redirect('/fcw')
+        return render(request, 'engine/annotation_training.html', {
+            'js_3rdparty': JS_3RDPARTY.get('engine', [])
+        })
+ 
     # else:
     #     return redirect('/dashboard/')
 @login_required
@@ -113,15 +111,17 @@ def create_task(request):
                 for share_path in data_list:
                     if share_path.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp')):
                         share_path = share_path.rsplit('/')[0] + '/'
-                        print("share_path:",share_path)
+                        # print("share_path:",share_path)
                     if (not share_path in tmp) and (not share_path in projects) and (share_path != '/'):
                         tmp.append(share_path)
 
-            print("\n\n\n\n\ntmp:{}\n\n\n\n\n".format(tmp))
+            # print("\n\n\n\n\ntmp:{}\n\n\n\n\n".format(tmp))
 
             for share_path in tmp:
                 params['task_name'] = os.path.split(share_path.rstrip('/'))[-1]
+
                 db_task = task.create_empty(params)
+                ###########################################
                 target_paths = []
                 source_paths = []
                 upload_dir = db_task.get_upload_dirname()
@@ -134,9 +134,9 @@ def create_task(request):
                 if os.path.commonprefix([share_root, abspath]) != share_root:
                     raise Exception('Bad file path on share: ' + abspath)
                 source_paths.append(abspath)
-                print("------------source_paths; ",abspath,"------------\n\n\n\n")
+                # print("------------source_paths; ",abspath,"------------\n\n\n\n")
                 target_paths.append(os.path.join(upload_dir, relpath))
-                print("------------target_paths; ",os.path.join(upload_dir, relpath),"------------\n\n\n\n")
+                # print("------------target_paths; ",os.path.join(upload_dir, relpath),"------------\n\n\n\n")
                 
                 params['SOURCE_PATHS'] = source_paths
                 params['TARGET_PATHS'] = target_paths
@@ -325,6 +325,21 @@ def get_annotation(request, jid):
     return JsonResponse(response, safe=False)
 
 @login_required
+@gzip_page
+@permission_required(perm=['engine.view_task', 'engine.view_annotation'], raise_exception=True)
+def get_annotation_frame(request, jid, frame):
+    try:
+        job_logger[jid].info("get annotation for {} job".format(jid))
+        #change by jeff
+        response = annotation.get(jid, requestUser=request.user,frame=frame)
+        
+    except Exception as e:
+        job_logger[jid].error("cannot get annotation for job {}".format(jid), exc_info=True)
+        return HttpResponseBadRequest(str(e))
+
+    return JsonResponse(response, safe=False)
+
+@login_required
 @permission_required(perm=['engine.view_task', 'engine.change_annotation'], raise_exception=True)
 def save_annotation_for_job(request, jid):
     try:
@@ -338,7 +353,7 @@ def save_annotation_for_job(request, jid):
 
                 with transaction.atomic():
                     user_record = models.TaskFrameUserRecord.objects.select_for_update().get(user=request.user.username,current=True)
-                    print ("user: {} find current {}".format(request.user.username,user_record.frame))
+                    # print ("user: {} find current {}".format(request.user.username,user_record.frame))
                     if user_record.need_modify:
                         user_record.userModifySave_date = timezone.now()
                     else:
@@ -557,15 +572,20 @@ def set_frame_isKeyFrame(request, tid, frame, flag):
             except ObjectDoesNotExist:
                 print("tid:{} frame:{} is delete".format(tid,frame))
 
-        response = {'frame': frame,'add_del':flag}
-        return JsonResponse(response, safe=False)
+        qs = models.TaskFrameUserRecord.objects.select_for_update().filter(task_id=tid)
+        frames = qs.values_list('frame', flat=True)
+        print(list(frames))
+        return JsonResponse({'frames': list(frames)}, safe=False)
+
+        # response = {'frame': frame,'add_del':flag}
+        # return JsonResponse(response, safe=False)
     except Exception as e:
         print("error is !!!!",str(e))
         return HttpResponseBadRequest(str(e))
 
 @login_required
 @transaction.atomic
-@permission_required('engine.add_task', raise_exception=True)
+@permission_required('engine.view_task', raise_exception=True)
 def get_frame_isKeyFrame(request, tid, frame):
     try: 
         response = None
@@ -583,7 +603,7 @@ def get_frame_isKeyFrame(request, tid, frame):
 
 @login_required
 @transaction.atomic
-@permission_required('engine.add_task', raise_exception=True)
+@permission_required('engine.view_task', raise_exception=True)
 def get_keyFrame_stage(request, tid, frame):
     try:
         keyframe = models.TaskFrameUserRecord.objects.select_for_update().get(task_id=tid,frame=frame)
@@ -711,14 +731,11 @@ def set_tasks_priority(request):
     try:
         db_task = None
         params = request.POST.dict()
-        print("ssssss",params,type(params))
-        print ("fffffff,,,",params['priority'],',,,',params['selectTasks'])
         priority = params['priority']
 
         if(params['selectTasks'] != ''):
             tasks = params['selectTasks'].split(',')
             for tid in tasks:
-                print('fffffff',tid)
                 db_fcwTrain = models.FCWTrain.objects.select_for_update().get(task_id=int(tid))
                 db_fcwTrain.priority = priority
                 db_fcwTrain.save()
@@ -772,6 +789,30 @@ def get_FCW_Job(request):
             raise Exception('no priority > 0!') 
         
         return JsonResponse(response, safe=False)
+    except Exception as e:
+        print("error is !!!!",str(e))
+        return HttpResponseBadRequest(str(e))
+
+@login_required
+def get_FCW_Job_Name(request, tid):
+    try: 
+        db_task = models.Task.objects.get(pk=tid)
+        if db_task:
+            return JsonResponse({'task_name':db_task.name}, safe=False)
+    except Exception as e:
+        print("error is !!!!",str(e))
+        return JsonResponse({'task_name':"Error"}, safe=False)
+
+@login_required
+@transaction.atomic
+@permission_required('engine.view_task', raise_exception=True)
+def get_keyFrames(request, tid):
+    try:
+        
+        qs = models.TaskFrameUserRecord.objects.select_for_update().filter(task_id=tid)
+        frames = qs.values_list('frame', flat=True)
+        print(list(frames))
+        return JsonResponse({'frames': list(frames)}, safe=False)
     except Exception as e:
         print("error is !!!!",str(e))
         return HttpResponseBadRequest(str(e))
