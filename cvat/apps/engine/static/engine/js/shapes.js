@@ -40,6 +40,65 @@ class ShapeModel extends Listener {
         this._updateReason = null;
         this._importAttributes(data.attributes, positions);
     }
+    //add by jeff
+    mapColor(type_value){
+        let value = type_value.toLowerCase();
+        if(value.includes("car")){
+            this._color = {shape: "#1442ad",ui: "#1442ad"};
+        }
+        else if(value.includes("van")){
+            this._color = {shape: "#14ad78",ui: "#14ad78"};
+        }
+        else if(value.includes("motorbike")){
+            this._color = {shape: "#a41ea4",ui: "#a41ea4"};
+        }
+        else if(value.includes("bike")){
+            this._color = {shape: "#e77408",ui: "#e77408"};
+        }
+        else if(value.includes("truck")){
+            this._color = {shape: "#209211",ui: "#209211"};
+        }
+        else if(value.includes("bus")){
+            this._color = {shape: "#926511",ui: "#926511"};
+        }
+        else if(value.includes("代步車")){
+            this._color = {shape: "#7f0fff",ui: "#7f0fff"};
+        }
+        else if(value.includes("工程車")){
+            this._color = {shape: "#009ff5",ui: "#009ff5"};
+        }
+        else if(value.includes("無殼三輪車")){
+            this._color = {shape: "#e713d5",ui: "#e713d5"};
+        }
+        else if(value.includes("有殼三輪車")){
+            this._color = {shape: "#8ab427",ui: "#8ab427"};
+        }
+        else if(value.includes("無人機車群")){
+            this._color = {shape: "#a0a800",ui: "#a0a800"};
+        }
+        else if(value.includes("腳踏車群")){
+            this._color = {shape: "#00d676",ui: "#00d676"};
+        }
+        else if(value.includes("misc")){
+            this._color = {shape: "#ff38ca",ui: "#ff38ca"};
+        }
+        else if(value.includes("background")){
+            this._color = {shape: "#fbddac",ui: "#fbddac"};
+        }
+        else if(value.includes("tram")){
+            this._color = {shape: "#c1fbac",ui: "#c1fbac"};
+        }
+        else if(value.includes("crowd")){
+            this._color = {shape: "#f9c8c8",ui: "#f9c8c8"};
+        }
+        else if(["pedestrian_行人(直立)","personsitting_行人(非直立)"].includes(value)){
+            this._color = {shape: "#a01313",ui: "#a01313"};
+        }
+        else {
+            console.log("error but set default with car");
+            this._color = {shape: "#1442ad",ui: "#1442ad"};
+        }
+    }
 
     _importAttributes(attributes, positions) {
         let converted = {};
@@ -68,6 +127,10 @@ class ShapeModel extends Listener {
 
         for (let attrId in attributes) {
             let attrInfo = labelsInfo.attrInfo(attrId);
+            if(attrInfo.name=="Type") {
+                console.log(attributes[attrId]);
+                this.mapColor(attributes[attrId]);
+            }
             if (attrInfo.mutable) {
                 this._attributes.mutable[this._frame][attrId] = labelsInfo.strToValues(attrInfo.type, attributes[attrId])[0];
             }
@@ -527,7 +590,6 @@ class ShapeModel extends Listener {
     }
 
     set active(value) {
-        console.log("in set active(value)");
         this._active = value;
         if (!this._removed) {
             this._updateReason = 'activation';
@@ -1305,6 +1367,12 @@ class ShapeController {
         if($('#nextButtonFlag').length) $('#nextButtonFlag').prop('checked',false);
         if($('#nextButton_training').length) $('#nextButton_training')[0].setAttribute("class","playerButton_training");
         this._model.updateAttribute(frame, attrId, value);
+        
+    }
+    //add by jeff change color
+    changeColor(color){
+        trainigsaveFlag = false;
+        this._model.changeColor(color);
     }
 
     interpolate(frame) {
@@ -2436,6 +2504,65 @@ class ShapeView extends Listener {
                 break;
             default:
                 this._uis.attributes[attrId].onchange = function(e) {
+                    //add by jeff
+                    if(attrInfo.name == "Type") {
+                        let value = e.target.value.toLowerCase();
+                        if(value.includes("car")){
+                            this._controller.changeColor({shape: "#1442ad",ui: "#1442ad"});
+                        }
+                        else if(value.includes("van")){
+                            this._controller.changeColor({shape: "#14ad78",ui: "#14ad78"});
+                        }
+                        else if(value.includes("motorbike")){
+                            this._controller.changeColor({shape: "#a41ea4",ui: "#a41ea4"});
+                        }
+                        else if(value.includes("bike")){
+                            this._controller.changeColor({shape: "#e77408",ui: "#e77408"});
+                        }
+                        else if(value.includes("truck")){
+                            this._controller.changeColor({shape: "#209211",ui: "#209211"});
+                        }
+                        else if(value.includes("bus")){
+                            this._controller.changeColor({shape: "#926511",ui: "#926511"});
+                        }
+                        else if(value.includes("代步車")){
+                            this._controller.changeColor({shape: "#7f0fff",ui: "#7f0fff"});
+                        }
+                        else if(value.includes("工程車")){
+                            this._controller.changeColor({shape: "#009ff5",ui: "#009ff5"});
+                        }
+                        else if(value.includes("無殼三輪車")){
+                            this._controller.changeColor({shape: "#e713d5",ui: "#e713d5"});
+                        }
+                        else if(value.includes("有殼三輪車")){
+                            this._controller.changeColor({shape: "#8ab427",ui: "#8ab427"});
+                        }
+                        else if(value.includes("無人機車群")){
+                            this._controller.changeColor({shape: "#a0a800",ui: "#a0a800"});
+                        }
+                        else if(value.includes("腳踏車群")){
+                            this._controller.changeColor({shape: "#00d676",ui: "#00d676"});
+                        }
+                        else if(value.includes("misc")){
+                            this._controller.changeColor({shape: "#ff38ca",ui: "#ff38ca"});
+                        }
+                        else if(value.includes("background")){
+                            this._controller.changeColor({shape: "#fbddac",ui: "#fbddac"});
+                        }
+                        else if(value.includes("tram")){
+                            this._controller.changeColor({shape: "#c1fbac",ui: "#c1fbac"});
+                        }
+                        else if(value.includes("crowd")){
+                            this._controller.changeColor({shape: "#f9c8c8",ui: "#f9c8c8"});
+                        }
+                        else if(["pedestrian_行人(直立)","personsitting_行人(非直立)"].includes(value)){
+                            this._controller.changeColor({shape: "#a01313",ui: "#a01313"});
+                        }
+                        else {
+                            console.log("error but set default with car");
+                            this._controller.changeColor({shape: "#1442ad",ui: "#1442ad"});
+                        }
+                    }
                     this._controller.updateAttribute(window.cvat.player.frames.current, attrId, e.target.value);
                 }.bind(this);
             }

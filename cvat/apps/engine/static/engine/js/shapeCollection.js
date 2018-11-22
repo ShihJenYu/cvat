@@ -352,7 +352,8 @@ class ShapeCollectionModel extends Listener {
     }
 
     add(data, type) {
-        let model = buildShapeModel(data, type, this._nextIdx(), this.nextColor());
+        let model = buildShapeModel(data, type, this._nextIdx(), {shape: "#1442ad",ui: "#1442ad"}); // default car color
+        //let model = buildShapeModel(data, type, this._nextIdx(), this.nextColor());
         if (type.startsWith('interpolation')) {
             this._interpolationShapes.push(model);
         }
@@ -737,15 +738,18 @@ class ShapeCollectionModel extends Listener {
         currentId = shapeModelTmp.indexOf(this._activeShape);
         this.resetActive();
 
-        if (currentId == -1) currentId = 0;
-
-        if (direction == 1) {
-            currentId++;
-            if(currentId > shapeModelTmp.length-1) currentId = 0;
+        if (currentId == -1) {
+            currentId = 0;
         }
         else {
-            currentId--;
-            if(currentId < 0) currentId = shapeModelTmp.length-1;
+            if (direction == 1) {
+                currentId++;
+                if(currentId > shapeModelTmp.length-1) currentId = 0;
+            }
+            else {
+                currentId--;
+                if(currentId < 0) currentId = shapeModelTmp.length-1;
+            }
         }
 
         shapeModelTmp[currentId].active = true;
@@ -899,7 +903,8 @@ class ShapeCollectionController {
             });
 
             let changeShapeColorHandler = Logger.shortkeyLogDecorator(function() {
-                this.switchActiveColor();
+                //this.switchActiveColor();
+                console.log("closed switchActiveColor by enter");
             }.bind(this));
 
             //add by jeff
