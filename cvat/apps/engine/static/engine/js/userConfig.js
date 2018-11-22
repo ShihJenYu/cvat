@@ -266,13 +266,25 @@ class Config {
                 description: "move to previous attribute in attribute annotation mode"
             },
 
-            aam_next_shape: {
+            // aam_next_shape: {
+            //     value: "tab",
+            //     view_value: "Tab",
+            //     description: "move to next shape in attribute annotation mode"
+            // },
+
+            // aam_prev_shape: {
+            //     value: "shift+tab",
+            //     view_value: "Shift + Tab",
+            //     description: "move to previous shape in attribute annotation mode"
+            // },
+            //add by jeff
+            my_next_shape: {
                 value: "tab",
                 view_value: "Tab",
                 description: "move to next shape in attribute annotation mode"
             },
 
-            aam_prev_shape: {
+            my_prev_shape: {
                 value: "shift+tab",
                 view_value: "Shift + Tab",
                 description: "move to previous shape in attribute annotation mode"

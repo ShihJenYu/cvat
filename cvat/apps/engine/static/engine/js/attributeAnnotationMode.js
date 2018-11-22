@@ -336,8 +336,8 @@ class AAMController {
             Mousetrap.bind(shortkeys["switch_aam_mode"].value, switchAAMHandler, 'keydown');
             Mousetrap.bind(shortkeys["aam_next_attribute"].value, nextAttributeHandler, 'keydown');
             Mousetrap.bind(shortkeys["aam_prev_attribute"].value, prevAttributeHandler, 'keydown');
-            Mousetrap.bind(shortkeys["aam_next_shape"].value, nextShapeHandler, 'keydown');
-            Mousetrap.bind(shortkeys["aam_prev_shape"].value, prevShapeHandler, 'keydown');
+            // Mousetrap.bind(shortkeys["aam_next_shape"].value, nextShapeHandler, 'keydown');
+            // Mousetrap.bind(shortkeys["aam_prev_shape"].value, prevShapeHandler, 'keydown');
             Mousetrap.bind(shortkeys["select_i_attribute"].value, selectAttributeHandler, 'keydown');
         }
     }

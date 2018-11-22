@@ -1202,6 +1202,7 @@ class PlayerView {
                     resetAdminCheckBox(model.tid, frames.current);
                 else {
                     serverRequest(`get/task/${model.tid}/frame/${frames.current}/keyframeStage`, function(response) {
+                        keyframeStage = response;
                         $('#redoComment_readonly').text(response.comment);
                     });
                 }

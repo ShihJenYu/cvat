@@ -725,6 +725,35 @@ class ShapeCollectionModel extends Listener {
             }
         }
     }
+    //add by jeff
+    moveShape(direction) {
+        useTab = true;
+        let currentId = -1;
+        let shapeModelTmp = [];
+        for (let shape of this._currentShapes) {
+            if (shape.model.removed) continue;
+            shapeModelTmp.push(shape.model);
+        }
+        currentId = shapeModelTmp.indexOf(this._activeShape);
+        this.resetActive();
+
+        if (currentId == -1) currentId = 0;
+
+        if (direction == 1) {
+            currentId++;
+            if(currentId > shapeModelTmp.length-1) currentId = 0;
+        }
+        else {
+            currentId--;
+            if(currentId < 0) currentId = shapeModelTmp.length-1;
+        }
+
+        shapeModelTmp[currentId].active = true;
+        this._activeShape = shapeModelTmp[currentId];
+        this.onShapeUpdate(shapeModelTmp[currentId]);
+
+        console.log(direction,"direction");
+    }
 
 
 
@@ -917,6 +946,18 @@ class ShapeCollectionController {
             // add by jeff
             Mousetrap.bind(shortkeys["detect_point"].value, detectPointHandler.bind(this), 'keydown');
             Mousetrap.bind(shortkeys["remove_detect_point"].value, removedetectPointHandler.bind(this), 'keydown');
+
+            let nextShapeHandler = Logger.shortkeyLogDecorator(function(e) {
+                this._model.moveShape(1);
+                e.preventDefault();
+            }.bind(this));
+
+            let prevShapeHandler = Logger.shortkeyLogDecorator(function(e) {
+                this._model.moveShape(-1);
+                e.preventDefault();
+            }.bind(this));
+            Mousetrap.bind(shortkeys["my_next_shape"].value, nextShapeHandler, 'keydown');
+            Mousetrap.bind(shortkeys["my_prev_shape"].value, prevShapeHandler, 'keydown');
 
             if (window.cvat.job.z_order) {
                 Mousetrap.bind(shortkeys["inc_z"].value, incZHandler.bind(this), 'keydown');

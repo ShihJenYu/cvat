@@ -13,6 +13,8 @@ const POINT_RADIUS = 5;
 const AREA_TRESHOLD = 9;
 const TEXT_MARGIN = 10;
 
+var useTab = false;
+
 /******************************** SHAPE MODELS  ********************************/
 class ShapeModel extends Listener {
     constructor(data, positions, type, id, color) {
@@ -442,6 +444,7 @@ class ShapeModel extends Listener {
     }
 
     select() {
+        console.log("123123132123123132213");
         if (!this._selected) {
             this._selected = true;
             this._updateReason = 'selection';
@@ -524,6 +527,7 @@ class ShapeModel extends Listener {
     }
 
     set active(value) {
+        console.log("in set active(value)");
         this._active = value;
         if (!this._removed) {
             this._updateReason = 'activation';
@@ -1653,6 +1657,12 @@ class ShapeView extends Listener {
 
         if (this._uis.menu) {
             this._uis.menu.addClass('highlightedUI');
+            //add by jeff
+            if(useTab){
+                useTab = false;
+                this._positionateMenus();
+            }
+            
         }
     }
 

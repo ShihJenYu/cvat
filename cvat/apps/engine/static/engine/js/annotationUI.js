@@ -720,6 +720,7 @@ function setupMenu(job, shapeCollectionModel, annotationParser, aamModel, player
             }
         }
         else {
+            console.log("not keyframe, will not save!!!");
             goNext = true;
         }
     });
