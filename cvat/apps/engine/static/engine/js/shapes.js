@@ -13,7 +13,7 @@ const POINT_RADIUS = 5;
 const AREA_TRESHOLD = 9;
 const TEXT_MARGIN = 10;
 
-var useTab = false;
+var menuScroll = false;
 
 /******************************** SHAPE MODELS  ********************************/
 class ShapeModel extends Listener {
@@ -45,7 +45,7 @@ class ShapeModel extends Listener {
     mapColor(type_value){
         let value = type_value.toLowerCase();
         if(value.includes("car")){
-            this._color = {shape: "#1442ad",ui: "#1442ad"};
+            this._color = {shape: "#255f9d",ui: "#255f9d"};
         }
         else if(value.includes("van")){
             this._color = {shape: "#14ad78",ui: "#14ad78"};
@@ -97,7 +97,7 @@ class ShapeModel extends Listener {
         }
         else {
             console.log("error but set default with car");
-            this._color = {shape: "#1442ad",ui: "#1442ad"};
+            this._color = {shape: "#255f9d",ui: "#255f9d"};
         }
     }
 
@@ -1737,8 +1737,8 @@ class ShapeView extends Listener {
         if (this._uis.menu) {
             this._uis.menu.addClass('highlightedUI');
             //add by jeff
-            if(useTab){
-                useTab = false;
+            if(menuScroll){
+                menuScroll = false;
                 this._positionateMenus();
             }
             
@@ -2523,7 +2523,7 @@ class ShapeView extends Listener {
                     if(attrInfo.name == "Type") {
                         let value = e.target.value.toLowerCase();
                         if(value.includes("car")){
-                            this._controller.changeColor({shape: "#1442ad",ui: "#1442ad"});
+                            this._controller.changeColor({shape: "#255f9d",ui: "#255f9d"});
                         }
                         else if(value.includes("van")){
                             this._controller.changeColor({shape: "#14ad78",ui: "#14ad78"});
@@ -2575,7 +2575,7 @@ class ShapeView extends Listener {
                         }
                         else {
                             console.log("error but set default with car");
-                            this._controller.changeColor({shape: "#1442ad",ui: "#1442ad"});
+                            this._controller.changeColor({shape: "#255f9d",ui: "#255f9d"});
                         }
                     }
                     this._controller.updateAttribute(window.cvat.player.frames.current, attrId, e.target.value);

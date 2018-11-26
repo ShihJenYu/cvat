@@ -25,6 +25,8 @@ class ShapeCollectionModel extends Listener {
         this._groupIdx = 0;
         this._frame = null;
         this._activeShape = null;
+        this._activeShape_before_Create = null;
+        this._idx_before_Create = null;
         this._activeAAMShape = null;
         this._lastPos = {
             x: 0,
@@ -113,8 +115,6 @@ class ShapeCollectionModel extends Listener {
     }
 
     _interpolate() {
-
-        console.log("in _interpolate");
         this._clear();
         this._currentShapes = this._computeInterpolation(this._frame);
         for (let shape of this._currentShapes) {
@@ -364,7 +364,8 @@ class ShapeCollectionModel extends Listener {
     }
 
     add(data, type) {
-        let model = buildShapeModel(data, type, this._nextIdx(), {shape: "#1442ad",ui: "#1442ad"}); // default car color
+        menuScroll = true;
+        let model = buildShapeModel(data, type, this._nextIdx(), {shape: "#255f9d",ui: "#255f9d"}); // default car color
         //let model = buildShapeModel(data, type, this._nextIdx(), this.nextColor());
         if (type.startsWith('interpolation')) {
             this._interpolationShapes.push(model);
@@ -383,17 +384,6 @@ class ShapeCollectionModel extends Listener {
             this._groups[groupIdx] = this._groups[groupIdx] || [];
             this._groups[groupIdx].push(model);
         }
-        // console.log("add shape");
-
-        // if (model && model != this._activeShape) {
-        //     if (this._activeShape) {
-        //         this._activeShape.active = false;
-        //         this._activeShape = null;
-        //     }
-        //     this._activeShape = model;
-        //     this._activeShape.active = true;
-        // }
-        // console.log("do selet new shape done");
     }
 
     selectShape(pos, noActivation) {
@@ -470,7 +460,6 @@ class ShapeCollectionModel extends Listener {
 
             // If frame was not changed and collection already interpolated (for example after pause() call)
             if (frame === this._frame && this._currentShapes.length) return;
-            console.log(" onPlayerUpdate(player) ");
             if (this._activeShape) {
                 this._activeShape.active = false;
                 this._activeShape = null;
@@ -491,7 +480,6 @@ class ShapeCollectionModel extends Listener {
     }
 
     onShapeUpdate(model) {
-        console.log("onShapeUpdate(model) {");
         switch (model.updateReason) {
         case 'activeAAM':
             if (model.activeAAM.shape) {
@@ -537,14 +525,18 @@ class ShapeCollectionModel extends Listener {
     }
 
     onShapeCreatorUpdate(shapeCreator) {
-        console.log("nShapeCreatorUpdate(shapeCreator) {");
         if (shapeCreator.createMode) {
+            this._activeShape_before_Create = this._activeShape;
+            this._idx_before_Create = this._idx;
             this.resetActive();
         }
         else {
-            if(this._currentShapes.length > 0) {
+            menuScroll = true;
+            if(this._idx_before_Create != this._idx) {
                 this._currentShapes[this._currentShapes.length-1].model.active = true;
-                this.onShapeUpdate(this.shapes[this.shapes.length-1]);
+            }
+            else if(this._activeShape_before_Create){
+                this._activeShape_before_Create.active = true;
             }
         }
     }
@@ -787,7 +779,7 @@ class ShapeCollectionModel extends Listener {
 
     //add by jeff
     moveShape(direction) {
-        useTab = true;
+        menuScroll = true;
         let currentId = -1;
         let shapeModelTmp = [];
         for (let shape of this._currentShapes) {
@@ -813,9 +805,6 @@ class ShapeCollectionModel extends Listener {
 
         shapeModelTmp[currentId].active = true;
         this._activeShape = shapeModelTmp[currentId];
-        this.onShapeUpdate(shapeModelTmp[currentId]);
-
-        console.log(direction,"direction");
     }
 
 
@@ -1780,7 +1769,6 @@ class ShapeCollectionView {
         //     this._controller._model.import(one_frame_data).updateHash();
         //     this._controller._model.update();
         // }
-        console.log(" onCollectionUpdate(collection) {");
 
         let parents = {
             uis: this._UIContent.parent(),
@@ -1857,7 +1845,6 @@ class ShapeCollectionView {
     }
 
     onPlayerUpdate(player) {
-        console.log("   onPlayerUpdate(player) {");
         if (!player.ready())  this._frameContent.addClass('hidden');
         else this._frameContent.removeClass('hidden');
 
@@ -1883,7 +1870,6 @@ class ShapeCollectionView {
     }
 
     onShapeViewUpdate(view) {
-        console.log("  onShapeViewUpdate(view) {");
         switch (view.updateReason) {
         case 'drag':
             if (view.dragging) {

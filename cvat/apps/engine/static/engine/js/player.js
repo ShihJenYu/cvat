@@ -820,12 +820,6 @@ class PlayerView {
                 });
             }
             else {
-                // $('#isComplete').prop('disabled',true);
-                // $('#isRedo').prop('disabled',true);
-                // $('#redoComment').prop('disabled',true);
-                // $('#saveRedoComment').prop('disabled',true);
-                //resetAdminCheckBox(playerModel.tid, playerModel.frames.current);
-
                 serverRequest(`get/task/${playerModel.tid}/frame/${playerModel.frames.current}/keyframeStage`, function(response) {
                     // console.log("in get keyframe stage",response);
                     if(response.current||response.need_modify||response.annotator!='')
@@ -870,16 +864,6 @@ class PlayerView {
             $('#isComplete').prop('disabled',true);
             let flag = $('#isComplete').prop('checked');
             console.log(flag);
-            // if(flag) {
-            //     $('#isRedo').prop('disabled',true);
-            //     $('#redoComment').prop('disabled',true);
-            //     $('#saveRedoComment').prop('disabled',true);
-            // }
-            // else {
-            //     $('#isRedo').prop('disabled',false);
-            //     $('#redoComment').prop('disabled',false);
-            //     $('#saveRedoComment').prop('disabled',false);
-            // }
             serverRequest(`set/task/${playerModel.tid}/frame/${playerModel.frames.current}/isComplete/${+flag}`, function(response) {
                 console.log(response);
                 resetAdminCheckBox(playerModel.tid, playerModel.frames.current);
@@ -986,11 +970,21 @@ class PlayerView {
                         keys: ['enter'],
                         action: function(){
                             console.log('cancel');
+                            $('#saveButton').click();
+                            goNextRandom = false;
+                            function checkFlag() {
+                                if(goNextRandom == false) {
+                                    console.log("QQ");
+                                    window.setTimeout(checkFlag, 100); /* this checks the flag every 100 milliseconds*/
+                                } else {
+                                    goNextRandom = false;
+                                }
+                            }
+                            checkFlag();
                         }
                     }
                 }
             });
-            console.log("dddddddddddddddddddd");
             // if($('#nextButtonFlag').is(':checked')) {
             //     $('#nextButtonFlag').prop('checked',false);
             //     $('#nextButton_training')[0].setAttribute("class","playerButton_training disabledPlayerButton");
@@ -1243,7 +1237,7 @@ function resetAdminCheckBox(tid,frame){
         $('#redoComment').prop('value',keyframeStage.comment);
 
         if(keyframeStage.annotator == '') {
-            console.log("keyframeStage.annotator == ''");
+            // console.log("keyframeStage.annotator == ''");
             $('#isKeyFrame').prop('disabled',false);
             $('#isComplete').prop('disabled',true);
             $('#isComplete_text').prop('disabled',true);
@@ -1263,7 +1257,7 @@ function resetAdminCheckBox(tid,frame){
             $('#saveRedoComment').prop('disabled',false);
         }
         else if(keyframeStage.checked) {
-            console.log("keyframeStage.checked");
+            // console.log("keyframeStage.checked");
             $('#isKeyFrame').prop('disabled',false);
             $('#isComplete').prop('disabled',false);
             $('#isComplete_text').prop('disabled',false);
