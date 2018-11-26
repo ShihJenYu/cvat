@@ -60,7 +60,7 @@ class FrameProvider extends Listener {
         let last = Math.min(this._stop, frame + Math.ceil(this._MAX_LOAD / 2));
         if (!(last in this._frameCollection)) {
             // modify by Eric, original idx = frame + 1
-            for (let idx = frame; idx <= last; idx ++) {
+            for (let idx = frame + 1; idx <= last; idx ++) {
                 if (!(idx in this._frameCollection)) {
                     this._loadCounter = this._MAX_LOAD - (idx - frame);
                     this._stack.push(idx);
@@ -969,6 +969,7 @@ class PlayerView {
                         action: function(){
                             console.log('confirm');
                             $('#saveButton').click();
+                            goNextRandom = false;
                             function checkFlag() {
                                 if(goNextRandom == false) {
                                     console.log("QQ");

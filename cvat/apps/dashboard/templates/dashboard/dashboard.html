@@ -44,7 +44,14 @@
         <center>
             <table style="width: 65%;">
                 <tr>
-                    <td><button id="dashboardCreateTaskButton" class="regular h1"> Create New Task </button></td>
+                    <td><button id="dashboardCreateTaskButton" class="regular h1"> Create New Task </button>
+                        <!-- add by eric -->
+                        <button id="dashboardUploadKeyframeButton" class="regular h1"> Upload Keyframe </button>
+                        <input id="dashboardlocalKeyframeUploader" type="file" style="display: none" multiple/>
+                        <label id="dashboardKeyframeUploaderLabel" class="regular h2" style="margin-left: 10px"> No Files </label>
+                        <button id="dashboardSubmitKeyframe" class="regular h2"> Submit </button>
+                        <!--  -->
+                    </td>
                     <td>
                         <div style="width: 300px; float: right;">
                             <input type="text" id="dashboardSearchInput" class="regular h1" placeholder="Search Name.." name="search">

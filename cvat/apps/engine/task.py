@@ -549,12 +549,12 @@ def _find_and_compress_images(upload_dir, output_dir, db_task, compress_quality,
         for idx, name in enumerate(filenames):
             job.meta['status'] = 'Images are being compressed.. {}%'.format(idx * 100 // len(filenames))
             job.save_meta()
-            compressed_name = os.path.splitext(name)[0] + '.bmp'
-            image = Image.open(name).convert('RGB')
-            if flip_flag:
-                image = image.transpose(Image.ROTATE_180)
-            image.save(compressed_name, quality=compress_quality, optimize=True)
-            image.close()
+            compressed_name = os.path.splitext(name)[0] + '.png'
+            # image = Image.open(name).convert('RGB')
+            # if flip_flag:
+            #     image = image.transpose(Image.ROTATE_180)
+            # image.save(compressed_name, quality=compress_quality, optimize=True)
+            # image.close()
             if compressed_name != name:
                os.remove(name)
                 # PIL::save uses filename in order to define image extension.

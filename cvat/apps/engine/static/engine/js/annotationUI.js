@@ -716,11 +716,11 @@ function setupMenu(job, shapeCollectionModel, annotationParser, aamModel, player
             else {
                 trainigsaveFlag = true;
                 goNext = true;
+                goNextRandom = true;
                 saveAnnotation(shapeCollectionModel, job);
             }
         }
         else {
-            console.log("not keyframe, will not save!!!");
             goNext = true;
         }
     });

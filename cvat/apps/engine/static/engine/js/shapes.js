@@ -36,6 +36,7 @@ class ShapeModel extends Listener {
         this._activeAAMAttributeId = null;
         this._merge = false;
         this._hiddenShape = false;
+        // modify by eric, to change hiddentext state
         this._hiddenText = true;
         this._updateReason = null;
         this._importAttributes(data.attributes, positions);
@@ -372,19 +373,28 @@ class ShapeModel extends Listener {
         this.notify();
     }
 
+    // modify by eric
     switchHide() {
-        if (!this._hiddenText) {
-            this._hiddenText = true;
-            this._hiddenShape = false;
-        }
-        else if (this._hiddenText && !this._hiddenShape) {
+        // if (!this._hiddenText) {
+        //     this._hiddenText = true;
+        //     this._hiddenShape = false;
+        // }
+        // else if (this._hiddenText && !this._hiddenShape) {
+        //     this._hiddenShape = true;
+        //     this._hiddenText = true;
+        // }
+        // else if (this._hiddenText && this._hiddenShape) {
+        //     this._hiddenShape = false;
+        //     this._hiddenText = false;
+        // }
+
+        if (!this._hiddenShape) {
             this._hiddenShape = true;
-            this._hiddenText = true;
-        }
-        else if (this._hiddenText && this._hiddenShape) {
+        } else if (this._hiddenShape) {
             this._hiddenShape = false;
-            this._hiddenText = false;
         }
+
+        console.log("HIDDEN")
 
         this._updateReason = 'hidden';
         this.notify();
@@ -507,7 +517,6 @@ class ShapeModel extends Listener {
     }
 
     select() {
-        console.log("123123132123123132213");
         if (!this._selected) {
             this._selected = true;
             this._updateReason = 'selection';
@@ -1591,7 +1600,8 @@ class ShapeView extends Listener {
                     events.drag = null;
                     this._flags.dragging = false;
                     // modify by Eric
-                    // this._showShapeText();
+                    // this._removeShapeText();
+                    this._showShapeText();
                     // console.log("no show text");
                     this.notify();
                 });
@@ -1624,7 +1634,8 @@ class ShapeView extends Listener {
                     events.resize = null;
                     this._flags.resizing = false;
                     // modify by Eric
-                    // this._showShapeText();
+                    // this._removeShapeText();
+                    this._showShapeText();
                     // console.log("no show text");
                     this.notify();
                 });
@@ -1807,8 +1818,11 @@ class ShapeView extends Listener {
     }
 
 
-    _drawShapeText(attributes) {
-        this._removeShapeText();
+    _drawShapeText() {
+
+        // modify by eric
+
+        // this._removeShapeText();
         if (this._uis.shape) {
             let id = this._controller.id;
             let label = ShapeView.labels()[this._controller.label];
@@ -1816,13 +1830,14 @@ class ShapeView extends Listener {
             let x = bbox.x + bbox.width + TEXT_MARGIN;
 
             this._uis.text = this._scenes.svg.text((add) => {
-                add.tspan(`${label.normalize()} ${id}`).addClass('bold');
-                for (let attrId in attributes) {
-                    let value = attributes[attrId].value != AAMUndefinedKeyword ?
-                        attributes[attrId].value : '';
-                    let name = attributes[attrId].name;
-                    add.tspan(`${name}: ${value}`).attr({ dy: '1em', x: x, attrId: attrId});
-                }
+                // add.tspan(`${label.normalize()} ${id}`).addClass('bold');
+                add.tspan(`${id}`).addClass('bold');
+                // for (let attrId in attributes) {
+                //     let value = attributes[attrId].value != AAMUndefinedKeyword ?
+                //         attributes[attrId].value : '';
+                //     let name = attributes[attrId].name;
+                //     add.tspan(`${name}: ${value}`).attr({ dy: '1em', x: x, attrId: attrId});
+                // }
             }).move(x, bbox.y).addClass('shapeText regular');
         }
     }
@@ -2595,7 +2610,8 @@ class ShapeView extends Listener {
                 this._setupMergeView(this._controller.merge);
                 if (!this._controller.hiddenText) {
                     // modify by Eric
-                    // this._showShapeText();
+                    // this._removeShapeText();
+                    this._showShapeText();
                     // console.log("no show text");
                 }
             }
@@ -2782,26 +2798,38 @@ class ShapeView extends Listener {
 
         if (model.active || !hiddenText) {
             // modify by Eric
-            // this._showShapeText();
+            // this._removeShapeText();
+            this._showShapeText();
             // console.log("no show text");
         }
 
         function setupHidden(hiddenShape, hiddenText, activeAAM, active, interpolation, id) {
-            console.log("ffffffffffffffffffff");
             this._makeNotEditable();
             this._removeShapeUI();
             this._removeShapeText();
+            
+            console.log("setuphidden");
 
-            $('[class*="detectpoint"]').remove();
-            $('.detectpointAim').remove();
+            // modify by Eric
+            var rm_point = "detectpoint";
+            rm_point = rm_point.concat(id);
+            $("."+rm_point).remove();
+    
+            var rm_pointAim = "detectpointAim";
+            rm_pointAim = rm_pointAim.concat(id);
+            $("."+rm_pointAim).remove();
 
+            console.log(hiddenShape, hiddenText, active)
+
+            // if (!hiddenShape || !hiddenText || activeAAM.shape) {
             if (!hiddenShape || activeAAM.shape) {
                 this._drawShapeUI(interpolation, id);
                 this._setupOccludedUI(interpolation.position.occluded);
                 if (!hiddenText || active || activeAAM.shape) {
                     // modify by Eric
-                    // this._showShapeText();
-                    // console.log("no show text");
+                    // this._removeShapeText();
+                    this._showShapeText();
+                    console.log("no show text");
                 }
 
                 if (model.active || activeAAM.shape) {
@@ -2988,8 +3016,6 @@ class BoxView extends ShapeView {
         rm_pointAim = rm_pointAim.concat(id_);
         $("."+rm_pointAim).remove();
 
-        console.log("GGGGGGGGGGGGGGGGGGGTTTTT, outside")
-
         var detectpoints = dectectpoin_value.replace(/"/g, "").split(/[\s,]+/); 
         var xdl=detectpoints[0],ydl=detectpoints[1],xdr=detectpoints[2],ydr=detectpoints[3];
                 
@@ -3018,9 +3044,7 @@ class BoxView extends ShapeView {
             ).addClass(rm_pointAim);
 
         }
-        
-        // console.log($('[class*="detectpoint"]'), "AAAAAAAAAAAA");
-        // console.log("DARWDARWDARWDARWDARWDARWDARWDARW")
+
         this._uis.shape = this._scenes.svg.rect().size(width, height).attr({
             'fill': this._appearance.fill || this._appearance.colors.shape,
             'stroke': this._appearance.stroke || this._appearance.colors.shape,

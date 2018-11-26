@@ -87,6 +87,9 @@ function buildDashboard() {
 
 function setupTaskCreator() {
     let dashboardCreateTaskButton = $('#dashboardCreateTaskButton');
+    // add by ericlou
+    let dashboardUploadKeyframeButton = $('#dashboardUploadKeyframeButton');
+    //
     let createModal = $('#dashboardCreateModal');
     let nameInput = $('#dashboardNameInput');
     let labelsInput = $('#dashboardLabelsInput');
@@ -96,6 +99,10 @@ function setupTaskCreator() {
     let selectFiles = $('#dashboardSelectFiles');
     let filesLabel = $('#dashboardFilesLabel');
     let localFileSelector = $('#dashboardLocalFileSelector');
+    // add by ericlou
+    let localKeyframeUploader = $('#dashboardlocalKeyframeUploader');
+    let KeyframeUploaderLabel = $('#dashboardKeyframeUploaderLabel');
+    //
     let shareFileSelector = $('#dashboardShareBrowseModal');
     let shareBrowseTree = $('#dashboardShareBrowser');
     let cancelBrowseServer = $('#dashboardCancelBrowseServer');
@@ -113,6 +120,10 @@ function setupTaskCreator() {
     let submitCreate = $('#dashboardSubmitTask');
     let cancelCreate = $('#dashboardCancelTask');
 
+    // add by ericlou
+    let SubmitKeyframe = $('#dashboardSubmitKeyframe');
+    //
+
     //add by jeff
     let seletcAllTask = $('#seletcAllTask');
     let cancelAllTask = $('#cancelAllTask');
@@ -128,8 +139,8 @@ function setupTaskCreator() {
     let overlapSize = 0;
     let compressQuality = 50;
     let files = [];
-
-    console.log("GGGGGGGGGGGGGGGGGGGGGG Create")
+    // add by eric
+    let keyframefiles = [];
 
     dashboardCreateTaskButton.on('click', function() {
         $('#dashboardCreateModal').removeClass('hidden');
@@ -360,7 +371,6 @@ function setupTaskCreator() {
             console.log("taskData",file);
         }
         
-
         submitCreate.prop('disabled', true);
         createTaskRequest(taskData,
             () => {
@@ -413,6 +423,57 @@ function setupTaskCreator() {
     }
 
     cancelCreate.on('click', () => createModal.addClass('hidden'));
+
+    // add by eric
+    dashboardUploadKeyframeButton.on('click', function() {
+        localKeyframeUploader.click();
+    });
+
+    localKeyframeUploader.on('change', function(e) {
+        keyframefiles = e.target.files;
+        console.log(keyframefiles, "GGGGGGGGG");
+        updateKeyframeFiles();
+    });
+
+    function updateKeyframeFiles() {
+        console.log(keyframefiles, "UPUPUPUUPU");
+        switch (keyframefiles.length) {
+        case 0:
+            KeyframeUploaderLabel.text('No Files').css('color', 'black');
+            $('#dashboardSubmitKeyframe').removeClass('hidden');
+            break;
+        case 1:
+            KeyframeUploaderLabel.text(typeof(keyframefiles[0]) == 'string' ? keyframefiles[0] : keyframefiles[0].name).css('color', 'black');
+            $('#dashboardSubmitKeyframe').removeClass('hidden');
+            break;
+        default:
+            KeyframeUploaderLabel.text("cannot upload more than one keyframe list.").css('color', 'black');
+            $('#dashboardSubmitKeyframe').addClass('hidden');
+        }
+    };
+
+    SubmitKeyframe.on('click', function() {
+
+        $.ajax({
+            url: '/update_keyframe',
+            type: 'POST',
+            data: keyframefiles[0],
+            contentType: false,
+            processData: false,
+            success: function(response) {
+                KeyframeUploaderLabel.css('color', 'green');
+                KeyframeUploaderLabel.text("Upload Success.");
+                console.log(response);
+            },
+            error: function(response) {
+                KeyframeUploaderLabel.css('color', 'red');
+                let message = 'Bad task request: ' + response.responseText;
+                KeyframeUploaderLabel.text(message);
+                throw Error(message);
+            }
+        });
+    });
+    // add by eric
 }
 
 
@@ -496,7 +557,7 @@ function setPriorityRequest(selectTasks, priority, successCallback)
         data: priorityData,
         contentType: false,
         processData: false,
-        success: successCallback
+        success: successCallback,
     });
 }
 

@@ -112,7 +112,7 @@
                 </svg>
             </div>
             <div>
-                <label class="regular h2"> 建議：</label>
+                <label class="regular h2"> 建議:</label>
                 <label class="regular h2" id="redoComment_readonly"></label>
             </div>
 
@@ -123,15 +123,15 @@
             <label class="regular h1" style="margin-left: 50px"> Filter: </label>
             <input type="text" id="filterInputString" class="regular h2"/>
             <button id="resetFilterButton" class="regular h1"> Reset </button>
-            <button class="regular h1" id="undoButton" disabled> &#x27F2; </button>
-            <select size="2" class="regular" style="overflow: hidden; width: 15%; top: 0.5em; position: relative;" disabled>
+            <button class="regular h1 hidden" id="undoButton" disabled> &#x27F2; </button>
+            <select size="2" class="regular hidden" style="overflow: hidden; width: 15%; top: 0.5em; position: relative;" disabled>
                 <option id="lastUndoText" title="Undo Action" selected> None </option>
                 <option id="lastRedoText" title="Redo Action"> None </option>
             </select>
-            <button class="regular h1" id="redoButton" disabled> &#10227; </button>
+            <button class="regular h1 hidden" id="redoButton" disabled> &#10227; </button>
             <div style="float: right;">   
-                <label class="regular h1"> Frame </label>
-                <input class="regular h2" style="width: 3.5em;" type="number" id="frameNumber">
+                <label class="regular h1" style="display:none"> Frame </label>
+                <input class="regular h2" style="width: 3.5em; display:none" type="number" id="frameNumber" >
             </div>
             <hr>
             <table class="regular" cellpadding="20">

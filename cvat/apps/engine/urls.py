@@ -42,4 +42,6 @@ urlpatterns = [
 
     path('get/fcw/job', views.get_FCW_Job),
     path('get/fcw/job/name/<int:jid>', views.get_FCW_Job_Name),
+    # add by Eric
+    path('update_keyframe', views.update_keyframe),
 ]

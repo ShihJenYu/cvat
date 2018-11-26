@@ -78,6 +78,79 @@ def dispatch_request2(request):
     # else:
     return redirect('/dashboard/')
 
+# Add by Eric
+@login_required
+@transaction.atomic
+@permission_required('engine.add_task', raise_exception=True)
+def update_keyframe(request):
+    """Upload keyframe"""
+    try:
+
+        dictKeyframe = json.loads(request.body.decode('utf-8'))
+
+        print(dictKeyframe)
+        print(type(dictKeyframe))
+
+        for sVideoDate in dictKeyframe.keys():
+            if type(dictKeyframe[sVideoDate]) == int:
+                
+                db_task = models.Task.objects.select_for_update().get(name=sVideoDate)
+                tid = db_task.id
+                listTaskKeyframeExist = list(models.TaskFrameUserRecord.objects.filter(task_id=tid).values_list('frame', flat=True))
+
+                db_taskFrameUserRecord = models.TaskFrameUserRecord()
+                db_taskFrameUserRecord.task = db_task
+
+                nFrameNumber = dictKeyframe[sVideoDate]
+                nFrameNumber = int(nFrameNumber) - 1
+
+                if nFrameNumber in listTaskKeyframeExist:
+                    print(nFrameNumber, 'Aleady is keyframe')
+                    continue
+                db_taskFrameUserRecord.frame = nFrameNumber
+
+                db_fcwTrain = models.FCWTrain.objects.select_for_update().get(task_id=tid)
+                db_fcwTrain.keyframe_count += 1
+                db_fcwTrain.priority = 0
+
+                db_fcwTrain.save()
+                db_taskFrameUserRecord.save()
+                print("tid:{} frame:{} is add".format(tid,nFrameNumber))
+            else :
+                for nFrameNumber in dictKeyframe[sVideoDate]:
+
+                    db_task = models.Task.objects.select_for_update().get(name=sVideoDate)
+                    tid = db_task.id
+                    listTaskKeyframeExist = list(models.TaskFrameUserRecord.objects.filter(task_id=tid).values_list('frame', flat=True))
+
+                    db_taskFrameUserRecord = models.TaskFrameUserRecord()
+                    db_taskFrameUserRecord.task = db_task
+
+                    nFrameNumber = int(nFrameNumber) - 1
+
+                    if nFrameNumber in listTaskKeyframeExist:
+                        print(nFrameNumber, 'Aleady is keyframe')
+                        continue
+                    db_taskFrameUserRecord.frame = nFrameNumber
+
+                    db_fcwTrain = models.FCWTrain.objects.select_for_update().get(task_id=tid)
+                    db_fcwTrain.keyframe_count += 1
+                    db_fcwTrain.priority = 0
+
+                    db_fcwTrain.save()
+                    db_taskFrameUserRecord.save()
+                    print("tid:{} frame:{} is add".format(tid,nFrameNumber))
+
+        response = {'data':"Success upload Keyframe"}
+        return JsonResponse(response, safe=False)
+ 
+    except Exception as e:
+
+        print("error is !!!!",str(e))
+        return HttpResponseBadRequest(str(e))
+
+
+
 @login_required
 @permission_required('engine.add_task', raise_exception=True)
 def create_task(request):

@@ -7,9 +7,9 @@
 /* exported ShapeCollectionModel ShapeCollectionController ShapeCollectionView */
 "use strict";
 
+var mousedownAtDetectPoint = false;
 var is_one_frame_mode = false;
 var one_frame_data = null;
-
 
 class ShapeCollectionModel extends Listener {
     constructor() {
@@ -113,6 +113,8 @@ class ShapeCollectionModel extends Listener {
     }
 
     _interpolate() {
+
+        console.log("in _interpolate");
         this._clear();
         this._currentShapes = this._computeInterpolation(this._frame);
         for (let shape of this._currentShapes) {
@@ -126,6 +128,16 @@ class ShapeCollectionModel extends Listener {
         }
 
         this._currentShapes = this._filter.filter(this._currentShapes);
+
+        // if(this._currentShapes.length > 0) {
+        //     this._currentShapes[this._currentShapes.length-1].modele.active = true;
+        // }
+
+
+        
+        //this.onShapeUpdate(this._shapeCollection.shapes[this._shapeCollection.shapes.length-1]);
+
+        ///////////
         this.notify();
     }
 
@@ -371,6 +383,17 @@ class ShapeCollectionModel extends Listener {
             this._groups[groupIdx] = this._groups[groupIdx] || [];
             this._groups[groupIdx].push(model);
         }
+        // console.log("add shape");
+
+        // if (model && model != this._activeShape) {
+        //     if (this._activeShape) {
+        //         this._activeShape.active = false;
+        //         this._activeShape = null;
+        //     }
+        //     this._activeShape = model;
+        //     this._activeShape.active = true;
+        // }
+        // console.log("do selet new shape done");
     }
 
     selectShape(pos, noActivation) {
@@ -447,6 +470,7 @@ class ShapeCollectionModel extends Listener {
 
             // If frame was not changed and collection already interpolated (for example after pause() call)
             if (frame === this._frame && this._currentShapes.length) return;
+            console.log(" onPlayerUpdate(player) ");
             if (this._activeShape) {
                 this._activeShape.active = false;
                 this._activeShape = null;
@@ -467,6 +491,7 @@ class ShapeCollectionModel extends Listener {
     }
 
     onShapeUpdate(model) {
+        console.log("onShapeUpdate(model) {");
         switch (model.updateReason) {
         case 'activeAAM':
             if (model.activeAAM.shape) {
@@ -512,8 +537,15 @@ class ShapeCollectionModel extends Listener {
     }
 
     onShapeCreatorUpdate(shapeCreator) {
+        console.log("nShapeCreatorUpdate(shapeCreator) {");
         if (shapeCreator.createMode) {
             this.resetActive();
+        }
+        else {
+            if(this._currentShapes.length > 0) {
+                this._currentShapes[this._currentShapes.length-1].model.active = true;
+                this.onShapeUpdate(this.shapes[this.shapes.length-1]);
+            }
         }
     }
 
@@ -687,45 +719,72 @@ class ShapeCollectionModel extends Listener {
         }
 
         if (!hiddenShape) {
-            // any shape visible
-            for (let shape of shapes) {
-                if (shape.removed) continue;
-                hiddenText = hiddenText && shape.hiddenText;
 
-                if (!hiddenText) {
-                    break;
-                }
-            }
-
-            if (!hiddenText) {
-                // any shape text visible
-                for (let shape of shapes) {
-                    if (shape.removed) continue;
-                    while (shape.hiddenShape || !shape.hiddenText) {
-                        shape.switchHide();
-                    }
-                }
-            }
-            else {
-                // all shape text invisible
-                for (let shape of shapes) {
-                    if (shape.removed) continue;
-                    while (!shape.hiddenShape) {
-                        shape.switchHide();
-                    }
-                }
-            }
-        }
-        else {
             // all shapes invisible
             for (let shape of shapes) {
                 if (shape.removed) continue;
-                while (shape.hiddenShape || shape.hiddenText) {
+                while (!shape.hiddenShape) {
                     shape.switchHide();
                 }
+                console.log("invisile");
             }
+
+        } else{
+
+            // all shapes visible
+            for (let shape of shapes) {
+                if (shape.removed) continue;
+                while (shape.hiddenShape) {
+                    shape.switchHide();
+                }
+                console.log("visible");
+            }
+
         }
+
+
+        // if (!hiddenShape) {
+        //     // any shape visible
+        //     for (let shape of shapes) {
+        //         if (shape.removed) continue;
+        //         hiddenText = hiddenText && shape.hiddenText;
+
+        //         if (!hiddenText) {
+        //             break;
+        //         }
+        //     }
+
+        //     if (!hiddenText) {
+        //         // any shape text visible
+        //         for (let shape of shapes) {
+        //             if (shape.removed) continue;
+        //             while (shape.hiddenShape || !shape.hiddenText) {
+        //                 shape.switchHide();
+        //             }
+        //         }
+        //     }
+        //     else {
+        //         // all shape text invisible
+        //         for (let shape of shapes) {
+        //             if (shape.removed) continue;
+        //             while (!shape.hiddenShape) {
+        //                 shape.switchHide();
+        //             }
+        //         }
+        //     }
+        // }
+        // else {
+        //     // all shapes invisible
+        //     for (let shape of shapes) {
+        //         if (shape.removed) continue;
+        //         while (shape.hiddenShape || shape.hiddenText) {
+        //             shape.switchHide();
+        //         }
+        //     }
+        // }
     }
+
+
     //add by jeff
     moveShape(direction) {
         useTab = true;
@@ -1054,6 +1113,8 @@ class ShapeCollectionController {
     // Modify by eric
     removeDetectPoint() {
 
+        console.log("removeDetectPoint");
+        
         $('.detectpointAim').remove();
         let activeShape = this._model.activeShape;
 
@@ -1064,7 +1125,7 @@ class ShapeCollectionController {
         $("."+rm).remove();
 
         var rm_pointAim = "detectpointAim";
-        rm_pointAim = rm_pointAim.concat(id_);
+        rm_pointAim = rm_pointAim.concat(activeShape._id);
         $("."+rm_pointAim).remove();
 
         if(activeShape) {
@@ -1097,6 +1158,8 @@ class ShapeCollectionController {
 
     // Add by jeff
     setDetectPoint() {
+
+        console.log("setDetectPoint");
 
         $('.detectpointAim').remove();
         let activeShape = this._model.activeShape;
@@ -1177,6 +1240,7 @@ class ShapeCollectionController {
                 }).center(xdl_draw,ydl).addClass(ADD_class).fill('#ffff00').attr({'stroke-width':  STROKE_WIDTH / window.cvat.player.geometry.scale,
             }).on('dragend', function(e){
                 e.preventDefault();
+                mousedownAtDetectPoint = true;
                 var x = (parseFloat(e.target.getAttribute('x'))+parseFloat(scaledR)).toFixed(2);
                 var y = (parseFloat(e.target.getAttribute('y'))+parseFloat(scaledR)).toFixed(2);
                 objs = $("#uiContent .bold label")
@@ -1228,6 +1292,7 @@ class ShapeCollectionController {
                 , snapToGrid: 0.1 
                 }).center(xdr_draw,ydr).addClass(ADD_class).fill('#ffff00').attr({'stroke-width':  STROKE_WIDTH / window.cvat.player.geometry.scale,
             }).on('dragend', function(e){
+                mousedownAtDetectPoint = true;
                 e.preventDefault();
                 var x = (parseFloat(e.target.getAttribute('x'))+parseFloat(scaledR)).toFixed(2);
                 var y = (parseFloat(e.target.getAttribute('y'))+parseFloat(scaledR)).toFixed(2);
@@ -1466,14 +1531,29 @@ class ShapeCollectionView {
             }
         });
 
-        $('#playerFrame').on('mouseleave', () => {
-            if (!window.cvat.mode) {
-                this._controller.resetActive();
-            }
-        });
+        // $('#playerFrame').on('mouseleave', () => {
+        //     if (!window.cvat.mode) {
+        //         this._controller.resetActive();
+        //     }
+        // });
 
         this._frameContent.on('mousemove', function(e) {
             if (e.ctrlKey || e.which === 2 || e.target.classList.contains('svg_select_points')) {
+                return;
+            }
+
+            let pos = translateSVGPos(this._frameContent.node, e.clientX, e.clientY);
+            // if (!window.cvat.mode) {
+            //     this._controller.selectShape(pos, false);
+            // }
+
+            this._controller.setLastPosition(pos);
+        }.bind(this));
+
+        //add by jeff
+        this._frameContent.on('click', function(e) {
+            if (mousedownAtDetectPoint || e.ctrlKey || e.which === 2 || e.target.classList.contains('svg_select_points')) {
+                mousedownAtDetectPoint = false;
                 return;
             }
 
@@ -1613,6 +1693,9 @@ class ShapeCollectionView {
                     }
                 }
 
+                console.log(hiddenShape, "hiddenShape");
+                console.log(hiddenText, "hiddenText")
+
                 if (hiddenShape) {
                     button.removeClass('hiddenText');
                     button.addClass('hiddenShape');
@@ -1697,6 +1780,7 @@ class ShapeCollectionView {
         //     this._controller._model.import(one_frame_data).updateHash();
         //     this._controller._model.update();
         // }
+        console.log(" onCollectionUpdate(collection) {");
 
         let parents = {
             uis: this._UIContent.parent(),
@@ -1762,7 +1846,6 @@ class ShapeCollectionView {
 
         function drawView(shape, model) {
             let view = buildShapeView(model, buildShapeController(model), this._frameContent, this._UIContent);
-            // Modify by Eric
             view.draw(shape.interpolation, model._id);
             view.updateColorSettings(this._colorSettings);
             model.subscribe(view);
@@ -1774,6 +1857,7 @@ class ShapeCollectionView {
     }
 
     onPlayerUpdate(player) {
+        console.log("   onPlayerUpdate(player) {");
         if (!player.ready())  this._frameContent.addClass('hidden');
         else this._frameContent.removeClass('hidden');
 
@@ -1799,6 +1883,7 @@ class ShapeCollectionView {
     }
 
     onShapeViewUpdate(view) {
+        console.log("  onShapeViewUpdate(view) {");
         switch (view.updateReason) {
         case 'drag':
             if (view.dragging) {

@@ -133,19 +133,19 @@ class HistoryController {
         setupCollectionShortcuts.call(this);
 
         function setupCollectionShortcuts() {
-            let undoHandler = Logger.shortkeyLogDecorator(function(e) {
-                this.undo();
-                e.preventDefault();
-            }.bind(this));
+            // let undoHandler = Logger.shortkeyLogDecorator(function(e) {
+            //     this.undo();
+            //     e.preventDefault();
+            // }.bind(this));
 
-            let redoHandler = Logger.shortkeyLogDecorator(function(e) {
-                this.redo();
-                e.preventDefault();
-            }.bind(this));
+            // let redoHandler = Logger.shortkeyLogDecorator(function(e) {
+            //     this.redo();
+            //     e.preventDefault();
+            // }.bind(this));
 
-            let shortkeys = window.cvat.config.shortkeys;
-            Mousetrap.bind(shortkeys["undo"].value, undoHandler.bind(this), 'keydown');
-            Mousetrap.bind(shortkeys["redo"].value, redoHandler.bind(this), 'keydown');
+            // let shortkeys = window.cvat.config.shortkeys;
+            // Mousetrap.bind(shortkeys["undo"].value, undoHandler.bind(this), 'keydown');
+            // Mousetrap.bind(shortkeys["redo"].value, redoHandler.bind(this), 'keydown');
         }
     }
 
@@ -176,11 +176,11 @@ class HistoryView {
         this._redoButton.attr('title', `${shortkeys['redo'].view_value} - ${shortkeys['redo'].description}`);
 
         this._undoButton.on('click', () => {
-            this._controller.undo();
+            //this._controller.undo();
         });
 
         this._redoButton.on('click', () => {
-            this._controller.redo();
+            //this._controller.redo();
         });
 
         model.subscribe(this);
