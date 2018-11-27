@@ -1009,8 +1009,61 @@ class ShapeCollectionController {
                 this._model.moveShape(-1);
                 e.preventDefault();
             }.bind(this));
-            Mousetrap.bind(shortkeys["my_next_shape"].value, nextShapeHandler, 'keydown');
-            Mousetrap.bind(shortkeys["my_prev_shape"].value, prevShapeHandler, 'keydown');
+
+            // add by jeff
+            function shiftShape(direction){
+                console.log("shiftShape",direction);
+                trainigsaveFlag = false;
+                let shape =  $('.shape.selectedShape'); //this._uis.shape.node;//
+                let deltaX = 0;
+                let deltaY = 0;
+                switch(direction){
+                    case 8:deltaX=0;deltaY=-1;break;
+                    case 2:deltaX=0;deltaY=1;break;
+                    case 4:deltaX=-1;deltaY=0;break;
+                    case 6:deltaX=1;deltaY=0;break;
+                }
+                console.log(direction,deltaX,deltaY,"shiftShape");
+                return {
+                    xtl: +shape.attr('x') +deltaX,
+                    ytl: +shape.attr('y') +deltaY,
+                    xbr: +shape.attr('x') + +shape.attr('width') +deltaX,
+                    ybr: +shape.attr('y') + +shape.attr('height') +deltaY,
+                    occluded: shape.hasClass('occludedShape'),
+                    outside: false,    // if drag or resize possible, track is not outside
+                    z_order: +shape.attr('z_order'),
+                };
+            }
+
+            let shiftShapeUp = Logger.shortkeyLogDecorator(function(e) {
+                trainigsaveFlag = false;
+                let frame = window.cvat.player.frames.current;
+                this._model.activeShape.updatePosition(frame,shiftShape(8));
+                e.preventDefault();
+            }.bind(this));
+            let shiftShapeDown = Logger.shortkeyLogDecorator(function(e) {
+                let frame = window.cvat.player.frames.current;
+                this._model.activeShape.updatePosition(frame,shiftShape(2));
+                e.preventDefault();
+            }.bind(this));
+            let shiftShapeLeft = Logger.shortkeyLogDecorator(function(e) {
+                let frame = window.cvat.player.frames.current;
+                this._model.activeShape.updatePosition(frame,shiftShape(4));
+                e.preventDefault();
+            }.bind(this));
+            let shiftSapeRight = Logger.shortkeyLogDecorator(function(e) {
+                let frame = window.cvat.player.frames.current;
+                this._model.activeShape.updatePosition(frame,shiftShape(6));
+                e.preventDefault();
+            }.bind(this));
+
+            Mousetrap.bind(shortkeys["shift_shape_Up"].value, shiftShapeUp.bind(this), 'keydown');
+            Mousetrap.bind(shortkeys["shift_shape_Down"].value, shiftShapeDown.bind(this), 'keydown');
+            Mousetrap.bind(shortkeys["shift_shape_Left"].value, shiftShapeLeft.bind(this), 'keydown');
+            Mousetrap.bind(shortkeys["shift_shape_Right"].value, shiftSapeRight.bind(this), 'keydown');
+
+            Mousetrap.bind(shortkeys["my_next_shape"].value, nextShapeHandler.bind(this), 'keydown');
+            Mousetrap.bind(shortkeys["my_prev_shape"].value, prevShapeHandler.bind(this), 'keydown');
 
             if (window.cvat.job.z_order) {
                 Mousetrap.bind(shortkeys["inc_z"].value, incZHandler.bind(this), 'keydown');

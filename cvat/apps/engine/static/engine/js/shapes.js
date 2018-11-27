@@ -1362,7 +1362,7 @@ class ShapeController {
     constructor(shapeModel) {
         this._model = shapeModel;
     }
-
+    
     // modify by Eric
     updatePosition(frame, position) {
         trainigsaveFlag = false;

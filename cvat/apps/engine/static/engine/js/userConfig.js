@@ -196,13 +196,13 @@ class Config {
 
             prev_filter_frame: {
                 value: 'pageup',
-                view_value: 'Left Arrow',
+                view_value: 'Page Up',
                 description: 'move to prev frame which satisfies the filter'
             },
 
             next_filter_frame: {
                 value: 'pagedown',
-                view_value: 'Right Arrow',
+                view_value: 'Page Down',
                 description: 'move to next frame which satisfies the filter'
             },
 
@@ -255,14 +255,14 @@ class Config {
             },
 
             aam_next_attribute: {
-                value: "down",
-                view_value: "Down Arrow",
+                value: "shift+down",
+                view_value: "Shift + Down Arrow",
                 description: "move to next attribute in attribute annotation mode"
             },
 
             aam_prev_attribute: {
-                value: "up",
-                view_value: "Up Arrow",
+                value: "shift+up",
+                view_value: "Shift + Up Arrow",
                 description: "move to previous attribute in attribute annotation mode"
             },
 
@@ -288,6 +288,30 @@ class Config {
                 value: "shift+tab",
                 view_value: "Shift + Tab",
                 description: "move to previous shape in attribute annotation mode"
+            },
+
+            shift_shape_Up: {
+                value: "up",
+                view_value: "Up Arrow",
+                description: "shift up shape pos"
+            },
+
+            shift_shape_Down: {
+                value: "down",
+                view_value: "Down Arrow",
+                description: "shift down shape pos"
+            },
+
+            shift_shape_Left: {
+                value: "left",
+                view_value: "Left Arrow",
+                description: "shift left shape pos"
+            },
+
+            shift_shape_Right: {
+                value: "right",
+                view_value: "Right Arrow",
+                description: "shift right shape pos"
             },
 
             select_i_attribute: {

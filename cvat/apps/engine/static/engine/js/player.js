@@ -487,17 +487,21 @@ class PlayerController {
 
 
             let nextFilterFrameHandler = Logger.shortkeyLogDecorator(function(e) {
-                let frame = this._find(1);
-                if (frame != null) {
-                    this._model.shift(frame, true);
+                if(isAdminFlag){
+                    let frame = this._find(1);
+                    if (frame != null) {
+                        this._model.shift(frame, true);
+                    }
                 }
                 e.preventDefault();
             }.bind(this));
 
             let prevFilterFrameHandler = Logger.shortkeyLogDecorator(function(e) {
-                let frame = this._find(-1);
-                if (frame != null) {
-                    this._model.shift(frame, true);
+                if(isAdminFlag){
+                    let frame = this._find(-1);
+                    if (frame != null) {
+                        this._model.shift(frame, true);
+                    }
                 }
                 e.preventDefault();
             }.bind(this));
