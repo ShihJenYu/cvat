@@ -13,62 +13,62 @@ class Config {
         this._username = "_default_";
         this._shortkeys = {
             switch_lock_property: {
-                value: "l",
+                value: "alt+l",
                 view_value: "L",
                 description: "switch lock property for active shape"
             },
 
             switch_all_lock_property: {
-                value: "t l",
+                value: "alt+t l",
                 view_value: "T + L",
                 description: "switch lock property for all shapes on current frame"
             },
 
             switch_occluded_property: {
-                value: "q,/".split(','),
+                value: "alt+q,alt+/".split(','),
                 view_value: "Q or Num Devision",
                 description: "switch occluded property for active shape"
             },
 
             switch_draw_mode: {
-                value: "n",
-                view_value: "N",
+                value: "q", //n
+                view_value: "Q",
                 description: "start draw / stop draw"
             },
 
             cancel_draw_mode: {
-                value: "alt+n",
-                view_value: "Alt + N",
+                value: "alt+q",
+                view_value: "Alt + Q",
                 description: "close draw mode without create"
             },
 
             switch_merge_mode: {
-                value: "m",
-                view_value: "M",
+                value: "alt+m",
+                view_value: "alt+M",
                 description: "start merge / apply changes"
             },
 
             cancel_merge_mode: {
-                value: "alt+m",
-                view_value: "Alt + M",
+                value: "shift+alt+m",
+                view_value: "shift + Alt + M",
                 description: "close merge mode without apply the merge"
             },
 
             switch_group_mode: {
-                value: "g",
-                view_value: "G",
+                value: "alt+g",
+                view_value: "alt+G",
                 description: "start group / apply changes"
             },
 
             cancel_group_mode: {
-                value: "alt+g",
-                view_value: "Alt + G",
+                value: "shift+alt+g",
+                view_value: "shift + Alt + G",
                 description: "close group mode without changes"
             },
 
             reset_group: {
-                value: "shift+g",
-                view_value: "Shift + G",
+                value: "ctrl+shift+g",
+                view_value: "ctrl + Shift + G",
                 description: "reset group for selected shapes"
             },
 
@@ -85,28 +85,28 @@ class Config {
             },
 
             change_shape_color: {
-                value: "enter",
-                view_value: "Enter",
+                value: "alt+enter",
+                view_value: "alt + Enter",
                 description: "change color for highligted shape"
             },
 
             // add by jeff
             detect_point: {
-                value: "k",
-                view_value: "K",
+                value: "w",
+                view_value: "W",
                 description: "set detect_point"
             },
 
             // add by Eric
             remove_detect_point: {
-                value: "alt+k",
-                view_value: "Alt + K",
+                value: "alt+w",
+                view_value: "Alt + W",
                 description: "remove detect_point"
             },
 
             change_player_brightness: {
-                value: "shift+b,alt+b".split(','),
-                view_value: "Shift+B / Alt+B",
+                value: "shift+x,ctrl+x".split(','),
+                view_value: "shift+x,ctrl+x",
                 description: "increase/decrease brightness of an image"
             },
 
@@ -123,26 +123,26 @@ class Config {
             },
 
             switch_hide_mode: {
-                value: "h",
-                view_value: "H",
+                value: "r",
+                view_value: "R",
                 description: "switch hide mode for active shape"
             },
 
             switch_active_keyframe: {
-                value: "p",
+                value: "alt+p",
                 view_value: "P",
                 description: "switch keyframe property for active shape"
             },
 
             switch_active_outside: {
-                value: "o",
+                value: "alt+o",
                 view_value: "O",
                 description: "switch outside property for active shape"
             },
 
             switch_all_hide_mode: {
-                value: "t h",
-                view_value: "T + H",
+                value: "shift+r",
+                view_value: "Shift + r",
                 description: "switch hide mode for all shapes"
             },
 
@@ -153,44 +153,44 @@ class Config {
             },
 
             focus_to_frame: {
-                value: '`,~'.split(','),
+                value: 'alt+`,alt+~'.split(','),
                 view_value: '~ / `',
                 description: "focus to 'go to frame' element"
             },
 
             next_frame: {
-                value: "f",
-                view_value: "F",
+                value: "alt+f",
+                view_value: "alt+F",
                 description: "move to next player frame"
             },
 
             prev_frame: {
-                value: "d",
-                view_value: "D",
+                value: "alt+d",
+                view_value: "alt+D",
                 description: "move to previous player frame"
             },
 
             forward_frame: {
-                value: "v",
-                view_value: "V",
+                value: "alt+v",
+                view_value: "alt+V",
                 description: "move forward several frames"
             },
 
             backward_frame: {
-                value: "c",
-                view_value: "C",
+                value: "alt+c",
+                view_value: "alt+C",
                 description: "move backward several frames"
             },
 
             next_key_frame: {
-                value: "r",
-                view_value: "R",
+                value: "alt+r",
+                view_value: "alt+R",
                 description: "move to next key frame of highlighted track"
             },
 
             prev_key_frame: {
-                value: "e",
-                view_value: "E",
+                value: "alt+e",
+                view_value: "alt+E",
                 description: "move to previous key frame of highlighted track"
             },
 
@@ -207,7 +207,7 @@ class Config {
             },
 
             play_pause: {
-                value: "space",
+                value: "alt+space",
                 view_value: "Space",
                 description: "switch play / pause of player"
             },
@@ -237,7 +237,7 @@ class Config {
             },
 
             propagate_shape: {
-                value: "ctrl+b",
+                value: "alt+ctrl+b",
                 view_value: "Ctrl + B",
                 description: "propagate active shape"
             },
@@ -255,14 +255,14 @@ class Config {
             },
 
             aam_next_attribute: {
-                value: "shift+down",
-                view_value: "Shift + Down Arrow",
+                value: "alt+down",
+                view_value: "Down Arrow",
                 description: "move to next attribute in attribute annotation mode"
             },
 
             aam_prev_attribute: {
-                value: "shift+up",
-                view_value: "Shift + Up Arrow",
+                value: "alt+up",
+                view_value: "Up Arrow",
                 description: "move to previous attribute in attribute annotation mode"
             },
 
@@ -333,13 +333,13 @@ class Config {
             },
 
             undo: {
-                value: "ctrl+z",
+                value: "alt+ctrl+z",
                 view_value: "Ctrl + Z",
                 description: "undo"
             },
 
             redo: {
-                value: ['ctrl+shift+z', 'ctrl+y'],
+                value: ['alt+ctrl+shift+z', 'alt+ctrl+y'],
                 view_value: "Ctrl + Shift + Z / Ctrl + Y",
                 description: "redo"
             },

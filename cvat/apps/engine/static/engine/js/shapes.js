@@ -2119,11 +2119,36 @@ class ShapeView extends Listener {
                 block.appendChild(htmlLabel);
 
                 // Make it beaturiful. Group attributes by type:
-                let attrByType = {};
+                // modify by jeff
+                let attrByType = [];
+                let attrTmp = {};
                 for (let attrId in attributes) {
                     let attrInfo = window.cvat.labelsInfo.attrInfo(attrId);
                     attrByType[attrInfo.type] = attrByType[attrInfo.type] || [];
                     attrByType[attrInfo.type].push(attrId);
+                    let attrIndexTmp = 9;
+                    if(attrInfo.name == "Type"){
+                        attrTmp[0]=attrId;
+                    }else if(attrInfo.name == "有開燈"){
+                        attrTmp[1]=attrId;
+                    }else if(attrInfo.name == "障礙物"){
+                        attrTmp[2]=attrId;
+                    }else if(attrInfo.name == "Rotation"){
+                        attrTmp[3]=attrId;
+                    }else if(attrInfo.name == "Truncated"){
+                        attrTmp[4]=attrId;
+                    }else if(attrInfo.name == "Occluded"){
+                        attrTmp[5]=attrId;
+                    }else if(attrInfo.name == "看不見車頭車尾"){
+                        attrTmp[6]=attrId;
+                    }else if(attrInfo.name == "Dont_Care"){
+                        attrTmp[7]=attrId;
+                    }else if(attrInfo.name == "DetectPoints"){
+                        attrTmp[8]=attrId;
+                    }else{
+                        attrIndexTmp += 1;
+                        attrTmp[attrIndexTmp]=attrId;
+                    }
                 }
 
                 let radios = attrByType['radio'] || [];
@@ -2145,9 +2170,10 @@ class ShapeView extends Listener {
                     attributes[attrId_1].normalize().length - attributes[attrId_2].normalize().length
                 );
 
-                for (let attrId of [...radios, ...selects, ...texts, ...numbers, ...checkboxes]) {
-                    let attrInfo = window.cvat.labelsInfo.attrInfo(attrId);
-                    let htmlAttribute = makeAttribute.call(this, attrInfo, attrId, objectId);
+                //for (let attrId of [...radios, ...selects, ...texts, ...numbers, ...checkboxes]) {
+                for (let index in attrTmp) {
+                    let attrInfo = window.cvat.labelsInfo.attrInfo(attrTmp[index]);
+                    let htmlAttribute = makeAttribute.call(this, attrInfo, attrTmp[index], objectId);
                     htmlAttribute.classList.add('uiAttr');
 
                     block.appendChild(htmlAttribute);

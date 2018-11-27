@@ -1036,24 +1036,31 @@ class ShapeCollectionController {
             }
 
             let shiftShapeUp = Logger.shortkeyLogDecorator(function(e) {
-                trainigsaveFlag = false;
-                let frame = window.cvat.player.frames.current;
-                this._model.activeShape.updatePosition(frame,shiftShape(8));
+                if(this._model.activeShape){
+                    let frame = window.cvat.player.frames.current;
+                    this._model.activeShape.updatePosition(frame,shiftShape(8));
+                }
                 e.preventDefault();
             }.bind(this));
             let shiftShapeDown = Logger.shortkeyLogDecorator(function(e) {
-                let frame = window.cvat.player.frames.current;
-                this._model.activeShape.updatePosition(frame,shiftShape(2));
+                if(this._model.activeShape){
+                    let frame = window.cvat.player.frames.current;
+                    this._model.activeShape.updatePosition(frame,shiftShape(2));
+                }
                 e.preventDefault();
             }.bind(this));
             let shiftShapeLeft = Logger.shortkeyLogDecorator(function(e) {
-                let frame = window.cvat.player.frames.current;
-                this._model.activeShape.updatePosition(frame,shiftShape(4));
+                if(this._model.activeShape){
+                    let frame = window.cvat.player.frames.current;
+                    this._model.activeShape.updatePosition(frame,shiftShape(4));
+                }
                 e.preventDefault();
             }.bind(this));
             let shiftSapeRight = Logger.shortkeyLogDecorator(function(e) {
-                let frame = window.cvat.player.frames.current;
-                this._model.activeShape.updatePosition(frame,shiftShape(6));
+                if(this._model.activeShape){
+                    let frame = window.cvat.player.frames.current;
+                    this._model.activeShape.updatePosition(frame,shiftShape(6));
+                }
                 e.preventDefault();
             }.bind(this));
 

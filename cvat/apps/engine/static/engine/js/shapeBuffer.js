@@ -159,8 +159,10 @@ class ShapeBufferModel extends Listener  {
             model.removed = false;
         }, window.cvat.player.frames.current);
         // End of undo/redo code
-
+        
         this._collection.update();
+        // add by jeff
+        this._collection._currentShapes[this._collection._currentShapes.length-1].model.active = true;
     }
 
     propagateToFrames() {
