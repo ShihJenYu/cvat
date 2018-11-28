@@ -187,6 +187,8 @@ function buildAnnotationUI(job, shapeData, loadJobEvent) {
     }
     else{
         window.history.replaceState(null, null, `${window.location.origin}/fcw`);
+        $('#task_name').text(job.slug + " , F" + String(+shapeData[1]+1).padStart(4, '0'));
+        console.log(job.slug + " , F" + String(+shapeData[1]+1).padStart(4, '0'));
     }
 
     

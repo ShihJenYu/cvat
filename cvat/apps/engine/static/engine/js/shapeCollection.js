@@ -529,8 +529,19 @@ class ShapeCollectionModel extends Listener {
             this._activeShape_before_Create = this._activeShape;
             this._idx_before_Create = this._idx;
             this.resetActive();
+            //hide all shape
+            this.switchObjectsHide();
         }
         else {
+            //show all shape
+            for (let shape of this._shapes) {
+                if (shape.removed) continue;
+                while (shape.hiddenShape) {
+                    shape.switchHide();
+                }
+                console.log("visible");
+            }
+            //set newShape / preShape to active 
             menuScroll = true;
             if(this._idx_before_Create != this._idx) {
                 this._currentShapes[this._currentShapes.length-1].model.active = true;

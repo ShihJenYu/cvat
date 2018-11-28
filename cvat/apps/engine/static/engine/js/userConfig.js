@@ -111,14 +111,14 @@ class Config {
             },
 
             change_player_contrast: {
-                value: "shift+c,alt+c".split(','),
-                view_value: "Shift+C / Alt+C",
+                value: "shift+c,ctrl+c".split(','),
+                view_value: "Shift+C / ctrl+C",
                 description: "increase/decrease contrast of an image"
             },
 
             change_player_saturation: {
-                value: "shift+s,alt+s".split(','),
-                view_value: "Shift+S / Alt+S",
+                value: "ctrl+shift+s,ctrl+alt+s".split(','),
+                view_value: "ctrl+Shift+S / ctrl+Alt+S",
                 description: "increase/decrease saturation of an image"
             },
 
