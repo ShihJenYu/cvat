@@ -77,7 +77,7 @@ class ShapeModel extends Listener {
         else if(value.includes("無人機車群")){
             this._color = {shape: "#a0a800",ui: "#a0a800"};
         }
-        else if(value.includes("腳踏車群")){
+        else if(value.includes("無人腳踏車群")){
             this._color = {shape: "#00d676",ui: "#00d676"};
         }
         else if(value.includes("misc")){
@@ -1896,6 +1896,23 @@ class ShapeView extends Listener {
                 attribute.disabled = locked;
             }
         }
+        for (let attrId in this._uis.attributes) {
+            let attrInfo = window.cvat.labelsInfo.attrInfo(attrId);
+            if (attrInfo.name == "Type"){
+                let value = this._uis.attributes[attrId].value.toLowerCase();
+                if (["pedestrian_行人(直立)","personsitting_行人(非直立)"].includes(value) || value.includes("群")) {
+                    for (let tmpId in this._uis.attributes) {
+                        let tmpInfo = window.cvat.labelsInfo.attrInfo(tmpId);
+                        if(tmpInfo.name=="Rotation") {
+                            this._uis.attributes[tmpId].setAttribute('disabled', true);
+                            this._uis.attributes[tmpId].value = "-90";
+                            break;
+                        }
+                    }
+                    break;
+                }
+            }
+        }
     }
 
 
@@ -2333,6 +2350,9 @@ class ShapeView extends Listener {
             text.setAttribute('attrId', attrId);
             text.setAttribute('caside_id', objectId)
             text.setAttribute('type', 'text');
+            if(attrInfo.name.normalize()=='DetectPoints'){
+                text.readOnly = true;
+            }
             text.classList.add('regular', 'textAttr');
 
             let stopProp = function(e) {
@@ -2440,6 +2460,19 @@ class ShapeView extends Listener {
                 }
                 else {
                     this._uis.attributes[attrId].value = attributes[attrId].value;
+                    // let value = attributes[attrId].value.toLowerCase();
+                    // if (attrInfo.name == "Type" && 
+                    //     (["pedestrian_行人(直立)","personsitting_行人(非直立)"].includes(value) || value.includes("群")) ) {
+                        
+                    //     for (let tmpId in attributes) {
+                    //         let tmpInfo = window.cvat.labelsInfo.attrInfo(tmpId);
+                    //         if(tmpInfo.name=="Rotation") {
+                    //             this._uis.attributes[tmpId].setAttribute('disabled', true);
+                    //             this._uis.attributes[tmpId].value = "-90";
+                    //             break;
+                    //         }
+                    //     }
+                    // }
                 }
             }
         }
@@ -2546,8 +2579,11 @@ class ShapeView extends Listener {
             default:
                 this._uis.attributes[attrId].onchange = function(e) {
                     //add by jeff
+                    this._controller.updateAttribute(window.cvat.player.frames.current, attrId, e.target.value);
                     if(attrInfo.name == "Type") {
                         let value = e.target.value.toLowerCase();
+                        setRotationRelease(this._uis.attributes,this._controller);
+                        
                         if(value.includes("car")){
                             this._controller.changeColor({shape: "#255f9d",ui: "#255f9d"});
                         }
@@ -2580,9 +2616,11 @@ class ShapeView extends Listener {
                         }
                         else if(value.includes("無人機車群")){
                             this._controller.changeColor({shape: "#a0a800",ui: "#a0a800"});
+                            setRotationFix(this._uis.attributes,this._controller);
                         }
-                        else if(value.includes("腳踏車群")){
+                        else if(value.includes("無人腳踏車群")){
                             this._controller.changeColor({shape: "#00d676",ui: "#00d676"});
+                            setRotationFix(this._uis.attributes,this._controller);
                         }
                         else if(value.includes("misc")){
                             this._controller.changeColor({shape: "#ff38ca",ui: "#ff38ca"});
@@ -2595,16 +2633,37 @@ class ShapeView extends Listener {
                         }
                         else if(value.includes("crowd")){
                             this._controller.changeColor({shape: "#f9c8c8",ui: "#f9c8c8"});
+                            setRotationFix(this._uis.attributes,this._controller);
                         }
                         else if(["pedestrian_行人(直立)","personsitting_行人(非直立)"].includes(value)){
                             this._controller.changeColor({shape: "#a01313",ui: "#a01313"});
+                            setRotationFix(this._uis.attributes,this._controller);
                         }
                         else {
                             console.log("error but set default with car");
                             this._controller.changeColor({shape: "#255f9d",ui: "#255f9d"});
                         }
+
+                        function setRotationFix (attributes,controller) {
+                            for (let tmpId in attributes) {
+                                let tmpInfo = window.cvat.labelsInfo.attrInfo(tmpId);
+                                if(tmpInfo.name=="Rotation"){
+                                    attributes[tmpId].setAttribute('disabled', true);
+                                    controller.updateAttribute(window.cvat.player.frames.current, tmpId, "-90");
+                                    break;
+                                }
+                            }
+                        }
+                        function setRotationRelease (attributes,controller) {
+                            for (let tmpId in attributes) {
+                                let tmpInfo = window.cvat.labelsInfo.attrInfo(tmpId);
+                                if(tmpInfo.name=="Rotation"){
+                                    attributes[tmpId].removeAttribute('disabled');
+                                    break;
+                                }
+                            }
+                        }
                     }
-                    this._controller.updateAttribute(window.cvat.player.frames.current, attrId, e.target.value);
                 }.bind(this);
             }
         }

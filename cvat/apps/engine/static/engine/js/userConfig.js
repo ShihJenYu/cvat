@@ -105,14 +105,14 @@ class Config {
             },
 
             change_player_brightness: {
-                value: "shift+x,ctrl+x".split(','),
+                value: "shift+x,x".split(','),
                 view_value: "shift+x,ctrl+x",
                 description: "increase/decrease brightness of an image"
             },
 
             change_player_contrast: {
-                value: "shift+c,ctrl+c".split(','),
-                view_value: "Shift+C / ctrl+C",
+                value: "shift+c,c".split(','),
+                view_value: "Shift+C / C",
                 description: "increase/decrease contrast of an image"
             },
 

@@ -442,6 +442,7 @@ class PlayerController {
         this._find = find;
         this._rewinding = false;
         this._moving = false;
+        this._moving_key = false;
         this._leftOffset = playerOffset.left;
         this._topOffset = playerOffset.top;
         this._lastClickX = 0;
@@ -525,6 +526,14 @@ class PlayerController {
                 return false;
             }.bind(this));
 
+
+            let enableMovingKeyHandler = Logger.shortkeyLogDecorator(function() {
+                this._moving_key = true;
+            }.bind(this));
+            let disableMovingKeyHandler = Logger.shortkeyLogDecorator(function() {
+                this._moving_key = false;
+            }.bind(this));
+
             let shortkeys = window.cvat.config.shortkeys;
 
             Mousetrap.bind(shortkeys["next_frame"].value, nextHandler, 'keydown');
@@ -536,6 +545,8 @@ class PlayerController {
             Mousetrap.bind(shortkeys["forward_frame"].value, forwardHandler, 'keydown');
             Mousetrap.bind(shortkeys["backward_frame"].value, backwardHandler, 'keydown');
             Mousetrap.bind(shortkeys["play_pause"].value, playPauseHandler, 'keydown');
+            Mousetrap.bind('alt', enableMovingKeyHandler, 'keydown');
+            Mousetrap.bind('alt', disableMovingKeyHandler, 'keyup');
         }
     }
 
@@ -576,7 +587,7 @@ class PlayerController {
     }
 
     frameMouseMove(e) {
-        if (this._moving) {
+        if (this._moving && this._moving_key) {
             if (!this._events.move) {
                 this._events.move = Logger.addContinuedEvent(Logger.EventType.moveImage);
             }
