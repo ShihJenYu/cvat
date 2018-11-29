@@ -968,7 +968,26 @@ class ShapeCollectionController {
 
             //add by jeff
             let detectPointHandler = Logger.shortkeyLogDecorator(function() {
-                this.setDetectPoint();
+                let flag = true;
+                for (let attrId in this._model.activeShape._attributes.mutable[this._model.activeShape._frame]) {
+                    let attrInfo = window.cvat.labelsInfo.attrInfo(attrId);
+                    if(attrInfo.name == "Dont_Care") {
+                        let value = this._model.activeShape._attributes.mutable[this._model.activeShape._frame][attrId]
+                        if(value) {
+                            flag = false; 
+                            break;
+                        }
+                    }
+                    else if(attrInfo.name == "Type") {
+                        let value = this._model.activeShape._attributes.mutable[this._model.activeShape._frame][attrId].toLowerCase();
+                        if (value.includes("無人") || value.includes("人") || value.includes("background")) {
+                            flag = false;
+                            break;
+                        }
+                    }
+                }
+                if (flag) this.setDetectPoint();
+                else console.log("u can not set detectPoint");
             }.bind(this));
 
             //add by Eric
