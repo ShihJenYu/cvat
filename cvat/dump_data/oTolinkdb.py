@@ -3,11 +3,11 @@
 """ oToLinkdb.py
 
 Last modified by: Eric Lou
-Date last modified: 2018/10/xx
+Date last modified: 2018/11/xx
 Python version: 2.7
 
 Description:
-Function to link postgreSQL.
+Function to link postgreSQL and dumps csv files.
 
 Copyright 2018, oToBrite Electronic Inc.
 """
@@ -16,6 +16,8 @@ import os
 import re
 import csv, math
 import pickle
+import pytz
+from datetime import datetime
 import psycopg2
 
 class oToPostgreSQLData():
@@ -40,8 +42,13 @@ class oToPostgreSQLData():
         self.i_sHost = a_sHost
         self.i_sPort = a_sPort
 
+        self.i_dictUserRecord = None
+        self.i_dictBBoxRecord = None
+
         self.i_oConnect = None
         self.i_dictVideoID_indb = None
+        self.i_dictIDVideo_indb = None
+
         self.i_dictAttriID_indb = None
         self.i_listBboxID_indb = None
         self.i_dictBBox = None
@@ -128,10 +135,10 @@ class oToPostgreSQLData():
         Such as frame id is 0, 4, 6. Only can select frame column.
         If a_sWHEREcolumn and a_listWHEREcolumnValue both is None, means no select by speific column.
 
-            @param a_listSELECT: 'list' get data from database table by column names
-            @param a_sFROM: 'string' Database table name
-            @param a_sWHEREcolumn: 'string' Database password
-            @param a_listWHEREcolumnValue: 'list' Database host ip
+            @param a_listSELECT: 'list' get data from database table by column names.
+            @param a_sFROM: 'string' Database table name.
+            @param a_sWHEREcolumn: 'string' The column that you want to specificly select.
+            @param a_listWHEREcolumnValue: 'list' The Value that you want to select.
         """
         assert(a_listSELECT is not None), "Please entry the column you want to get data."
         assert(a_sFROM is not None), "Please entry the data_table you want to get data."
@@ -181,6 +188,74 @@ class oToPostgreSQLData():
 
         return oCursor
 
+    def Statistic_record(self):
+        """!
+        This function is getting statistic about annotation time, frame and object informations.
+
+        """
+
+        ## Use frame to get BBox
+        oCursorBBoxRecord = self.Cursor_from_db(
+                            a_listSELECT=['"frame"', '"id"'],
+                            a_sFROM="public.engine_labeledbox"
+        )
+        listCursordata = oCursorBBoxRecord.fetchall()
+
+        self.i_dictBBoxRecord = {}
+        for listRow in listCursordata:
+
+            if listRow[0] not in self.i_dictBBoxRecord.keys():
+                self.i_dictBBoxRecord[listRow[0]] = 0
+            
+            self.i_dictBBoxRecord[listRow[0]] += 1
+
+        # print(self.i_dictBBoxRecord)
+        oCursorBBoxRecord.close()
+
+        ## Get UserRecord
+        oCursorUserRecord = self.Cursor_from_db(
+                            a_listSELECT=['"task_id"', '"user"', '"userGet_date"', '"userSubmit_date"', '"frame"'],
+                            a_sFROM="public.engine_taskframeuserrecord",
+                            a_sWHEREcolumn='"user_submit"',
+                            a_listWHEREcolumnValue=["true"]
+        )
+        listCursordata = oCursorUserRecord.fetchall()
+
+        oSetTimeZone = pytz.timezone("America/Los_Angeles")
+
+        self.i_dictUserRecord = {}
+        for listRow in listCursordata:
+
+            if listRow[1] not in self.i_dictUserRecord.keys(): # UseName
+                self.i_dictUserRecord[listRow[1]] = {}
+                self.i_dictUserRecord[listRow[1]]["TaskID"] = []
+                self.i_dictUserRecord[listRow[1]]["frame"] = []         
+                self.i_dictUserRecord[listRow[1]]["UserGet_date"] = []   
+                self.i_dictUserRecord[listRow[1]]["UserSubmit_date"] = []   
+                self.i_dictUserRecord[listRow[1]]["Differ_time"] = []                   
+                self.i_dictUserRecord[listRow[1]]["Object_number"] = []
+            
+            dictUserRecord = self.i_dictUserRecord[listRow[1]]
+                   
+            dictUserRecord["TaskID"].append(listRow[0])
+            dictUserRecord["frame"].append(listRow[4]) 
+            oTimeConverted = oSetTimeZone.localize(listRow[2].replace(tzinfo=None), is_dst=None).astimezone(pytz.utc)
+            dictUserRecord["UserGet_date"].append(oTimeConverted.strftime("%Y-%m-%d %a %H:%M"))
+            oTimeConverted = oSetTimeZone.localize(listRow[3].replace(tzinfo=None), is_dst=None).astimezone(pytz.utc)
+            dictUserRecord["UserSubmit_date"].append(oTimeConverted.strftime("%Y-%m-%d %a %H:%M"))
+
+            oDiffTime = (listRow[3] - listRow[2])
+            dictUserRecord["Differ_time"].append(float(oDiffTime.seconds//60)) 
+
+            if listRow[4] in self.i_dictBBoxRecord.keys():
+                dictUserRecord["Object_number"].append(self.i_dictBBoxRecord[listRow[4]])
+            else: # for no object but submit
+                dictUserRecord["Object_number"].append(0)
+
+        oCursorUserRecord.close() 
+
+        print("Dictionary about Annotation Record being saved!")
+        
     def Get_Video_link_ID(self):
         """!
         To Get conversion table between Job_ID and videonames.
@@ -189,13 +264,19 @@ class oToPostgreSQLData():
             @param a_listCursor: 'list' get data from database table by column names.
         """
 
-        oCursorIDname = self.Cursor_from_db(a_listSELECT=["id", "name"], a_sFROM="public.engine_task")
+        oCursorIDname = self.Cursor_from_db(a_listSELECT=['"id"', '"name"', '"size"'], a_sFROM="public.engine_task")
         listCursordata = oCursorIDname.fetchall()
 
         self.i_dictVideoID_indb = {}
         for listRow in listCursordata:
             # listRow[1] is Date, listRow[0] is Job_ID
             self.i_dictVideoID_indb[listRow[1]] = listRow[0]
+
+
+        self.i_dictIDVideo_indb = {}
+        for listRow in listCursordata:
+            # listRow[1] is Date, listRow[0] is Job_ID
+            self.i_dictIDVideo_indb[listRow[0]] = listRow[1]            
 
         print("Dictionary about Job_Id and videonames being saved!")
         oCursorIDname.close()
@@ -482,23 +563,157 @@ class oToPostgreSQLData():
                            sRotation_y, sOccluded, sTruncated, sDontCare, # "Rotation_y", "Occluded", "Truncated", "DontCare", 
                            0, 0, 0, 0, sCSVID                             # "IsStartFrame", "IsEndFrame", "TrackingMethod", "LockPosition", "LinkedID"]
                     ]
-                    fileCSV.writerow(col)                        
-            
+                    fileCSV.writerow(col)  
+
+    def StatisticTableExport(self, a_listAnnotator_name, a_sSavePath,
+                            a_bExportRawTable=True, a_bExportStatisticTable=True, ):
+        """!
+        To Export Csv files.
+
+            @param a_listAnnotator_name: 'list' The Annotator data that you want to export.
+            @param a_bExportRawTable: 'b' Whether you want RawTable or not.
+            @param a_bExportStatisticTable: 'b' Whether you want StatisticTable or not.
+        """
+
+        if a_bExportRawTable: 
+
+            # Create Dir
+            sCSVDir = os.path.join(a_sSavePath, "RawTable.csv")
+
+            listcolnames = ["VideoName", "Annotator", "Start_time", "End_Time", "Differ_Time","Object_number", "Frame_number"]
+
+            fileCSV = open(sCSVDir, mode='w')
+            fileCSV = csv.writer(fileCSV, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+            fileCSV.writerow(listcolnames)
+
+            listVideoToGet = {}
+
+            for sAnnotator in a_listAnnotator_name:
+                for nIndex in range(0, len(self.i_dictUserRecord[sAnnotator]["TaskID"])):
+                    sTaskID = self.i_dictUserRecord[sAnnotator]["TaskID"][nIndex]
+                    if sTaskID not in listVideoToGet.keys():
+                        listVideoToGet[sTaskID] = {}
+                    if sAnnotator not in listVideoToGet[sTaskID].keys():
+                        listVideoToGet[sTaskID][sAnnotator] = []
+
+                    listVideoToGet[sTaskID][sAnnotator].append(nIndex)
+
+            for sVideoToGet in listVideoToGet.keys():
+                for sAnnotator in listVideoToGet[sVideoToGet]:
+                    for nIndex in listVideoToGet[sVideoToGet][sAnnotator]:
+                        sVideoName = str(self.i_dictIDVideo_indb[sVideoToGet])
+                        sAnnotatorName = sAnnotator
+                        sStartTime = self.i_dictUserRecord[sAnnotator]["UserGet_date"][nIndex][15:20]
+                        sEndTime = self.i_dictUserRecord[sAnnotator]["UserSubmit_date"][nIndex][15:20]
+                        sDiffer = self.i_dictUserRecord[sAnnotator]["Differ_time"][nIndex]
+                        sObjectNumber = self.i_dictUserRecord[sAnnotator]["Object_number"][nIndex]
+                        nframeNumber = int(self.i_dictUserRecord[sAnnotator]["frame"][nIndex])
+                        listcol = [sVideoName, sAnnotatorName, sStartTime, sEndTime, sDiffer, sObjectNumber, nframeNumber]
+                        fileCSV.writerow(listcol)
+
+            print("Raw Table has be exported!") 
+        
+        if a_bExportStatisticTable:
+
+            # Create Dir
+            sCSVDir = os.path.join(a_sSavePath, "Statistic_Table.csv")
+
+            fileCSV = open(sCSVDir, mode='w')
+            fileCSV = csv.writer(fileCSV, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+
+            for sAnnotator in a_listAnnotator_name:
+                
+                colnames = ["Annotator", "Object_number", "Frame_number", 
+                            "mean_object_per_day", "mean_frame_per_day", "", "", ""]
+                fileCSV.writerow(colnames)
+
+                nTotal_Object = sum(self.i_dictUserRecord[sAnnotator]["Object_number"])
+                nTotal_Frame = len(self.i_dictUserRecord[sAnnotator]["frame"])
+
+                dictWorkDays_Object = {}
+                dictWorkDays_frame = {} 
+                dictWokrDays_Get_time = {}
+                dictWokrDays_Submit_time = {}
+                
+
+                for nIndex in range(0, len(self.i_dictUserRecord[sAnnotator]["Object_number"])):
+
+                    sWorkDay = self.i_dictUserRecord[sAnnotator]["UserSubmit_date"][nIndex][:10]
+                    
+                    if sWorkDay not in dictWorkDays_Object.keys():
+                        dictWorkDays_Object[sWorkDay] = []
+                        dictWorkDays_frame[sWorkDay] = []
+                        dictWokrDays_Get_time[sWorkDay] = []
+                        dictWokrDays_Submit_time[sWorkDay] = []
+                    
+                    dictWorkDays_Object[sWorkDay].append(self.i_dictUserRecord[sAnnotator]["Object_number"][nIndex])
+                    dictWorkDays_frame[sWorkDay].append(self.i_dictUserRecord[sAnnotator]["frame"][nIndex]) 
+                    dictWokrDays_Get_time[sWorkDay].append(self.i_dictUserRecord[sAnnotator]["UserGet_date"][nIndex][-5:]) 
+                    dictWokrDays_Submit_time[sWorkDay].append(self.i_dictUserRecord[sAnnotator]["UserSubmit_date"][nIndex][-5:])
+
+                colnames = [sAnnotator, nTotal_Object, nTotal_Frame, 
+                                        nTotal_Object/len(dictWokrDays_Get_time.keys()),
+                                        nTotal_Frame/len(dictWokrDays_Get_time.keys())]
+
+                fileCSV.writerow(colnames)
+
+                colnames = ["Date", "Object_number", "Frame_number", 
+                            "Start_Time", "End_Time","WorkTime",
+                            "mean_object_per_hour", "mean_frame_per_hour",]
+
+                fileCSV.writerow(colnames)
+
+                for sWorkDay in dictWorkDays_Object.keys():
+
+                    sMinGetTime = min(dictWokrDays_Get_time[sWorkDay])
+                    sMaxSubmitTime = max(dictWokrDays_Submit_time[sWorkDay])
+
+                    oMinGetTime = datetime.strptime(sMinGetTime, "%H:%M")
+                    oMaxSubmitTime = datetime.strptime(sMaxSubmitTime, "%H:%M")
+
+                    oDifferTime = oMaxSubmitTime - oMinGetTime  
+                                                   
+                    colnames = [sWorkDay, sum(dictWorkDays_Object[sWorkDay]), 
+                                        len(dictWorkDays_frame[sWorkDay]),
+                                        sMinGetTime,
+                                        sMaxSubmitTime,
+                                        str(oDifferTime),
+                                        60*sum(dictWorkDays_Object[sWorkDay])/(oDifferTime.seconds/60),
+                                        60*len(dictWorkDays_frame[sWorkDay])/(oDifferTime.seconds/60)
+                                        ]                                           
+                    fileCSV.writerow(colnames)
+
+                colnames = [""]
+                fileCSV.writerow(colnames)
+
+            print("Statistic Table has be exported!") 
+
+
 if __name__ == '__main__':
     test = oToPostgreSQLData()
+
+    Table_write_out_dir = r"/home/share/Ericlou/Dataset/"
+    listUserToGet = ["test12345", "test123", "test1234", "Gina"]
     test.Get_Video_link_ID()
-    test.Get_Attribute_Id()
+    test.Statistic_record()
+    test.StatisticTableExport(a_listAnnotator_name=listUserToGet,
+                              a_sSavePath=Table_write_out_dir,
+                              a_bExportRawTable=True,
+                              a_bExportStatisticTable=True)
 
-    FCW_Setting_file = r"/home/ericlou/CVAT/cvat_web/cvat/dump_data/FCW_Setting_training20181122.ini"
-    CSV_write_out_dir = r"/home/share/Ericlou/Dataset/"
+    # test.Get_Video_link_ID()
+    # test.Get_Attribute_Id()
 
-    test.Read_Setting_Files(a_Setting_file=FCW_Setting_file)
+    # FCW_Setting_file = r"/home/ericlou/CVAT/cvat_web/cvat/dump_data/FCW_Setting_training20181122.ini"
+    # CSV_write_out_dir = r"/home/share/Ericlou/Dataset/"
 
-    listVideoToGet = ["20180526_19_34_52_392_000", "20180526_19_40_33_230_000"]
-    test.Get_labelbox(a_listVideoDate=listVideoToGet)
-    test.Get_labelboxAttr()
-    test.CsvPreProcess(a_listVideoDate=listVideoToGet)
-    test.CsvExport(a_listVideoDate=listVideoToGet, a_sSavePath_csv=CSV_write_out_dir)
+    # test.Read_Setting_Files(a_Setting_file=FCW_Setting_file)
+
+    # listVideoToGet = ["20180526_19_34_52_392_000", "20180526_19_40_33_230_000"]
+    # test.Get_labelbox(a_listVideoDate=listVideoToGet)
+    # test.Get_labelboxAttr()
+    # test.CsvPreProcess(a_listVideoDate=listVideoToGet)
+    # test.CsvExport(a_listVideoDate=listVideoToGet, a_sSavePath_csv=CSV_write_out_dir)
     
     
 

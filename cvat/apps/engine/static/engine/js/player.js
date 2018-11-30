@@ -963,7 +963,7 @@ class PlayerView {
                 useBootstrap: false,
                 draggable: false,
                 buttons: {
-                    confirm: {
+                    送出: {
                         keys: ['enter'],
                         action: function(){
                             console.log('confirm');
@@ -981,7 +981,7 @@ class PlayerView {
                             checkFlag();
                         }
                     },
-                    cancel: {
+                    取消: {
                         keys: ['enter'],
                         action: function(){
                             console.log('cancel');

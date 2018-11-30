@@ -128,16 +128,6 @@ class ShapeCollectionModel extends Listener {
         }
 
         this._currentShapes = this._filter.filter(this._currentShapes);
-
-        // if(this._currentShapes.length > 0) {
-        //     this._currentShapes[this._currentShapes.length-1].modele.active = true;
-        // }
-
-
-        
-        //this.onShapeUpdate(this._shapeCollection.shapes[this._shapeCollection.shapes.length-1]);
-
-        ///////////
         this.notify();
     }
 
@@ -971,7 +961,7 @@ class ShapeCollectionController {
                 let flag = true;
                 for (let attrId in this._model.activeShape._attributes.mutable[this._model.activeShape._frame]) {
                     let attrInfo = window.cvat.labelsInfo.attrInfo(attrId);
-                    if(attrInfo.name == "Dont_Care") {
+                    if(attrInfo.name == "Dont_Care" || attrInfo.name == "看不見車頭車尾") {
                         let value = this._model.activeShape._attributes.mutable[this._model.activeShape._frame][attrId]
                         if(value) {
                             flag = false; 
@@ -1290,9 +1280,9 @@ class ShapeCollectionController {
             var detectpoints = detectpoint_str.split(/[\s,]+/); 
             var xdl=detectpoints[0],ydl=detectpoints[1],xdr=detectpoints[2],ydr=detectpoints[3];
 
-            if(xdl == "-1")xdl=1/3;
+            if(xdl == "-1")xdl=1/10;
             if(ydl == "-1")ydl=ybr;
-            if(xdr == "-1")xdr=2/3;
+            if(xdr == "-1")xdr=9/10;
             if(ydr == "-1")ydr=ybr;
 
             xdl = parseFloat(xdl);
@@ -1308,20 +1298,23 @@ class ShapeCollectionController {
             let scaledR = POINT_RADIUS / window.cvat.player.geometry.scale;
             var thisframeContent = SVG.adopt($('#frameContent')[0]);
 
+            activeShape._attributes.mutable[activeShape._frame][attrid]= "\"" + xdl.toFixed(2) + "," + ydr.toFixed(2) + " " + xdr.toFixed(2) + "," + ydr.toFixed(2) + "\"";
+            inputDetectPoint.value = activeShape._attributes.mutable[activeShape._frame][attrid];
+
             // for xdl, ydl
             
             thisframeContent.rect(scaledR*2,scaledR*2).draggable({
                 minX: xtl-scaledR
-                , minY: ybr-scaledR
+                , minY: ((ydr - ytl)/2 + ytl)-scaledR
                 , maxX: xbr+scaledR
-                , maxY: ybr+scaledR
+                , maxY: ((ydr - ytl)/2 + ytl)+scaledR
                 , snapToGrid: 0.1 
-                }).center(xdl_draw,ydl).addClass(ADD_class).fill('#ffff00').attr({'stroke-width':  STROKE_WIDTH / window.cvat.player.geometry.scale,
+                }).center(xdl_draw,((ydr - ytl)/2 + ytl)).addClass(ADD_class).fill('#ffff00').attr({'stroke-width':  STROKE_WIDTH / window.cvat.player.geometry.scale,
             }).on('dragend', function(e){
                 e.preventDefault();
                 mousedownAtDetectPoint = true;
                 var x = (parseFloat(e.target.getAttribute('x'))+parseFloat(scaledR)).toFixed(2);
-                var y = (parseFloat(e.target.getAttribute('y'))+parseFloat(scaledR)).toFixed(2);
+                var y = ydr;
                 objs = $("#uiContent .bold label")
                 for (let i = 0; i < objs.length; i ++) {
                     let str = objs[i].textContent;
@@ -1350,14 +1343,14 @@ class ShapeCollectionController {
                 
                 // modify by ericlou
 
-                if(xdl == "-1")xdl=1/3;
+                if(xdl == "-1")xdl=1/10;
                 if(ydl == "-1")ydl=ybr;
-                if(xdr == "-1")xdr=2/3;
+                if(xdr == "-1")xdr=9/10;
                 if(ydr == "-1")ydr=ybr;
 
                 var out_x = (x - xtl)/(xbr-xtl);
                 
-                activeShape._attributes.mutable[activeShape._frame][attrid]= "\"" + out_x.toFixed(2) + "," + y + " " + parseFloat(xdr).toFixed(2) + "," + parseFloat(ydr).toFixed(2) + "\"";
+                activeShape._attributes.mutable[activeShape._frame][attrid]= "\"" + out_x.toFixed(2) + "," + parseFloat(y).toFixed(2) + " " + parseFloat(xdr).toFixed(2) + "," + parseFloat(y).toFixed(2) + "\"";
                 inputDetectPoint.value = activeShape._attributes.mutable[activeShape._frame][attrid];
             });
 
@@ -1365,16 +1358,16 @@ class ShapeCollectionController {
 
             thisframeContent.rect(scaledR*2,scaledR*2).draggable({
                 minX: xtl-scaledR
-                , minY: ybr-scaledR
+                , minY: ((ydr - ytl)/2 + ytl)-scaledR
                 , maxX: xbr+scaledR
-                , maxY: ybr+scaledR
+                , maxY: ((ydr - ytl)/2 + ytl)+scaledR
                 , snapToGrid: 0.1 
-                }).center(xdr_draw,ydr).addClass(ADD_class).fill('#ffff00').attr({'stroke-width':  STROKE_WIDTH / window.cvat.player.geometry.scale,
+                }).center(xdr_draw,((ydr - ytl)/2 + ytl)).addClass(ADD_class).fill('#ffff00').attr({'stroke-width':  STROKE_WIDTH / window.cvat.player.geometry.scale,
             }).on('dragend', function(e){
                 mousedownAtDetectPoint = true;
                 e.preventDefault();
                 var x = (parseFloat(e.target.getAttribute('x'))+parseFloat(scaledR)).toFixed(2);
-                var y = (parseFloat(e.target.getAttribute('y'))+parseFloat(scaledR)).toFixed(2);
+                var y = ydr;
                 objs = $("#uiContent .bold label")
                 for (let i = 0; i < objs.length; i ++) {
                     let str = objs[i].textContent;
@@ -1403,14 +1396,14 @@ class ShapeCollectionController {
 
                 // modify by ericlou
 
-                if(xdl == "-1")xdl=1/3;
+                if(xdl == "-1")xdl=1/10;
                 if(ydl == "-1")ydl=ybr;
-                if(xdr == "-1")xdr=2/3;
+                if(xdr == "-1")xdr=9/10;
                 if(ydr == "-1")ydr=ybr;
 
                 var out_x = (x - xtl)/(xbr-xtl);
                 
-                activeShape._attributes.mutable[activeShape._frame][attrid] = "\"" + parseFloat(xdl).toFixed(2) + "," + parseFloat(ydl).toFixed(2) + " " + out_x.toFixed(2) + "," + y + "\"";
+                activeShape._attributes.mutable[activeShape._frame][attrid] = "\"" + parseFloat(xdl).toFixed(2) + "," + parseFloat(y).toFixed(2) + " " + out_x.toFixed(2) + "," + parseFloat(y).toFixed(2) + "\"";
                 inputDetectPoint.value = activeShape._attributes.mutable[activeShape._frame][attrid];
             });
                 
@@ -1431,7 +1424,7 @@ class ShapeCollectionController {
             $("."+ADD_class).each(function() {
                 $(this).on('dragstart dragmove', () => {
                     $("."+rm_pointAim).remove();
-                    thisframeContent.line($(this)[0].getBBox().x+scaledR,ytl,$(this)[0].getBBox().x+scaledR,$(this)[0].getBBox().y).attr(
+                    thisframeContent.line($(this)[0].getBBox().x+scaledR, ytl, $(this)[0].getBBox().x+scaledR, ybr).attr(
                         {
                             'stroke-width': STROKE_WIDTH / 2 / window.cvat.player.geometry.scale ,'stroke': '#ffff00',
                         }

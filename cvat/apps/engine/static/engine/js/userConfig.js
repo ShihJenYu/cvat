@@ -99,8 +99,8 @@ class Config {
 
             // add by Eric
             remove_detect_point: {
-                value: "alt+w",
-                view_value: "Alt + W",
+                value: "shift+w",
+                view_value: "Shift + W",
                 description: "remove detect_point"
             },
 

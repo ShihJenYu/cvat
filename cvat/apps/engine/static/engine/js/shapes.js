@@ -14,6 +14,11 @@ const AREA_TRESHOLD = 9;
 const TEXT_MARGIN = 10;
 
 var menuScroll = false;
+// add by eric
+var previous_type = null;
+var previous_rotation = null;
+var previous_Light = null;
+var previous_cant_see = null;
 
 /******************************** SHAPE MODELS  ********************************/
 class ShapeModel extends Listener {
@@ -120,6 +125,47 @@ class ShapeModel extends Listener {
             if (attrInfo.mutable) {
                 this._attributes.mutable[this._frame] = this._attributes.mutable[this._frame] || {};
                 this._attributes.mutable[this._frame][attrId] = attrInfo.values[0];
+                // add by eric
+                if (attrInfo.name=="Type"){
+                    if (previous_type===null){
+                        this._attributes.mutable[this._frame][attrId] = attrInfo.values[0];
+                        console.log(attrInfo.values[0], attrInfo.values[1], "mutable");
+                    } else {
+                        this._attributes.mutable[this._frame][attrId] = previous_type;
+                        console.log(previous_type, "mutable");
+                    }
+                    this.mapColor(this._attributes.mutable[this._frame][attrId]);
+                }
+
+                if (attrInfo.name=="Rotation"){
+                    if (previous_rotation===null){
+                        this._attributes.mutable[this._frame][attrId] = attrInfo.values[0];
+                        console.log(attrInfo.values[0], attrInfo.values[1], "mutable");
+                    } else {
+                        this._attributes.mutable[this._frame][attrId] = previous_rotation;
+                        console.log(previous_rotation, "mutable");
+                    }
+                }
+
+                if (attrInfo.name=="有開燈"){
+                    if (previous_Light===null){
+                        this._attributes.mutable[this._frame][attrId] = attrInfo.values[0];
+                        console.log(attrInfo.values[0], attrInfo.values[1], "mutable");
+                    } else {
+                        this._attributes.mutable[this._frame][attrId] = previous_Light;
+                        console.log(previous_Light, "mutable");
+                    }
+                }
+
+                if (attrInfo.name=="障礙物"){
+                    if (previous_cant_see===null){
+                        this._attributes.mutable[this._frame][attrId] = attrInfo.values[0];
+                        console.log(attrInfo.values[0], attrInfo.values[1], "mutable");
+                    } else {
+                        this._attributes.mutable[this._frame][attrId] = previous_cant_see;
+                        console.log(previous_cant_see, "mutable");
+                    }
+                }
             }
             else {
                 this._attributes.immutable[attrId] = attrInfo.values[0];
@@ -600,6 +646,32 @@ class ShapeModel extends Listener {
 
     set active(value) {
         this._active = value;
+
+        // add by eric
+        let labelsInfo = window.cvat.labelsInfo;
+        let labelAttributes = labelsInfo.labelAttributes(this._label);
+
+        for (let attrId in labelAttributes) {
+            let attrInfo = labelsInfo.attrInfo(attrId);
+                // add by eric
+                if (attrInfo.name=="Type"){
+                    console.log(this._attributes.mutable[this._frame][attrId], "Type");
+                    previous_type = this._attributes.mutable[this._frame][attrId];
+                }
+                if (attrInfo.name=="Rotation"){
+                    console.log(this._attributes.mutable[this._frame][attrId], "Rotation");
+                    previous_rotation = this._attributes.mutable[this._frame][attrId];
+                } 
+                if (attrInfo.name=="有開燈"){
+                    console.log(this._attributes.mutable[this._frame][attrId], "有開燈");
+                    previous_Light = this._attributes.mutable[this._frame][attrId];
+                } 
+                if (attrInfo.name=="障礙物"){
+                    console.log(this._attributes.mutable[this._frame][attrId], "障礙物");
+                    previous_cant_see = this._attributes.mutable[this._frame][attrId];
+                } 
+        }
+
         if (!this._removed) {
             this._updateReason = 'activation';
             this.notify();
@@ -827,8 +899,8 @@ class BoxModel extends ShapeModel {
             var xdl=detectpoints[0],ydl=detectpoints[1],xdr=detectpoints[2],ydr=detectpoints[3];
 
             if (ydl != "-1" && ydr != "-1") {
-                if(xdl == "-1")xdl=1/3;
-                if(xdr == "-1")xdr=2/3;
+                if(xdl == "-1")xdl=1/10;
+                if(xdr == "-1")xdr=9/10;
     
                 xdl = parseFloat(xdl);
                 xdr = parseFloat(xdr);
@@ -1369,6 +1441,16 @@ class ShapeController {
         if($('#nextButtonFlag').length) $('#nextButtonFlag').prop('checked',false);
         if($('#nextButton_training').length) $('#nextButton_training')[0].setAttribute("class","playerButton_training");
         this._model.updatePosition(frame, position);
+
+        if (position.xtl>=0 && position.xbr<=window.cvat.player.geometry.frameWidth-1) {
+            for (let attrId in this._model._attributes.mutable[frame]) {
+                let attrInfo = window.cvat.labelsInfo.attrInfo(attrId);
+                if(attrInfo.name == "看不見車頭車尾") {
+                    this.updateAttribute(frame, attrId, false);
+                }
+            }
+        }
+        
     }
 
     updateAttribute(frame, attrId, value) {
@@ -1909,7 +1991,45 @@ class ShapeView extends Listener {
                             break;
                         }
                     }
-                    break;
+                }
+                if (value.includes("無人") || value.includes("人") || value.includes("background")) {
+                    for (let tmpId in this._uis.attributes) {
+                        let tmpInfo = window.cvat.labelsInfo.attrInfo(tmpId);
+                        if(tmpInfo.name=="DetectPoints") {
+                            this._uis.attributes[tmpId].value = "-1,-1 -1,-1";
+                        }
+                        if(tmpInfo.name=="看不見車頭車尾") {
+                            this._uis.attributes[tmpId].setAttribute('disabled', true);
+                            this._uis.attributes[tmpId].checked = false;
+                        }
+                    }
+                }
+            }
+            if (attrInfo.name == "Dont_Care") {
+                let value = this._uis.attributes[attrId].checked;
+                if (value){
+                    for (let tmpId in this._uis.attributes) {
+                        let tmpInfo = window.cvat.labelsInfo.attrInfo(tmpId);
+                        if(tmpInfo.name=="DetectPoints") {
+                            this._uis.attributes[tmpId].value = "-1,-1 -1,-1";
+                        }
+                        if(tmpInfo.name=="看不見車頭車尾") {
+                            this._uis.attributes[tmpId].setAttribute('disabled', true);
+                            this._uis.attributes[tmpId].checked = false;
+                        }
+                    }
+                }
+            }
+            if (attrInfo.name == "看不見車頭車尾") {
+                let value = this._uis.attributes[attrId].checked;
+                if (value){
+                    for (let tmpId in this._uis.attributes) {
+                        let tmpInfo = window.cvat.labelsInfo.attrInfo(tmpId);
+                        if(tmpInfo.name=="DetectPoints") {
+                            this._uis.attributes[tmpId].value = "-1,-1 -1,-1";
+                            break;
+                        }
+                    }
                 }
             }
         }
@@ -2460,19 +2580,6 @@ class ShapeView extends Listener {
                 }
                 else {
                     this._uis.attributes[attrId].value = attributes[attrId].value;
-                    // let value = attributes[attrId].value.toLowerCase();
-                    // if (attrInfo.name == "Type" && 
-                    //     (["pedestrian_行人(直立)","personsitting_行人(非直立)"].includes(value) || value.includes("群")) ) {
-                        
-                    //     for (let tmpId in attributes) {
-                    //         let tmpInfo = window.cvat.labelsInfo.attrInfo(tmpId);
-                    //         if(tmpInfo.name=="Rotation") {
-                    //             this._uis.attributes[tmpId].setAttribute('disabled', true);
-                    //             this._uis.attributes[tmpId].value = "-90";
-                    //             break;
-                    //         }
-                    //     }
-                    // }
                 }
             }
         }
@@ -2548,11 +2655,118 @@ class ShapeView extends Listener {
             this._uis.changelabel.onchange = (e) => this._controller.changeLabel(e.target.value);
         }
 
-        this._uis.menu.on('mouseenter mousedown', (e) => {
+        this._uis.menu.on('mousedown', (e) => {
             if (!window.cvat.mode && !e.ctrlKey) {
                 this._controller.active = true;
             }
         });
+
+        // add by jeff
+        function setRotationFix (attributes,controller) {
+            for (let tmpId in attributes) {
+                let tmpInfo = window.cvat.labelsInfo.attrInfo(tmpId);
+                if(tmpInfo.name=="Rotation"){
+                    attributes[tmpId].setAttribute('disabled', true);
+                    controller.updateAttribute(window.cvat.player.frames.current, tmpId, "-90");
+                    break;
+                }
+            }
+        }
+        function setRotationRelease (attributes,controller) {
+            for (let tmpId in attributes) {
+                let tmpInfo = window.cvat.labelsInfo.attrInfo(tmpId);
+                if(tmpInfo.name=="Rotation"){
+                    attributes[tmpId].removeAttribute('disabled');
+                    break;
+                }
+            }
+        }
+
+        function setHeadTailFix (attributes,controller) {
+            for (let tmpId in attributes) {
+                let tmpInfo = window.cvat.labelsInfo.attrInfo(tmpId);
+                if(tmpInfo.name == "看不見車頭車尾"){
+                    attributes[tmpId].setAttribute('disabled', true);
+                    controller.updateAttribute(window.cvat.player.frames.current, tmpId, false);
+                    break;
+                }
+            }
+        }
+        function setHeadTailRelease (attributes,controller) {
+            let flag = true;
+            for (let tmpId in attributes) {
+                let tmpInfo = window.cvat.labelsInfo.attrInfo(tmpId);
+                if (tmpInfo.name == "Type"){
+                    let value = attributes[tmpId].value.toLowerCase();
+                    if (value.includes("無人") || value.includes("人") || value.includes("background")){
+                        flag = false;
+                        break;
+                    }
+                }
+                if (tmpInfo.name == "Dont_Care"){
+                    if (attributes[tmpId].checked){
+                        flag = false;
+                        break;
+                    }
+                    
+                }
+            }
+            if(flag) {
+                for (let tmpId in attributes) {
+                    let tmpInfo = window.cvat.labelsInfo.attrInfo(tmpId);
+                    if(tmpInfo.name == "看不見車頭車尾"){
+                        attributes[tmpId].removeAttribute('disabled');
+                        break;
+                    }
+                }
+            }
+        }
+        function setDetectPointToEdge (attributes,controller) {
+            let flag = false;
+            for (let tmpId in attributes) {
+                let tmpInfo = window.cvat.labelsInfo.attrInfo(tmpId);
+                if(tmpInfo.name=="DetectPoints"){
+                    let xtl = controller._model._positions[controller._model._frame].xtl;
+                    let xbr = controller._model._positions[controller._model._frame].xbr;
+                    let y = controller._model._positions[controller._model._frame].ybr;
+                    
+                    if (xtl==0 || xbr>=window.cvat.player.geometry.frameWidth-1) {
+                        controller.updateAttribute(window.cvat.player.frames.current, tmpId, "\"-1,-1 -1,-1\"");
+                    }
+                    else {
+                        flag = true;
+                    }                    
+                    break;
+                }
+            }
+            if (flag) {
+                for (let tmpId in attributes) {
+                    let tmpInfo = window.cvat.labelsInfo.attrInfo(tmpId);
+                    if(tmpInfo.name=="看不見車頭車尾"){
+                        controller.updateAttribute(window.cvat.player.frames.current, tmpId, false);
+                        break;
+                    }
+                }
+            }
+        }
+
+        function rmDetectPointValue (attributes,controller) {
+            var rm_point = "detectpoint";
+            rm_point = rm_point.concat(controller._model._id);
+            $("."+rm_point).remove();
+    
+            var rm_pointAim = "detectpointAim";
+            rm_pointAim = rm_pointAim.concat(controller._model._id);
+            $("."+rm_pointAim).remove();
+
+            for (let tmpId in attributes) {
+                let tmpInfo = window.cvat.labelsInfo.attrInfo(tmpId);
+                if(tmpInfo.name=="DetectPoints"){
+                    controller.updateAttribute(window.cvat.player.frames.current, tmpId, "\"-1,-1 -1,-1\"");
+                    break;
+                }
+            }
+        }
 
         for (let attrId in this._uis.attributes) {
             let attrInfo = window.cvat.labelsInfo.attrInfo(attrId);
@@ -2567,6 +2781,21 @@ class ShapeView extends Listener {
             case 'checkbox':
                 this._uis.attributes[attrId].onchange = function(e) {
                     this._controller.updateAttribute(window.cvat.player.frames.current, attrId, e.target.checked);
+                    if(attrInfo.name == "Dont_Care") {
+                        if(e.target.checked) {
+                            rmDetectPointValue(this._uis.attributes,this._controller);
+                            setHeadTailFix(this._uis.attributes,this._controller);
+                        }
+                        else {
+                            setHeadTailRelease(this._uis.attributes,this._controller);
+                        }
+                    }
+                    if(attrInfo.name == "看不見車頭車尾") {
+                        if(e.target.checked) {
+                            setDetectPointToEdge(this._uis.attributes,this._controller);
+                        }
+                    }
+
                 }.bind(this);
                 break;
             case 'number':
@@ -2583,6 +2812,7 @@ class ShapeView extends Listener {
                     if(attrInfo.name == "Type") {
                         let value = e.target.value.toLowerCase();
                         setRotationRelease(this._uis.attributes,this._controller);
+                        setHeadTailRelease(this._uis.attributes,this._controller);
                         
                         if(value.includes("car")){
                             this._controller.changeColor({shape: "#255f9d",ui: "#255f9d"});
@@ -2643,25 +2873,11 @@ class ShapeView extends Listener {
                             console.log("error but set default with car");
                             this._controller.changeColor({shape: "#255f9d",ui: "#255f9d"});
                         }
-
-                        function setRotationFix (attributes,controller) {
-                            for (let tmpId in attributes) {
-                                let tmpInfo = window.cvat.labelsInfo.attrInfo(tmpId);
-                                if(tmpInfo.name=="Rotation"){
-                                    attributes[tmpId].setAttribute('disabled', true);
-                                    controller.updateAttribute(window.cvat.player.frames.current, tmpId, "-90");
-                                    break;
-                                }
-                            }
-                        }
-                        function setRotationRelease (attributes,controller) {
-                            for (let tmpId in attributes) {
-                                let tmpInfo = window.cvat.labelsInfo.attrInfo(tmpId);
-                                if(tmpInfo.name=="Rotation"){
-                                    attributes[tmpId].removeAttribute('disabled');
-                                    break;
-                                }
-                            }
+                        
+                        // add by jeff
+                        if (value.includes("無人") || value.includes("人") || value.includes("background")) {
+                            rmDetectPointValue(this._uis.attributes,this._controller);
+                            setHeadTailFix(this._uis.attributes,this._controller);
                         }
                     }
                 }.bind(this);
