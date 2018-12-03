@@ -319,7 +319,9 @@ class PlayerModel extends Listener {
 
         let changed = this._frame.previous != this._frame.current;
         if (changed){
-            $('[class*="detectpoint"]').remove();
+            // add by jeff
+            $('.detectpoint').remove();
+            $('.detectpointAim').remove();
             saveByShift = true;
             $('#saveButton').click();
             

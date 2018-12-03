@@ -485,16 +485,23 @@ class ShapeCollectionModel extends Listener {
                 if (this._activeShape != model) {
                     if (this._activeShape) {
                         this._activeShape.active = false;
+                        $(".detectpoint").remove();
                         // Now loop occure -> active(false) -> notify -> onShapeUpdate
                         // But it will go on 'else' branch and this._activeShape will set to null
                     }
                     this._activeShape = model;
+                    setDetectPoint(this._activeShape);
+                }
+                if (this._activeShape === model) {
+                    setDetectPoint(this._activeShape);
                 }
             }
             else {
                 if (this._activeShape === model) {
                     this._activeShape = null;
                 }
+
+                $(".detectpoint").remove();
             }
             break;
         }
@@ -808,8 +815,6 @@ class ShapeCollectionModel extends Listener {
         this._activeShape = shapeModelTmp[currentId];
     }
 
-
-
     removePointFromActiveShape(idx) {
         if (this._activeShape && !this._activeShape.lock) {
             this._activeShape.removePoint(idx);
@@ -976,7 +981,7 @@ class ShapeCollectionController {
                         }
                     }
                 }
-                if (flag) this.setDetectPoint();
+                if (flag) setDetectPoint(this._model.activeShape);
                 else console.log("u can not set detectPoint");
             }.bind(this));
 
@@ -1182,262 +1187,34 @@ class ShapeCollectionController {
     // Modify by eric
     removeDetectPoint() {
 
-        console.log("removeDetectPoint");
-        
-        $('.detectpointAim').remove();
+        $(".detectpoint").remove();
         let activeShape = this._model.activeShape;
 
-        // modify by eric
-        // REMOVE only this id
-        var rm = "detectpoint";
-        rm = rm.concat(activeShape._id);
-        $("."+rm).remove();
+        if(activeShape){
+            let DETECTPOINTAIM = "detectpointAim";
 
-        var rm_pointAim = "detectpointAim";
-        rm_pointAim = rm_pointAim.concat(activeShape._id);
-        $("."+rm_pointAim).remove();
+            $("#"+DETECTPOINTAIM + "_" + activeShape._id + "_L").remove();
+            $("#"+DETECTPOINTAIM + "_" + activeShape._id + "_R").remove();
 
-        if(activeShape) {
-            var selectAtts = null;
-            var objs = $("#uiContent .bold label")
-            for (let i = 0; i < objs.length; i ++) {
-                let str = objs[i].textContent;
-                let id = str.split(" ")[1];
-                if(activeShape._id==parseInt(id)) {
-                    selectAtts = $($(objs[i]).parent()).parent()[0];
+            let frame = activeShape._frame;
+
+            for (let attrId in activeShape._attributes.mutable[frame]) {
+                let attrInfo = window.cvat.labelsInfo.attrInfo(attrId);
+                if(attrInfo.name == "DetectPoints") {
+                    activeShape.updateAttribute(frame, attrId, "-1,-1 -1,-1");
                     break;
                 }
             }
-
-            let index_detectpoint  = null
-            for (let i = 0; i < selectAtts.getElementsByClassName("uiAttr").length; i ++) {
-                if(selectAtts.getElementsByClassName("uiAttr")[i].getElementsByTagName("label")[0].innerText.includes('DetectPoints')) {
-                    index_detectpoint = i;
-                    break;
-                }
-            }
-            var inputDetectPoint = selectAtts.getElementsByClassName("uiAttr")[index_detectpoint].getElementsByClassName("regular textAttr")[0];
-            var attrid = inputDetectPoint.getAttribute("attrid");
-            attrid = parseInt(attrid);
-
-            activeShape._attributes.mutable[activeShape._frame][attrid]= "\"" + "-1" + "," + "-1" + " " + "-1" + "," + "-1" + "\"";
-            inputDetectPoint.value = activeShape._attributes.mutable[activeShape._frame][attrid];
         }
     }
 
     // Add by jeff
-    setDetectPoint() {
-
-        console.log("setDetectPoint");
-
-        $('.detectpointAim').remove();
-        let activeShape = this._model.activeShape;
-
-        // modify by eric
-        // REMOVE only this id
-        var rm = "detectpoint";
-        rm = rm.concat(activeShape._id);
-        $("."+rm).remove();
-
-        var rm_pointAim = "detectpointAim";
-        rm_pointAim = rm_pointAim.concat(activeShape._id);
-        $("."+rm_pointAim).remove();
-
-        if(activeShape) {
-            var xtl = activeShape._positions[activeShape._frame]['xtl'];
-            var ytl = activeShape._positions[activeShape._frame]['ytl'];
-            var xbr = activeShape._positions[activeShape._frame]['xbr'];
-            var ybr = activeShape._positions[activeShape._frame]['ybr'];
-            var selectAtts = null;
-            var objs = $("#uiContent .bold label")
-            for (let i = 0; i < objs.length; i ++) {
-                let str = objs[i].textContent;
-                let id = str.split(" ")[1];
-                if(activeShape._id==parseInt(id)) {
-                    selectAtts = $($(objs[i]).parent()).parent()[0];
-                    break;
-                }
-            }
-
-            let index_detectpoint  = null
-            for (let i = 0; i < selectAtts.getElementsByClassName("uiAttr").length; i ++) {
-                if(selectAtts.getElementsByClassName("uiAttr")[i].getElementsByTagName("label")[0].innerText.includes('DetectPoints')) {
-                    index_detectpoint = i;
-                    break;
-                }
-            }
-            
-            var inputDetectPoint = selectAtts.getElementsByClassName("uiAttr")[index_detectpoint].getElementsByClassName("regular textAttr")[0];
-            var attrid = inputDetectPoint.getAttribute("attrid");
-            attrid = parseInt(attrid);
-
-            // modify by Eric
-            var Carside_Id = inputDetectPoint.getAttribute("caside_id");
-            var ADD_class = "detectpoint";
-            ADD_class = ADD_class.concat(Carside_Id);
-
-            var detectpoint_str = inputDetectPoint.value.replace(/"/g, "");
-            var detectpoints = detectpoint_str.split(/[\s,]+/); 
-            var xdl=detectpoints[0],ydl=detectpoints[1],xdr=detectpoints[2],ydr=detectpoints[3];
-
-            if(xdl == "-1")xdl=1/10;
-            if(ydl == "-1")ydl=ybr;
-            if(xdr == "-1")xdr=9/10;
-            if(ydr == "-1")ydr=ybr;
-
-            xdl = parseFloat(xdl);
-            ydl = parseFloat(ydl);
-            xdr = parseFloat(xdr);
-            ydr = parseFloat(ydr);
-
-            // modify by ericlou
-            // convert to draw x y axis
-            var xdl_draw = xtl + xdl * (xbr-xtl);
-            var xdr_draw = xtl + xdr * (xbr-xtl);
-
-            let scaledR = POINT_RADIUS / window.cvat.player.geometry.scale;
-            var thisframeContent = SVG.adopt($('#frameContent')[0]);
-
-            activeShape._attributes.mutable[activeShape._frame][attrid]= "\"" + xdl.toFixed(2) + "," + ydr.toFixed(2) + " " + xdr.toFixed(2) + "," + ydr.toFixed(2) + "\"";
-            inputDetectPoint.value = activeShape._attributes.mutable[activeShape._frame][attrid];
-
-            // for xdl, ydl
-            
-            thisframeContent.rect(scaledR*2,scaledR*2).draggable({
-                minX: xtl-scaledR
-                , minY: ((ydr - ytl)/2 + ytl)-scaledR
-                , maxX: xbr+scaledR
-                , maxY: ((ydr - ytl)/2 + ytl)+scaledR
-                , snapToGrid: 0.1 
-                }).center(xdl_draw,((ydr - ytl)/2 + ytl)).addClass(ADD_class).fill('#ffff00').attr({'stroke-width':  STROKE_WIDTH / window.cvat.player.geometry.scale,
-            }).on('dragend', function(e){
-                e.preventDefault();
-                mousedownAtDetectPoint = true;
-                var x = (parseFloat(e.target.getAttribute('x'))+parseFloat(scaledR)).toFixed(2);
-                var y = ydr;
-                objs = $("#uiContent .bold label")
-                for (let i = 0; i < objs.length; i ++) {
-                    let str = objs[i].textContent;
-                    let id = str.split(" ")[1];
-                    if(activeShape._id==parseInt(id)) {
-                        selectAtts = $($(objs[i]).parent()).parent()[0];
-                        break;
-                    }
-                }
-
-                let index_detectpoint  = null
-                for (let i = 0; i < selectAtts.getElementsByClassName("uiAttr").length; i ++) {
-                    if(selectAtts.getElementsByClassName("uiAttr")[i].getElementsByTagName("label")[0].innerText.includes('DetectPoints')) {
-                        index_detectpoint = i;
-                        break;
-                    }
-                }
-                
-                var inputDetectPoint = selectAtts.getElementsByClassName("uiAttr")[index_detectpoint].getElementsByClassName("regular textAttr")[0];
-                
-                attrid = inputDetectPoint.getAttribute("attrid");
-                attrid = parseInt(attrid);
-                detectpoint_str = inputDetectPoint.value.replace(/"/g, "");
-                detectpoints = detectpoint_str.split(/[\s,]+/); 
-                xdl=detectpoints[0];ydl=detectpoints[1];xdr=detectpoints[2];ydr=detectpoints[3];
-                
-                // modify by ericlou
-
-                if(xdl == "-1")xdl=1/10;
-                if(ydl == "-1")ydl=ybr;
-                if(xdr == "-1")xdr=9/10;
-                if(ydr == "-1")ydr=ybr;
-
-                var out_x = (x - xtl)/(xbr-xtl);
-                
-                activeShape._attributes.mutable[activeShape._frame][attrid]= "\"" + out_x.toFixed(2) + "," + parseFloat(y).toFixed(2) + " " + parseFloat(xdr).toFixed(2) + "," + parseFloat(y).toFixed(2) + "\"";
-                inputDetectPoint.value = activeShape._attributes.mutable[activeShape._frame][attrid];
-            });
-
-            // for xdr, ydr
-
-            thisframeContent.rect(scaledR*2,scaledR*2).draggable({
-                minX: xtl-scaledR
-                , minY: ((ydr - ytl)/2 + ytl)-scaledR
-                , maxX: xbr+scaledR
-                , maxY: ((ydr - ytl)/2 + ytl)+scaledR
-                , snapToGrid: 0.1 
-                }).center(xdr_draw,((ydr - ytl)/2 + ytl)).addClass(ADD_class).fill('#ffff00').attr({'stroke-width':  STROKE_WIDTH / window.cvat.player.geometry.scale,
-            }).on('dragend', function(e){
-                mousedownAtDetectPoint = true;
-                e.preventDefault();
-                var x = (parseFloat(e.target.getAttribute('x'))+parseFloat(scaledR)).toFixed(2);
-                var y = ydr;
-                objs = $("#uiContent .bold label")
-                for (let i = 0; i < objs.length; i ++) {
-                    let str = objs[i].textContent;
-                    let id = str.split(" ")[1];
-                    if(activeShape._id==parseInt(id)) {
-                        selectAtts = $($(objs[i]).parent()).parent()[0];
-                        break;
-                    }
-                }
-
-                let index_detectpoint  = null
-                for (let i = 0; i < selectAtts.getElementsByClassName("uiAttr").length; i ++) {
-                    if(selectAtts.getElementsByClassName("uiAttr")[i].getElementsByTagName("label")[0].innerText.includes('DetectPoints')) {
-                        index_detectpoint = i;
-                        break;
-                    }
-                }
-                
-                var inputDetectPoint = selectAtts.getElementsByClassName("uiAttr")[index_detectpoint].getElementsByClassName("regular textAttr")[0];
-                
-                attrid = inputDetectPoint.getAttribute("attrid");
-                attrid = parseInt(attrid);
-                detectpoint_str = inputDetectPoint.value.replace(/"/g, "");
-                detectpoints = detectpoint_str.split(/[\s,]+/); 
-                xdl=detectpoints[0];ydl=detectpoints[1];xdr=detectpoints[2];ydr=detectpoints[3];
-
-                // modify by ericlou
-
-                if(xdl == "-1")xdl=1/10;
-                if(ydl == "-1")ydl=ybr;
-                if(xdr == "-1")xdr=9/10;
-                if(ydr == "-1")ydr=ybr;
-
-                var out_x = (x - xtl)/(xbr-xtl);
-                
-                activeShape._attributes.mutable[activeShape._frame][attrid] = "\"" + parseFloat(xdl).toFixed(2) + "," + parseFloat(y).toFixed(2) + " " + out_x.toFixed(2) + "," + parseFloat(y).toFixed(2) + "\"";
-                inputDetectPoint.value = activeShape._attributes.mutable[activeShape._frame][attrid];
-            });
-                
-            thisframeContent.line(xdl_draw,ytl,xdl_draw,ybr).attr(
-                {
-                    'stroke-width': STROKE_WIDTH / 2 / window.cvat.player.geometry.scale ,'stroke': '#ffff00',
-                }
-            ).addClass(rm_pointAim);
-
-            thisframeContent.line(xdr_draw,ytl,xdr_draw,ybr).attr(
-                {
-                    'stroke-width': STROKE_WIDTH / 2 / window.cvat.player.geometry.scale ,'stroke': '#ffff00',
-                }
-            ).addClass(rm_pointAim);
-
-
-            // for detectpointAim
-            $("."+ADD_class).each(function() {
-                $(this).on('dragstart dragmove', () => {
-                    $("."+rm_pointAim).remove();
-                    thisframeContent.line($(this)[0].getBBox().x+scaledR, ytl, $(this)[0].getBBox().x+scaledR, ybr).attr(
-                        {
-                            'stroke-width': STROKE_WIDTH / 2 / window.cvat.player.geometry.scale ,'stroke': '#ffff00',
-                        }
-                    ).addClass(rm_pointAim);
-                }).on('mouseover', () => {
-                    this.instance.attr('stroke-width', STROKE_WIDTH * 2 / window.cvat.player.geometry.scale);
-                }).on('mouseout', () => {
-                    this.instance.attr('stroke-width', STROKE_WIDTH / window.cvat.player.geometry.scale);
-                });
-            });
-
-        }
-    }
+    // setDetectPoint() {
+    //     //working
+    //     this._model.setDetectPoint();
+        
+        
+    // }
 
     switchDraggableForActive() {
         let activeShape = this._model.activeShape;
@@ -1672,7 +1449,8 @@ class ShapeCollectionView {
                 break;
             //add by jeff
             case "detect_point":
-                this._controller.setDetectPoint();
+                //this._controller.setDetectPoint();
+                setDetectPoint(this._controller.activeShape);
                 break;
             //add by eric
             case "remove_detect_point":
@@ -2016,6 +1794,161 @@ class ShapeCollectionView {
             for (let child of children) {
                 content.append(child);
             }
+
+            shapes = $(content.find('.detectpointAim')).toArray();
+            for (let shape of shapes) {
+                content.append(shape);
+            }
+            shapes = $(content.find('.detectpoint')).toArray();
+            for (let shape of shapes) {
+                content.append(shape);
+            }
+        }
+    }
+}
+
+// add by jeff
+function setDetectPoint(activeShape){
+    $(".detectpoint").remove();
+    
+    console.log("in set ");
+    if(activeShape){
+        console.log("in if");
+        let DETECTPOINT = "detectpoint";
+        let DETECTPOINTAIM = "detectpointAim";
+
+        $("#"+DETECTPOINTAIM + "_" + activeShape._id + "_L").remove();
+        $("#"+DETECTPOINTAIM + "_" + activeShape._id + "_R").remove();
+        
+        let frame = activeShape._frame;
+        let xtl = activeShape._positions[frame]['xtl'];
+        let ytl = activeShape._positions[frame]['ytl'];
+        let xbr = activeShape._positions[frame]['xbr'];
+        let ybr = activeShape._positions[frame]['ybr'];
+        
+        let attrId = null;
+        let xdl, ydl, xdr, ydr;
+
+        for (attrId in activeShape._attributes.mutable[frame]) {
+            let attrInfo = window.cvat.labelsInfo.attrInfo(attrId);
+            if(attrInfo.name == "DetectPoints") {
+                let detectpoints = activeShape._attributes.mutable[frame][attrId].replace(/"/g, "").split(/[\s,]+/);
+                xdl = parseFloat(detectpoints[0]);
+                ydl = parseFloat(detectpoints[1]);
+                xdr = parseFloat(detectpoints[2]);
+                ydr = parseFloat(detectpoints[3]);
+                break;
+            }
+        }
+
+        if (xdl == -1) xdl = parseFloat(1/10);
+        if (ydl == -1) ydl = parseFloat(ytl + (ybr - ytl) * 2/3);
+        if (xdr == -1) xdr = parseFloat(9/10);
+        if (ydr == -1) ydr = parseFloat(ytl + (ybr - ytl) * 2/3);
+
+        let xdl_draw = xtl + xdl * (xbr-xtl);
+        let xdr_draw = xtl + xdr * (xbr-xtl);
+
+        let scaledR = POINT_RADIUS / window.cvat.player.geometry.scale;
+        let thisframeContent = SVG.adopt($('#frameContent')[0]);
+
+        thisframeContent.rect(scaledR*4,scaledR*4).draggable({
+            minX: xtl - scaledR*2,
+            minY: ydl - scaledR*2,
+            maxX: xbr + scaledR*2,
+            maxY: ydl + scaledR*2,
+            snapToGrid: 0.1 
+        }).center(xdl_draw,ydl).addClass(DETECTPOINT).fill('#ffff00').attr({
+            'stroke-width': STROKE_WIDTH / window.cvat.player.geometry.scale * 1.5,
+            'id': DETECTPOINT + "_" + activeShape._id + "_L"
+        }).on('dragend', function(e){
+            e.preventDefault();
+            mousedownAtDetectPoint = true;
+
+            let x = parseFloat(e.target.getAttribute('x')) + parseFloat(scaledR*2);
+
+            let out_xl = (x - xtl) / (xbr - xtl);
+            let out_xr = (xdr_draw - xtl) / (xbr - xtl);
+            
+            activeShape.updateAttribute(frame, attrId, "\"" + out_xl + "," + ydl + " " + out_xr + "," + ydl + "\"");
+
+            xdl_draw = xtl + out_xl * (xbr-xtl);
+            xdr_draw = xtl + out_xr * (xbr-xtl);;
+
+            let content = $('#frameContent');
+            let shapes = $(content.find('.detectpointAim')).toArray();
+            for (let shape of shapes) {
+                content.append(shape);
+            }
+            shapes = $(content.find('.detectpoint')).toArray();
+            for (let shape of shapes) {
+                content.append(shape);
+            }
+        });
+
+        thisframeContent.rect(scaledR*4,scaledR*4).draggable({
+            minX: xtl - scaledR*2,
+            minY: ydr - scaledR*2,
+            maxX: xbr + scaledR*2,
+            maxY: ydr + scaledR*2,
+            snapToGrid: 0.1 
+        }).center(xdr_draw,ydr).addClass(DETECTPOINT).fill('#ffff00').attr({
+            'stroke-width': STROKE_WIDTH / window.cvat.player.geometry.scale * 1.5,
+            'id': DETECTPOINT + "_" + activeShape._id + "_R"
+        }).on('dragend', function(e){
+            e.preventDefault();
+            mousedownAtDetectPoint = true;
+
+            let x = parseFloat(e.target.getAttribute('x')) + parseFloat(scaledR*2);
+
+            let out_xl = (xdl_draw - xtl) / (xbr - xtl);
+            let out_xr = (x - xtl) / (xbr - xtl);
+            
+            activeShape.updateAttribute(frame, attrId, "\"" + out_xl + "," + ydr + " " + out_xr + "," + ydr + "\"");
+
+            xdl_draw = xtl + out_xl * (xbr-xtl);
+            xdr_draw = xtl + out_xr * (xbr-xtl);;
+
+            let content = $('#frameContent');
+            let shapes = $(content.find('.detectpointAim')).toArray();
+            for (let shape of shapes) {
+                content.append(shape);
+            }
+            shapes = $(content.find('.detectpoint')).toArray();
+            for (let shape of shapes) {
+                content.append(shape);
+            }
+        });
+
+        thisframeContent.line(xdl_draw, ytl+(ybr-ytl)*1/10, xdl_draw, ybr-(ybr-ytl)*1/10).attr({
+            'stroke-width': STROKE_WIDTH / 2 / window.cvat.player.geometry.scale ,'stroke': '#ffff00',
+            'id': DETECTPOINTAIM + "_" + activeShape._id + "_L"
+        }).addClass(DETECTPOINTAIM);
+    
+        thisframeContent.line(xdr_draw, ytl+(ybr-ytl)*1/10, xdr_draw, ybr-(ybr-ytl)*1/10).attr({
+            'stroke-width': STROKE_WIDTH / 2 / window.cvat.player.geometry.scale ,'stroke': '#ffff00',
+            'id': DETECTPOINTAIM + "_" + activeShape._id + "_R"
+        }).addClass(DETECTPOINTAIM);
+
+        $("."+DETECTPOINT).each(function() {
+            $(this).on('dragstart dragmove', () => {
+                let currentAimId = $(this)[0].id.replace(DETECTPOINT, DETECTPOINTAIM);
+                $("#"+currentAimId).remove();
+                thisframeContent.line($(this)[0].getBBox().x+scaledR*2, ytl+(ybr-ytl)*1/10, $(this)[0].getBBox().x+scaledR*2, ybr-(ybr-ytl)*1/10).attr({
+                    'stroke-width': STROKE_WIDTH / 2 / window.cvat.player.geometry.scale ,'stroke': '#ffff00',
+                    'id': currentAimId
+                }).addClass(DETECTPOINTAIM);
+            }).on('mouseover', () => {
+                this.instance.attr('stroke-width', STROKE_WIDTH * 2 / window.cvat.player.geometry.scale);
+            }).on('mouseout', () => {
+                this.instance.attr('stroke-width', STROKE_WIDTH / window.cvat.player.geometry.scale);
+            });
+        });
+
+        let content = $('#frameContent');
+        let shapes = $(content.find('.detectpoint')).toArray();
+        for (let shape of shapes) {
+            content.append(shape);
         }
     }
 }
