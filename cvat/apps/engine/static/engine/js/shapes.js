@@ -120,6 +120,7 @@ class ShapeModel extends Listener {
 
         let labelsInfo = window.cvat.labelsInfo;
         let labelAttributes = labelsInfo.labelAttributes(this._label);
+        let Type_value = null;
         for (let attrId in labelAttributes) {
             let attrInfo = labelsInfo.attrInfo(attrId);
             if (attrInfo.mutable) {
@@ -134,6 +135,7 @@ class ShapeModel extends Listener {
                         this._attributes.mutable[this._frame][attrId] = previous_type;
                         console.log(previous_type, "mutable");
                     }
+                    Type_value = this._attributes.mutable[this._frame][attrId].toLowerCase();
                     this.mapColor(this._attributes.mutable[this._frame][attrId]);
                 }
 
@@ -166,10 +168,23 @@ class ShapeModel extends Listener {
                         console.log(previous_cant_see, "mutable");
                     }
                 }
+                if(attrInfo.name == "DetectPoints") {
+                    var dectpoint_id = attrId;
+                }
             }
             else {
                 this._attributes.immutable[attrId] = attrInfo.values[0];
             }
+        }
+
+        // add by eric
+        if (Type_value.includes("car") || Type_value.includes("van") || Type_value.includes("truck") || Type_value.includes("bus") ||
+            Type_value.includes("代步車") || Type_value.includes("工程車") || Type_value.includes("tram") || Type_value=="無殼三輪車" || Type_value=="有殼三輪車"){
+            this._attributes.mutable[this._frame][dectpoint_id] = "\"0.1,-1 0.9,-1\"";
+        }
+
+        if (Type_value=="bike" || Type_value=="motorbike"){
+            this._attributes.mutable[this._frame][dectpoint_id] = "\"0,-1 0.5,-1\"";
         }
 
         for (let attrId in attributes) {
@@ -179,7 +194,11 @@ class ShapeModel extends Listener {
                 this.mapColor(attributes[attrId]);
             }
             if (attrInfo.mutable) {
-                this._attributes.mutable[this._frame][attrId] = labelsInfo.strToValues(attrInfo.type, attributes[attrId])[0];
+                if(attrInfo.name == "DetectPoints"){
+                    let detectpoints = attributes[attrId].replace(/"/g, "").split(/[\s,]+/);
+                    this._attributes.mutable[this._frame][attrId] = "\"" + detectpoints[0] + ",-1 " + detectpoints[2] + ",-1\"";
+                }
+                else this._attributes.mutable[this._frame][attrId] = labelsInfo.strToValues(attrInfo.type, attributes[attrId])[0];
             }
             else {
                 this._attributes.immutable[attrId] = labelsInfo.strToValues(attrInfo.type, attributes[attrId])[0];
@@ -591,6 +610,10 @@ class ShapeModel extends Listener {
 
         this.removed = true;
 
+        var dont_care_line = "dontcare_";
+        dont_care_line = dont_care_line.concat(this._id);
+        $("."+dont_care_line).remove();
+
         let rm_point = "detectpoint_";
         $("#"+rm_point.concat(this._id,"_L")).remove();
         $("#"+rm_point.concat(this._id,"_R")).remove();
@@ -897,7 +920,6 @@ class BoxModel extends ShapeModel {
                     let new_y = pos.ytl + (pos.ybr - pos.ytl) * 2/3;
 
                     this.updateAttribute(frame, attrId, "\"" + xdl + "," + new_y + " " + xdr + "," + new_y + "\"");
-        
                 }
 
                 break;
@@ -1433,15 +1455,32 @@ class ShapeController {
         if($('#nextButton_training').length) $('#nextButton_training')[0].setAttribute("class","playerButton_training");
         this._model.updatePosition(frame, position);
 
+        // add by jeff woeking
         if (position.xtl>=0 && position.xbr<=window.cvat.player.geometry.frameWidth-1) {
+            let flag = false, detectPoints_id = null, type_value = null;
             for (let attrId in this._model._attributes.mutable[frame]) {
                 let attrInfo = window.cvat.labelsInfo.attrInfo(attrId);
                 if(attrInfo.name == "看不見車頭車尾") {
-                    this.updateAttribute(frame, attrId, false);
+                    if(this._model._attributes.mutable[frame][attrId] == true) {
+                        flag = true;
+                        this.updateAttribute(frame, attrId, false);
+                    }
+                    else return;
                 }
+                if(attrInfo.name == "DetectPoints") {
+                    detectPoints_id = attrId;
+                }
+                if(attrInfo.name == "Type") type_value = this._model._attributes.mutable[frame][attrId].toLowerCase();
+            }
+            if(flag) {
+                if (type_value.includes("car") || type_value.includes("van") || type_value.includes("truck") || type_value.includes("bus") || type_value.includes("代步車")
+                || type_value.includes("工程車") || type_value.includes("tram") || type_value=="無殼三輪車" || type_value=="有殼三輪車"){
+                    this.updateAttribute(window.cvat.player.frames.current, detectPoints_id, "\"0.1,-1 0.9,-1\"");
+                } else if (type_value=="bike" || type_value=="motorbike"){
+                    this.updateAttribute(window.cvat.player.frames.current, detectPoints_id, "\"0,-1 0.5,-1\"");
+                } else this.updateAttribute(window.cvat.player.frames.current, detectPoints_id, "\"-1,-1 -1,-1\"");
             }
         }
-        
     }
 
     updateAttribute(frame, attrId, value) {
@@ -1987,7 +2026,7 @@ class ShapeView extends Listener {
                     for (let tmpId in this._uis.attributes) {
                         let tmpInfo = window.cvat.labelsInfo.attrInfo(tmpId);
                         if(tmpInfo.name=="DetectPoints") {
-                            this._uis.attributes[tmpId].value = "-1,-1 -1,-1";
+                            this._uis.attributes[tmpId].value = "\"-1,-1 -1,-1\"";
                         }
                         if(tmpInfo.name=="看不見車頭車尾") {
                             this._uis.attributes[tmpId].setAttribute('disabled', true);
@@ -2002,7 +2041,7 @@ class ShapeView extends Listener {
                     for (let tmpId in this._uis.attributes) {
                         let tmpInfo = window.cvat.labelsInfo.attrInfo(tmpId);
                         if(tmpInfo.name=="DetectPoints") {
-                            this._uis.attributes[tmpId].value = "-1,-1 -1,-1";
+                            this._uis.attributes[tmpId].value = "\"-1,-1 -1,-1\"";
                         }
                         if(tmpInfo.name=="看不見車頭車尾") {
                             this._uis.attributes[tmpId].setAttribute('disabled', true);
@@ -2017,7 +2056,7 @@ class ShapeView extends Listener {
                     for (let tmpId in this._uis.attributes) {
                         let tmpInfo = window.cvat.labelsInfo.attrInfo(tmpId);
                         if(tmpInfo.name=="DetectPoints") {
-                            this._uis.attributes[tmpId].value = "-1,-1 -1,-1";
+                            this._uis.attributes[tmpId].value = "\"-1,-1 -1,-1\"";
                             break;
                         }
                     }
@@ -2126,18 +2165,18 @@ class ShapeView extends Listener {
                     `${shortkeys['switch_all_lock_property'].view_value} - ${shortkeys['switch_all_lock_property'].description}`);
 
                 let occludedButton = document.createElement('button');
-                occludedButton.classList.add('graphicButton', 'occludedButton');
+                occludedButton.classList.add('graphicButton', 'hidden', 'occludedButton');
                 occludedButton.setAttribute('title', `
                     ${shortkeys['switch_occluded_property'].view_value} - ${shortkeys['switch_occluded_property'].description}`);
 
                 let copyButton = document.createElement('button');
-                copyButton.classList.add('graphicButton', 'copyButton');
+                copyButton.classList.add('graphicButton', 'hidden', 'copyButton');
                 copyButton.setAttribute('title', `
                     ${shortkeys['copy_shape'].view_value} - ${shortkeys['copy_shape'].description}` + `\n` +
                     `${shortkeys['switch_paste'].view_value} - ${shortkeys['switch_paste'].description}`);
 
                 let propagateButton = document.createElement('button');
-                propagateButton.classList.add('graphicButton', 'propagateButton');
+                propagateButton.classList.add('graphicButton', 'hidden', 'propagateButton');
                 propagateButton.setAttribute('title', `
                     ${shortkeys['propagate_shape'].view_value} - ${shortkeys['propagate_shape'].description}`);
 
@@ -2747,6 +2786,53 @@ class ShapeView extends Listener {
                 }
             }
         }
+        function setDetectPointDefault (attributes,controller,preValue) {
+            let value = null, detectpoints = null, att_id = null;
+            for (let tmpId in attributes) {
+                let tmpInfo = window.cvat.labelsInfo.attrInfo(tmpId);
+                if(tmpInfo.name=="Type") value = attributes[tmpId].value.toLowerCase();
+                if(tmpInfo.name=="DetectPoints"){
+                    detectpoints = attributes[tmpId].value.replace(/"/g, "").split(/[\s,]+/);
+                    att_id = tmpId;
+                }
+            }
+            if (value.includes("car") || value.includes("van") || value.includes("truck") || value.includes("bus") || value.includes("代步車")
+                || value.includes("工程車") || value.includes("tram") || value=="無殼三輪車" || value=="有殼三輪車"){
+                value = 2;
+            } else if (value=="bike" || value=="motorbike"){
+                value = 1;
+            } else value = 0;
+
+            if (preValue == null) {
+                switch(value) {
+                    case 0 : controller.updateAttribute(window.cvat.player.frames.current, att_id, "\"-1,-1 -1,-1\""); break;
+                    case 1 : controller.updateAttribute(window.cvat.player.frames.current, att_id, "\"0,-1 0.5,-1\""); break;
+                    case 2 : controller.updateAttribute(window.cvat.player.frames.current, att_id, "\"0.1,-1 0.9,-1\""); break;
+                }
+                return;
+            } else if (preValue.includes("car") || preValue.includes("van") || preValue.includes("truck") || preValue.includes("bus") || preValue.includes("代步車")
+                || preValue.includes("工程車") || preValue.includes("tram") || preValue=="無殼三輪車" || preValue=="有殼三輪車"){
+                preValue = 2;
+            } else if (preValue=="bike" || preValue=="motorbike"){
+                preValue = 1;
+            } else preValue = 0;
+
+            if (preValue != value) {
+                switch(value) {
+                    case 0 : controller.updateAttribute(window.cvat.player.frames.current, att_id, "\"-1,-1 -1,-1\""); break;
+                    case 1 : controller.updateAttribute(window.cvat.player.frames.current, att_id, "\"0,-1 0.5,-1\""); break;
+                    case 2 : controller.updateAttribute(window.cvat.player.frames.current, att_id, "\"0.1,-1 0.9,-1\""); break;
+                }
+            } else {
+                if (detectpoints.includes("-1")){
+                    switch(value) {
+                        case 0 : controller.updateAttribute(window.cvat.player.frames.current, att_id, "\"-1,-1 -1,-1\""); break;
+                        case 1 : controller.updateAttribute(window.cvat.player.frames.current, att_id, "\"0,-1 0.5,-1\""); break;
+                        case 2 : controller.updateAttribute(window.cvat.player.frames.current, att_id, "\"0.1,-1 0.9,-1\""); break;
+                    }
+                }
+            }
+        }
 
         function rmDetectPointValue (attributes,controller) {
             for (let tmpId in attributes) {
@@ -2785,11 +2871,15 @@ class ShapeView extends Listener {
                         }
                         else {
                             setHeadTailRelease(this._uis.attributes,this._controller);
+                            setDetectPointDefault(this._uis.attributes,this._controller,null);
                         }
                     }
                     if(attrInfo.name == "看不見車頭車尾") {
                         if(e.target.checked) {
                             setDetectPointToEdge(this._uis.attributes,this._controller);
+                        }
+                        else {
+                            setDetectPointDefault(this._uis.attributes,this._controller,null);
                         }
                     }
 
@@ -2805,6 +2895,7 @@ class ShapeView extends Listener {
             default:
                 this._uis.attributes[attrId].onchange = function(e) {
                     //add by jeff
+                    let preValue = this._controller._model._attributes.mutable[window.cvat.player.frames.current][attrId].toLowerCase();
                     this._controller.updateAttribute(window.cvat.player.frames.current, attrId, e.target.value);
                     if(attrInfo.name == "Type") {
                         let value = e.target.value.toLowerCase();
@@ -2876,6 +2967,10 @@ class ShapeView extends Listener {
                             rmDetectPointValue(this._uis.attributes,this._controller);
                             setHeadTailFix(this._uis.attributes,this._controller);
                         }
+                        else {
+                            setDetectPointDefault(this._uis.attributes,this._controller,preValue);
+                        }
+                        
                     }
                 }.bind(this);
             }
@@ -2903,6 +2998,7 @@ class ShapeView extends Listener {
             if (!this._controller.hiddenShape) {
                 // Add by eric
                 // draw carside once load UI.
+                console.log("in draw");
                 this._drawShapeUI(interpolation, id);
                 this._setupOccludedUI(interpolation.position.occluded);
                 this._setupMergeView(this._controller.merge);
@@ -3118,6 +3214,10 @@ class ShapeView extends Listener {
             console.log("setuphidden");
 
             // modify by Eric
+            var dont_care_line = "dontcare_";
+            dont_care_line = dont_care_line.concat(id);
+            $("."+dont_care_line).remove();
+
             let rm_point = "detectpoint_";
             $("#"+rm_point.concat(id,"_L")).remove();
             $("#"+rm_point.concat(id,"_R")).remove();
@@ -3130,6 +3230,7 @@ class ShapeView extends Listener {
 
             // if (!hiddenShape || !hiddenText || activeAAM.shape) {
             if (!hiddenShape || activeAAM.shape) {
+                console.log("in set hidden");
                 this._drawShapeUI(interpolation, id);
                 this._setupOccludedUI(interpolation.position.occluded);
                 if (!hiddenText || active || activeAAM.shape) {
@@ -3318,144 +3419,104 @@ class BoxView extends ShapeView {
         let ybr = position.ybr;
         let width = position.xbr - position.xtl;
         let height = position.ybr - position.ytl;
-        //working
-        // $(".detectpoint").remove();
-        // let activeShape = this._controller._model;
-        
-        // if(activeShape){
-        //     let DETECTPOINT = "detectpoint";
-        //     let DETECTPOINTAIM = "detectpointAim";
 
-        //     $("#"+DETECTPOINTAIM + "_" + activeShape._id + "_L").remove();
-        //     $("#"+DETECTPOINTAIM + "_" + activeShape._id + "_R").remove();
-            
-        //     let frame = activeShape._frame;
-            
-        //     let attrId = null;
-        //     let xdl, ydl, xdr, ydr;
+        for (let attrId in attributes) {
+            var get_name = String(attributes[attrId]['name']) ;
+            if (get_name === "DetectPoints"){
+                var dectectpoin_value = attributes[attrId]['value'];
+            }
+            if (get_name === "Dont_Care"){
+                var dont_care_value = attributes[attrId]['value'];
+            }
+            if (get_name === "Type"){
+                var type_value = attributes[attrId]['value'];
+            }
+        }
 
-        //     for (attrId in activeShape._attributes.mutable[frame]) {
-        //         let attrInfo = window.cvat.labelsInfo.attrInfo(attrId);
-        //         if(attrInfo.name == "DetectPoints") {
-        //             let detectpoints = activeShape._attributes.mutable[frame][attrId].replace(/"/g, "").split(/[\s,]+/);
-        //             xdl = parseFloat(detectpoints[0]);
-        //             ydl = parseFloat(detectpoints[1]);
-        //             xdr = parseFloat(detectpoints[2]);
-        //             ydr = parseFloat(detectpoints[3]);
-        //             break;
-        //         }
-        //     }
+        var dont_care_line = "dontcare_";
+        dont_care_line = dont_care_line.concat(id_);
+        $("."+dont_care_line).remove();
 
-        //     if (xdl == -1) xdl = parseFloat(1/10);
-        //     if (ydl == -1) ydl = parseFloat(ytl + (ybr - ytl) * 2/3);
-        //     if (xdr == -1) xdr = parseFloat(9/10);
-        //     if (ydr == -1) ydr = parseFloat(ytl + (ybr - ytl) * 2/3);
+        let value = type_value.toLowerCase();
+        let dont_care_color = "";
+        if(value.includes("car")){
+            dont_care_color = "#255f9d";
+        }
+        else if(value.includes("van")){
+            dont_care_color = "#14ad78";
+        }
+        else if(value.includes("motorbike")){
+            dont_care_color = "#a41ea4";
+        }
+        else if(value.includes("bike")){
+            dont_care_color = "#e77408";
+        }
+        else if(value.includes("truck")){
+            dont_care_color = "#209211";
+        }
+        else if(value.includes("bus")){
+            dont_care_color = "#926511";
+        }
+        else if(value.includes("代步車")){
+            dont_care_color = "#7f0fff";
+        }
+        else if(value.includes("工程車")){
+            dont_care_color = "#009ff5";
+        }
+        else if(value.includes("無殼三輪車")){
+            dont_care_color = "#e713d5";
+        }
+        else if(value.includes("有殼三輪車")){
+            dont_care_color = "#8ab427";
+        }
+        else if(value.includes("無人機車群")){
+            dont_care_color = "#a0a800";
+        }
+        else if(value.includes("無人腳踏車群")){
+            dont_care_color = "#00d676";
+        }
+        else if(value.includes("misc")){
+            dont_care_color = "#ff38ca";
+        }
+        else if(value.includes("background")){
+            dont_care_color = "#fbddac";
+        }
+        else if(value.includes("tram")){
+            dont_care_color = "#c1fbac";
+        }
+        else if(value.includes("crowd")){
+            dont_care_color = "#f9c8c8";
+        }
+        else if(["pedestrian_行人(直立)","personsitting_行人(非直立)"].includes(value)){
+            dont_care_color = "#a01313";
+        }
+        else {
+            console.log("error but set default with car");
+            dont_care_color = "#255f9d";
+        }
 
-        //     let xdl_draw = xtl + xdl * (xbr-xtl);
-        //     let xdr_draw = xtl + xdr * (xbr-xtl);
-
-        //     let scaledR = POINT_RADIUS / window.cvat.player.geometry.scale;
-        //     let thisframeContent = SVG.adopt($('#frameContent')[0]);
-
-        //     thisframeContent.rect(scaledR*4,scaledR*4).draggable({
-        //         minX: xtl - scaledR*2,
-        //         minY: ydl - scaledR*2,
-        //         maxX: xbr + scaledR*2,
-        //         maxY: ydl + scaledR*2,
-        //         snapToGrid: 0.1 
-        //     }).center(xdl_draw,ydl).addClass(DETECTPOINT).fill('#ffff00').attr({
-        //         'stroke-width': STROKE_WIDTH / window.cvat.player.geometry.scale * 1.5,
-        //         'id': DETECTPOINT + "_" + activeShape._id + "_L"
-        //     }).on('dragend', function(e){
-        //         e.preventDefault();
-        //         mousedownAtDetectPoint = true;
-
-        //         let x = parseFloat(e.target.getAttribute('x')) + parseFloat(scaledR*2);
-
-        //         let out_xl = (x - xtl) / (xbr - xtl);
-        //         let out_xr = (xdr_draw - xtl) / (xbr - xtl);
-                
-        //         activeShape.updateAttribute(frame, attrId, "\"" + out_xl + "," + ydl + " " + out_xr + "," + ydl + "\"");
-
-        //         xdl_draw = xtl + out_xl * (xbr-xtl);
-        //         xdr_draw = xtl + out_xr * (xbr-xtl);;
-
-        //         let content = $('#frameContent');
-        //         let shapes = $(content.find('.detectpointAim')).toArray();
-        //         for (let shape of shapes) {
-        //             content.append(shape);
-        //         }
-        //         shapes = $(content.find('.detectpoint')).toArray();
-        //         for (let shape of shapes) {
-        //             content.append(shape);
-        //         }
-        //     });
-
-        //     thisframeContent.rect(scaledR*4,scaledR*4).draggable({
-        //         minX: xtl - scaledR*2,
-        //         minY: ydr - scaledR*2,
-        //         maxX: xbr + scaledR*2,
-        //         maxY: ydr + scaledR*2,
-        //         snapToGrid: 0.1 
-        //     }).center(xdr_draw,ydr).addClass(DETECTPOINT).fill('#ffff00').attr({
-        //         'stroke-width': STROKE_WIDTH / window.cvat.player.geometry.scale * 1.5,
-        //         'id': DETECTPOINT + "_" + activeShape._id + "_R"
-        //     }).on('dragend', function(e){
-        //         e.preventDefault();
-        //         mousedownAtDetectPoint = true;
-
-        //         let x = parseFloat(e.target.getAttribute('x')) + parseFloat(scaledR*2);
-
-        //         let out_xl = (xdl_draw - xtl) / (xbr - xtl);
-        //         let out_xr = (x - xtl) / (xbr - xtl);
-                
-        //         activeShape.updateAttribute(frame, attrId, "\"" + out_xl + "," + ydr + " " + out_xr + "," + ydr + "\"");
-
-        //         xdl_draw = xtl + out_xl * (xbr-xtl);
-        //         xdr_draw = xtl + out_xr * (xbr-xtl);;
-
-        //         let content = $('#frameContent');
-        //         let shapes = $(content.find('.detectpointAim')).toArray();
-        //         for (let shape of shapes) {
-        //             content.append(shape);
-        //         }
-        //         shapes = $(content.find('.detectpoint')).toArray();
-        //         for (let shape of shapes) {
-        //             content.append(shape);
-        //         }
-        //     });
-
-        //     thisframeContent.line(xdl_draw, ytl+(ybr-ytl)*1/10, xdl_draw, ybr-(ybr-ytl)*1/10).attr({
-        //         'stroke-width': STROKE_WIDTH / 2 / window.cvat.player.geometry.scale ,'stroke': '#ffff00',
-        //         'id': DETECTPOINTAIM + "_" + activeShape._id + "_L"
-        //     }).addClass(DETECTPOINTAIM);
-        
-        //     thisframeContent.line(xdr_draw, ytl+(ybr-ytl)*1/10, xdr_draw, ybr-(ybr-ytl)*1/10).attr({
-        //         'stroke-width': STROKE_WIDTH / 2 / window.cvat.player.geometry.scale ,'stroke': '#ffff00',
-        //         'id': DETECTPOINTAIM + "_" + activeShape._id + "_R"
-        //     }).addClass(DETECTPOINTAIM);
-
-        //     $("."+DETECTPOINT).each(function() {
-        //         $(this).on('dragstart dragmove', () => {
-        //             let currentAimId = $(this)[0].id.replace(DETECTPOINT, DETECTPOINTAIM);
-        //             $("#"+currentAimId).remove();
-        //             thisframeContent.line($(this)[0].getBBox().x+scaledR*2, ytl+(ybr-ytl)*1/10, $(this)[0].getBBox().x+scaledR*2, ybr-(ybr-ytl)*1/10).attr({
-        //                 'stroke-width': STROKE_WIDTH / 2 / window.cvat.player.geometry.scale ,'stroke': '#ffff00',
-        //                 'id': currentAimId
-        //             }).addClass(DETECTPOINTAIM);
-        //         }).on('mouseover', () => {
-        //             this.instance.attr('stroke-width', STROKE_WIDTH * 2 / window.cvat.player.geometry.scale);
-        //         }).on('mouseout', () => {
-        //             this.instance.attr('stroke-width', STROKE_WIDTH / window.cvat.player.geometry.scale);
-        //         });
-        //     });
-
-        //     let content = $('#frameContent');
-        //     let shapes = $(content.find('.detectpoint')).toArray();
-        //     for (let shape of shapes) {
-        //         content.append(shape);
-        //     }
-        // }
+        if (dont_care_value) {
+            // dont care line 
+            this._uis.shape = this._scenes.svg.line(xtl,ytl,xbr,ybr).attr(
+                {
+                    'stroke-width': STROKE_WIDTH / 2 / window.cvat.player.geometry.scale ,'stroke': dont_care_color,
+                }
+            ).addClass(dont_care_line);
+    
+            this._uis.shape = this._scenes.svg.line(xbr,ytl,xtl,ybr).attr(
+                {
+                    'stroke-width': STROKE_WIDTH / 2 / window.cvat.player.geometry.scale ,'stroke': dont_care_color,
+                }
+            ).addClass(dont_care_line);        
+        } else {
+            let rm_point = "detectpoint_";
+            $("#"+rm_point.concat(id_,"_L")).remove();
+            $("#"+rm_point.concat(id_,"_R")).remove();
+    
+            let rm_pointAim = "detectpointAim_";
+            $("#"+rm_pointAim.concat(id_,"_L")).remove();
+            $("#"+rm_pointAim.concat(id_,"_R")).remove();
+        }
 
         this._uis.shape = this._scenes.svg.rect().size(width, height).attr({
             'fill': this._appearance.fill || this._appearance.colors.shape,
@@ -3466,6 +3527,7 @@ class BoxView extends ShapeView {
         }).move(xtl, ytl).addClass('shape');
 
         ShapeView.prototype._drawShapeUI.call(this);
+        console.log("_drawShapeUI(interpolation, id_)");
         setDetectPoint(this._controller._model);
     }
 

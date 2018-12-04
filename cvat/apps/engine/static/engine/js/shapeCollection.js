@@ -490,9 +490,11 @@ class ShapeCollectionModel extends Listener {
                         // But it will go on 'else' branch and this._activeShape will set to null
                     }
                     this._activeShape = model;
-                    setDetectPoint(this._activeShape);
+                    // console.log("Now loop occure -> active(false) -> notify -> onShapeUpdate");
+                    //setDetectPoint(this._activeShape);
                 }
                 if (this._activeShape === model) {
+                    console.log("But it will go on 'else' branch and this._activeShape will set to null");
                     setDetectPoint(this._activeShape);
                 }
             }
@@ -1201,7 +1203,7 @@ class ShapeCollectionController {
             for (let attrId in activeShape._attributes.mutable[frame]) {
                 let attrInfo = window.cvat.labelsInfo.attrInfo(attrId);
                 if(attrInfo.name == "DetectPoints") {
-                    activeShape.updateAttribute(frame, attrId, "-1,-1 -1,-1");
+                    activeShape.updateAttribute(frame, attrId, "\"-1,-1 -1,-1\"");
                     break;
                 }
             }
@@ -1400,6 +1402,7 @@ class ShapeCollectionView {
         }.bind(this));
 
         //add by jeff
+        // wait me
         this._frameContent.on('click', function(e) {
             if (mousedownAtDetectPoint || e.ctrlKey || e.which === 2 || e.target.classList.contains('svg_select_points')) {
                 mousedownAtDetectPoint = false;
@@ -1450,6 +1453,7 @@ class ShapeCollectionView {
             //add by jeff
             case "detect_point":
                 //this._controller.setDetectPoint();
+                console.log(" $('#shapeContextMenu li').click((e) ");
                 setDetectPoint(this._controller.activeShape);
                 break;
             //add by eric
@@ -1720,6 +1724,33 @@ class ShapeCollectionView {
             this.instance.attr('stroke-width', scaledPointStroke);
         });
 
+        // $('.detectpoint').each(function() {
+        //     let x = this.instance.attr('x');
+        //     let y = this.instance.attr('y');
+        //     let width = this.instance.attr('width');
+        //     let height = this.instance.attr('height');
+        //     let cx = x + 0.5*width;
+        //     let cy = y + 0.5*height
+        //     x = cx - scaledR*1.5;
+        //     y = cy - scaledR*1.5;
+        //     this.instance.attr('x', x);
+        //     this.instance.attr('y', y);
+        //     this.instance.attr('width', scaledR*3);
+        //     this.instance.attr('height', scaledR*3);
+        //     this.instance.attr('stroke-width', scaledPointStroke);
+        //     this.instance.draggable({
+        //         minX: xtl - scaledR*1.5,
+        //         minY: ydr - scaledR*1.5,
+        //         maxX: xbr + scaledR*1.5,
+        //         maxY: ydr + scaledR*1.5,
+        //         snapToGrid: 0.1 
+        //     })
+        // });
+
+        $('.detectpointAim').each(function() {
+            this.instance.attr('stroke-width', scaledPointStroke/2);
+        });
+
         $('.tempMarker').each(function() {
             this.instance.radius(scaledR, scaledR);
             this.instance.attr('stroke-width', scaledStroke);
@@ -1827,7 +1858,10 @@ function setDetectPoint(activeShape){
         let ybr = activeShape._positions[frame]['ybr'];
         
         let attrId = null;
+        let attrId_detectpoint = null;
         let xdl, ydl, xdr, ydr;
+
+        let isdontcare = false, withoutcarside = false, middlecarside = false;
 
         for (attrId in activeShape._attributes.mutable[frame]) {
             let attrInfo = window.cvat.labelsInfo.attrInfo(attrId);
@@ -1837,13 +1871,30 @@ function setDetectPoint(activeShape){
                 ydl = parseFloat(detectpoints[1]);
                 xdr = parseFloat(detectpoints[2]);
                 ydr = parseFloat(detectpoints[3]);
-                break;
+                attrId_detectpoint = attrId;
+            }
+            if(attrInfo.name == "Dont_Care") {
+                if(activeShape._attributes.mutable[frame][attrId]){
+                    isdontcare = true;
+                    return;
+                }
+            }
+            if(attrInfo.name == "Type") {
+                let value = activeShape._attributes.mutable[frame][attrId].toLowerCase();
+                if (value.includes("無人") || value.includes("人") || value.includes("background")) {
+                    withoutcarside = true;
+                    return;
+                }
+                if(value.includes("bike")) {
+                    middlecarside = true;
+                }
             }
         }
-
-        if (xdl == -1) xdl = parseFloat(1/10);
+        if (xdl == -1) return;
+        
+        //if (xdl == -1) xdl = parseFloat(1/10);
         if (ydl == -1) ydl = parseFloat(ytl + (ybr - ytl) * 2/3);
-        if (xdr == -1) xdr = parseFloat(9/10);
+        //if (xdr == -1) xdr = parseFloat(9/10);
         if (ydr == -1) ydr = parseFloat(ytl + (ybr - ytl) * 2/3);
 
         let xdl_draw = xtl + xdl * (xbr-xtl);
@@ -1852,25 +1903,25 @@ function setDetectPoint(activeShape){
         let scaledR = POINT_RADIUS / window.cvat.player.geometry.scale;
         let thisframeContent = SVG.adopt($('#frameContent')[0]);
 
-        thisframeContent.rect(scaledR*4,scaledR*4).draggable({
-            minX: xtl - scaledR*2,
-            minY: ydl - scaledR*2,
-            maxX: xbr + scaledR*2,
-            maxY: ydl + scaledR*2,
+        thisframeContent.rect(scaledR*3,scaledR*3).draggable({
+            minX: xtl - scaledR*1.5,
+            minY: ydl - scaledR*1.5,
+            maxX: xbr + scaledR*1.5,
+            maxY: ydl + scaledR*1.5,
             snapToGrid: 0.1 
         }).center(xdl_draw,ydl).addClass(DETECTPOINT).fill('#ffff00').attr({
             'stroke-width': STROKE_WIDTH / window.cvat.player.geometry.scale * 1.5,
             'id': DETECTPOINT + "_" + activeShape._id + "_L"
         }).on('dragend', function(e){
             e.preventDefault();
-            mousedownAtDetectPoint = true;
+            mousedownAtDetectPoint = false;
 
-            let x = parseFloat(e.target.getAttribute('x')) + parseFloat(scaledR*2);
+            let x = parseFloat(e.target.getAttribute('x')) + parseFloat(scaledR*1.5);
 
             let out_xl = (x - xtl) / (xbr - xtl);
             let out_xr = (xdr_draw - xtl) / (xbr - xtl);
             
-            activeShape.updateAttribute(frame, attrId, "\"" + out_xl + "," + ydl + " " + out_xr + "," + ydl + "\"");
+            activeShape.updateAttribute(frame, attrId_detectpoint, "\"" + out_xl + "," + ydl + " " + out_xr + "," + ydl + "\"");
 
             xdl_draw = xtl + out_xl * (xbr-xtl);
             xdr_draw = xtl + out_xr * (xbr-xtl);;
@@ -1886,25 +1937,25 @@ function setDetectPoint(activeShape){
             }
         });
 
-        thisframeContent.rect(scaledR*4,scaledR*4).draggable({
-            minX: xtl - scaledR*2,
-            minY: ydr - scaledR*2,
-            maxX: xbr + scaledR*2,
-            maxY: ydr + scaledR*2,
+        thisframeContent.rect(scaledR*3,scaledR*3).draggable({
+            minX: xtl - scaledR*1.5,
+            minY: ydr - scaledR*1.5,
+            maxX: xbr + scaledR*1.5,
+            maxY: ydr + scaledR*1.5,
             snapToGrid: 0.1 
         }).center(xdr_draw,ydr).addClass(DETECTPOINT).fill('#ffff00').attr({
             'stroke-width': STROKE_WIDTH / window.cvat.player.geometry.scale * 1.5,
             'id': DETECTPOINT + "_" + activeShape._id + "_R"
         }).on('dragend', function(e){
             e.preventDefault();
-            mousedownAtDetectPoint = true;
+            mousedownAtDetectPoint = false;
 
-            let x = parseFloat(e.target.getAttribute('x')) + parseFloat(scaledR*2);
+            let x = parseFloat(e.target.getAttribute('x')) + parseFloat(scaledR*1.5);
 
             let out_xl = (xdl_draw - xtl) / (xbr - xtl);
             let out_xr = (x - xtl) / (xbr - xtl);
             
-            activeShape.updateAttribute(frame, attrId, "\"" + out_xl + "," + ydr + " " + out_xr + "," + ydr + "\"");
+            activeShape.updateAttribute(frame, attrId_detectpoint, "\"" + out_xl + "," + ydr + " " + out_xr + "," + ydr + "\"");
 
             xdl_draw = xtl + out_xl * (xbr-xtl);
             xdr_draw = xtl + out_xr * (xbr-xtl);;
@@ -1920,12 +1971,12 @@ function setDetectPoint(activeShape){
             }
         });
 
-        thisframeContent.line(xdl_draw, ytl+(ybr-ytl)*1/10, xdl_draw, ybr-(ybr-ytl)*1/10).attr({
+        thisframeContent.line(xdl_draw, ytl, xdl_draw, ybr).attr({
             'stroke-width': STROKE_WIDTH / 2 / window.cvat.player.geometry.scale ,'stroke': '#ffff00',
             'id': DETECTPOINTAIM + "_" + activeShape._id + "_L"
         }).addClass(DETECTPOINTAIM);
     
-        thisframeContent.line(xdr_draw, ytl+(ybr-ytl)*1/10, xdr_draw, ybr-(ybr-ytl)*1/10).attr({
+        thisframeContent.line(xdr_draw, ytl, xdr_draw, ybr).attr({
             'stroke-width': STROKE_WIDTH / 2 / window.cvat.player.geometry.scale ,'stroke': '#ffff00',
             'id': DETECTPOINTAIM + "_" + activeShape._id + "_R"
         }).addClass(DETECTPOINTAIM);
@@ -1934,7 +1985,7 @@ function setDetectPoint(activeShape){
             $(this).on('dragstart dragmove', () => {
                 let currentAimId = $(this)[0].id.replace(DETECTPOINT, DETECTPOINTAIM);
                 $("#"+currentAimId).remove();
-                thisframeContent.line($(this)[0].getBBox().x+scaledR*2, ytl+(ybr-ytl)*1/10, $(this)[0].getBBox().x+scaledR*2, ybr-(ybr-ytl)*1/10).attr({
+                thisframeContent.line($(this)[0].getBBox().x+scaledR*1.5, ytl, $(this)[0].getBBox().x+scaledR*1.5, ybr).attr({
                     'stroke-width': STROKE_WIDTH / 2 / window.cvat.player.geometry.scale ,'stroke': '#ffff00',
                     'id': currentAimId
                 }).addClass(DETECTPOINTAIM);
