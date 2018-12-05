@@ -610,9 +610,9 @@ class ShapeModel extends Listener {
 
         this.removed = true;
 
-        var dont_care_line = "dontcare_";
-        dont_care_line = dont_care_line.concat(this._id);
-        $("."+dont_care_line).remove();
+        let rm_dontcare = "dontcare_";
+        $("#"+rm_dontcare.concat(this._id,"_L")).remove();
+        $("#"+rm_dontcare.concat(this._id,"_R")).remove();
 
         let rm_point = "detectpoint_";
         $("#"+rm_point.concat(this._id,"_L")).remove();
@@ -914,10 +914,10 @@ class BoxModel extends ShapeModel {
                 ydr = detectpoints[3];
 
                 if (ydl != "-1" && ydr != "-1") {
-                    if(xdl == "-1")xdl=1/10;
-                    if(xdr == "-1")xdr=9/10;
-        
-                    let new_y = pos.ytl + (pos.ybr - pos.ytl) * 2/3;
+                    if(xdl == "-1")xdl=parseFloat(1/10).toFixed(2);
+                    if(xdr == "-1")xdr=parseFloat(9/10).toFixed(2);
+                    
+                    let new_y = parseFloat(pos.ytl + (pos.ybr - pos.ytl) * 2/3).toFixed(2);
 
                     this.updateAttribute(frame, attrId, "\"" + xdl + "," + new_y + " " + xdr + "," + new_y + "\"");
                 }
@@ -1716,6 +1716,10 @@ class ShapeView extends Listener {
                     this._showShapeText();
                     // console.log("no show text");
                     this.notify();
+                }).on('mousedown', () => {
+                    mousedown_in_shape = true;
+                }).on('mouseup', () => {
+                    mousedown_in_shape = false;
                 });
 
                 // Setup resize events
@@ -1762,6 +1766,9 @@ class ShapeView extends Listener {
                         this.instance.attr('stroke-width', STROKE_WIDTH / window.cvat.player.geometry.scale);
                     }).on('mousedown', () => {
                         self._positionateMenus();
+                        mousedown_in_shape = true;
+                    }).on('mouseup', () => {
+                        mousedown_in_shape = false;
                     });
                 });
 
@@ -2769,6 +2776,10 @@ class ShapeView extends Listener {
                         let rm_pointAim = "detectpointAim_";
                         $("#"+rm_pointAim.concat(controller._model._id,"_L")).remove();
                         $("#"+rm_pointAim.concat(controller._model._id,"_R")).remove();
+
+                        let rm_dontcare = "dontcare_";
+                        $("#"+rm_dontcare.concat(controller._model._id,"_L")).remove();
+                        $("#"+rm_dontcare.concat(controller._model._id,"_R")).remove();
                     }
                     else {
                         flag = true;
@@ -2842,6 +2853,10 @@ class ShapeView extends Listener {
                     let rm_point = "detectpoint_";
                     $("#"+rm_point.concat(controller._model._id,"_L")).remove();
                     $("#"+rm_point.concat(controller._model._id,"_R")).remove();
+                    
+                    let rm_dontcare = "dontcare_";
+                    $("#"+rm_dontcare.concat(controller._model._id,"_L")).remove();
+                    $("#"+rm_dontcare.concat(controller._model._id,"_R")).remove();
 
                     let rm_pointAim = "detectpointAim_";
                     $("#"+rm_pointAim.concat(controller._model._id,"_L")).remove();
@@ -3214,9 +3229,10 @@ class ShapeView extends Listener {
             console.log("setuphidden");
 
             // modify by Eric
-            var dont_care_line = "dontcare_";
-            dont_care_line = dont_care_line.concat(id);
-            $("."+dont_care_line).remove();
+
+            let rm_dontcare = "dontcare_";
+            $("#"+rm_dontcare.concat(id,"_L")).remove();
+            $("#"+rm_dontcare.concat(id,"_R")).remove();
 
             let rm_point = "detectpoint_";
             $("#"+rm_point.concat(id,"_L")).remove();
@@ -3433,9 +3449,9 @@ class BoxView extends ShapeView {
             }
         }
 
-        var dont_care_line = "dontcare_";
-        dont_care_line = dont_care_line.concat(id_);
-        $("."+dont_care_line).remove();
+        let DONT_CARE = "dontcare";
+        $("#"+DONT_CARE + "_" + id_ + "_L").remove();
+        $("#"+DONT_CARE + "_" + id_ + "_R").remove();
 
         let value = type_value.toLowerCase();
         let dont_care_color = "";
@@ -3500,14 +3516,16 @@ class BoxView extends ShapeView {
             this._uis.shape = this._scenes.svg.line(xtl,ytl,xbr,ybr).attr(
                 {
                     'stroke-width': STROKE_WIDTH / 2 / window.cvat.player.geometry.scale ,'stroke': dont_care_color,
+                    'id': DONT_CARE + "_" + id_ + "_L"
                 }
-            ).addClass(dont_care_line);
+            ).addClass(DONT_CARE);
     
             this._uis.shape = this._scenes.svg.line(xbr,ytl,xtl,ybr).attr(
                 {
                     'stroke-width': STROKE_WIDTH / 2 / window.cvat.player.geometry.scale ,'stroke': dont_care_color,
+                    'id': DONT_CARE + "_" + id_ + "_R"
                 }
-            ).addClass(dont_care_line);        
+            ).addClass(DONT_CARE);        
         } else {
             let rm_point = "detectpoint_";
             $("#"+rm_point.concat(id_,"_L")).remove();

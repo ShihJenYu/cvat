@@ -320,6 +320,7 @@ class PlayerModel extends Listener {
         let changed = this._frame.previous != this._frame.current;
         if (changed){
             // add by jeff
+            $('.dontcare').remove();
             $('.detectpoint').remove();
             $('.detectpointAim').remove();
             saveByShift = true;
@@ -444,7 +445,7 @@ class PlayerController {
         this._find = find;
         this._rewinding = false;
         this._moving = false;
-        this._moving_key = false;
+        //this._moving_key = false;
         this._leftOffset = playerOffset.left;
         this._topOffset = playerOffset.top;
         this._lastClickX = 0;
@@ -529,12 +530,12 @@ class PlayerController {
             }.bind(this));
 
 
-            let enableMovingKeyHandler = Logger.shortkeyLogDecorator(function() {
-                this._moving_key = true;
-            }.bind(this));
-            let disableMovingKeyHandler = Logger.shortkeyLogDecorator(function() {
-                this._moving_key = false;
-            }.bind(this));
+            // let enableMovingKeyHandler = Logger.shortkeyLogDecorator(function() {
+            //     this._moving_key = true;
+            // }.bind(this));
+            // let disableMovingKeyHandler = Logger.shortkeyLogDecorator(function() {
+            //     this._moving_key = false;
+            // }.bind(this));
 
             let shortkeys = window.cvat.config.shortkeys;
 
@@ -547,8 +548,8 @@ class PlayerController {
             Mousetrap.bind(shortkeys["forward_frame"].value, forwardHandler, 'keydown');
             Mousetrap.bind(shortkeys["backward_frame"].value, backwardHandler, 'keydown');
             Mousetrap.bind(shortkeys["play_pause"].value, playPauseHandler, 'keydown');
-            Mousetrap.bind('alt', enableMovingKeyHandler, 'keydown');
-            Mousetrap.bind('alt', disableMovingKeyHandler, 'keyup');
+            // Mousetrap.bind('alt', enableMovingKeyHandler, 'keydown');
+            // Mousetrap.bind('alt', disableMovingKeyHandler, 'keyup');
         }
     }
 
@@ -589,7 +590,7 @@ class PlayerController {
     }
 
     frameMouseMove(e) {
-        if (this._moving && this._moving_key) {
+        if (this._moving && move_background) {
             if (!this._events.move) {
                 this._events.move = Logger.addContinuedEvent(Logger.EventType.moveImage);
             }

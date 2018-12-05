@@ -10,7 +10,8 @@
 var mousedownAtDetectPoint = false;
 var is_one_frame_mode = false;
 var one_frame_data = null;
-
+var mousedown_in_shape = false;
+var move_background = false;
 class ShapeCollectionModel extends Listener {
     constructor() {
         super('onCollectionUpdate', () => this);
@@ -699,7 +700,8 @@ class ShapeCollectionModel extends Listener {
     }
 
     switchActiveHide() {
-        let shape = this._selectActive();
+        //let shape = this._selectActive();
+        let shape = this._activeShape;
         if (shape) {
             shape.switchHide();
         }
@@ -1011,6 +1013,21 @@ class ShapeCollectionController {
             }.bind(this));
 
             let shortkeys = window.cvat.config.shortkeys;
+
+            let enableMovingKeyHandler = Logger.shortkeyLogDecorator(function() {
+                if (!mousedown_in_shape) {
+                    this.resetActive();
+                    move_background = true;
+                }
+            }.bind(this));
+            let disableMovingKeyHandler = Logger.shortkeyLogDecorator(function() {
+                console.log("ssssss");
+                move_background = false;
+            }.bind(this));
+
+            Mousetrap.bind('alt', enableMovingKeyHandler, 'keydown');
+            Mousetrap.bind('alt', disableMovingKeyHandler, 'keyup');
+
             Mousetrap.bind(shortkeys["switch_lock_property"].value, switchLockHandler.bind(this), 'keydown');
             Mousetrap.bind(shortkeys["switch_all_lock_property"].value, switchAllLockHandler.bind(this), 'keydown');
             Mousetrap.bind(shortkeys["switch_occluded_property"].value, switchOccludedHandler.bind(this), 'keydown');
@@ -1404,7 +1421,7 @@ class ShapeCollectionView {
         //add by jeff
         // wait me
         this._frameContent.on('click', function(e) {
-            if (mousedownAtDetectPoint || e.ctrlKey || e.which === 2 || e.target.classList.contains('svg_select_points')) {
+            if (mousedownAtDetectPoint || e.ctrlKey || e.altKey || e.which === 2 || e.target.classList.contains('svg_select_points')) {
                 mousedownAtDetectPoint = false;
                 return;
             }
@@ -1843,7 +1860,7 @@ function setDetectPoint(activeShape){
     $(".detectpoint").remove();
     
     console.log("in set ");
-    if(activeShape){
+    if(activeShape && activeShape._hiddenShape===false){
         console.log("in if");
         let DETECTPOINT = "detectpoint";
         let DETECTPOINTAIM = "detectpointAim";
@@ -1893,12 +1910,12 @@ function setDetectPoint(activeShape){
         if (xdl == -1) return;
         
         //if (xdl == -1) xdl = parseFloat(1/10);
-        if (ydl == -1) ydl = parseFloat(ytl + (ybr - ytl) * 2/3);
+        if (ydl == -1) ydl = parseFloat(ytl + (ybr - ytl) * 2/3).toFixed(2);
         //if (xdr == -1) xdr = parseFloat(9/10);
-        if (ydr == -1) ydr = parseFloat(ytl + (ybr - ytl) * 2/3);
+        if (ydr == -1) ydr = parseFloat(ytl + (ybr - ytl) * 2/3).toFixed(2);
 
-        let xdl_draw = xtl + xdl * (xbr-xtl);
-        let xdr_draw = xtl + xdr * (xbr-xtl);
+        let xdl_draw = parseFloat(xtl + xdl * (xbr-xtl)).toFixed(2);
+        let xdr_draw = parseFloat(xtl + xdr * (xbr-xtl)).toFixed(2);
 
         let scaledR = POINT_RADIUS / window.cvat.player.geometry.scale;
         let thisframeContent = SVG.adopt($('#frameContent')[0]);
@@ -1918,13 +1935,13 @@ function setDetectPoint(activeShape){
 
             let x = parseFloat(e.target.getAttribute('x')) + parseFloat(scaledR*1.5);
 
-            let out_xl = (x - xtl) / (xbr - xtl);
-            let out_xr = (xdr_draw - xtl) / (xbr - xtl);
+            let out_xl = parseFloat((x - xtl) / (xbr - xtl)).toFixed(2);
+            let out_xr = parseFloat((xdr_draw - xtl) / (xbr - xtl)).toFixed(2);
             
             activeShape.updateAttribute(frame, attrId_detectpoint, "\"" + out_xl + "," + ydl + " " + out_xr + "," + ydl + "\"");
 
-            xdl_draw = xtl + out_xl * (xbr-xtl);
-            xdr_draw = xtl + out_xr * (xbr-xtl);;
+            xdl_draw = parseFloat(xtl + out_xl * (xbr-xtl)).toFixed(2);
+            xdr_draw = parseFloat(xtl + out_xr * (xbr-xtl)).toFixed(2);
 
             let content = $('#frameContent');
             let shapes = $(content.find('.detectpointAim')).toArray();
@@ -1952,13 +1969,13 @@ function setDetectPoint(activeShape){
 
             let x = parseFloat(e.target.getAttribute('x')) + parseFloat(scaledR*1.5);
 
-            let out_xl = (xdl_draw - xtl) / (xbr - xtl);
-            let out_xr = (x - xtl) / (xbr - xtl);
+            let out_xl = parseFloat((xdl_draw - xtl) / (xbr - xtl)).toFixed(2);
+            let out_xr = parseFloat((x - xtl) / (xbr - xtl)).toFixed(2);
             
             activeShape.updateAttribute(frame, attrId_detectpoint, "\"" + out_xl + "," + ydr + " " + out_xr + "," + ydr + "\"");
 
-            xdl_draw = xtl + out_xl * (xbr-xtl);
-            xdr_draw = xtl + out_xr * (xbr-xtl);;
+            xdl_draw = parseFloat(xtl + out_xl * (xbr-xtl)).toFixed(2);
+            xdr_draw = parseFloat(xtl + out_xr * (xbr-xtl)).toFixed(2);
 
             let content = $('#frameContent');
             let shapes = $(content.find('.detectpointAim')).toArray();
