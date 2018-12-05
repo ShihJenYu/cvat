@@ -145,6 +145,12 @@ class Config {
                 view_value: "Shift + r",
                 description: "switch hide mode for all shapes"
             },
+            // add by jeff
+            switch_others_hide_mode: {
+                value: "e",
+                view_value: "e",
+                description: "switch hide mode for all shapes"
+            },
 
             delete_shape: {
                 value: "del,shift+del".split(','),

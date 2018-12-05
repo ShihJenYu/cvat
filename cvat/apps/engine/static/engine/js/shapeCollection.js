@@ -541,6 +541,7 @@ class ShapeCollectionModel extends Listener {
                 }
                 console.log("visible");
             }
+            $('.detectpoint').remove();
             //set newShape / preShape to active 
             menuScroll = true;
             if(this._idx_before_Create != this._idx) {
@@ -707,6 +708,42 @@ class ShapeCollectionModel extends Listener {
         }
     }
 
+    // add by jeff
+    switchOthersHide(labelId) {
+        let before_shape = this._activeShape;
+        let hiddenShape = true;
+        let hiddenText = true;
+        let shapes = Number.isInteger(labelId) ? this._shapes.filter((el) => el.label === labelId) : this._shapes;
+        for (let shape of shapes) {
+            if (shape.removed || shape.active) continue;
+            hiddenShape = hiddenShape && shape.hiddenShape;
+
+            if (!hiddenShape) {
+                break;
+            }
+        }
+        if (!hiddenShape) {
+            // all shapes invisible
+            for (let shape of shapes) {
+                if (shape.removed || shape.active) continue;
+                while (!shape.hiddenShape) {
+                    shape.switchHide();
+                }
+                console.log("invisile");
+            }
+        } else{
+            // all shapes visible
+            for (let shape of shapes) {
+                if (shape.removed || shape.active) continue;
+                while (shape.hiddenShape) {
+                    shape.switchHide();
+                }
+                console.log("visible");
+            }
+        }
+        if(before_shape)before_shape.active = true;
+    }
+
     switchObjectsHide(labelId) {
         this.resetActive();
         let hiddenShape = true;
@@ -745,6 +782,7 @@ class ShapeCollectionModel extends Listener {
             }
 
         }
+        $('.detectpoint').remove();
 
 
         // if (!hiddenShape) {
@@ -937,6 +975,10 @@ class ShapeCollectionController {
             let switchAllHideHandler = Logger.shortkeyLogDecorator(function() {
                 this.switchAllHide();
             }.bind(this));
+            // add by jef
+            let switchOthersHideHandler = Logger.shortkeyLogDecorator(function() {
+                this.switchOthersHide();
+            }.bind(this));
 
             let removeActiveHandler = Logger.shortkeyLogDecorator(function(e) {
                 this.removeActiveShape(e);
@@ -1041,6 +1083,7 @@ class ShapeCollectionController {
             Mousetrap.bind(shortkeys["change_shape_color"].value, changeShapeColorHandler.bind(this), 'keydown');
             
             // add by jeff
+            Mousetrap.bind(shortkeys["switch_others_hide_mode"].value, switchOthersHideHandler.bind(this), 'keydown');
             Mousetrap.bind(shortkeys["detect_point"].value, detectPointHandler.bind(this), 'keydown');
             Mousetrap.bind(shortkeys["remove_detect_point"].value, removedetectPointHandler.bind(this), 'keydown');
 
@@ -1158,7 +1201,13 @@ class ShapeCollectionController {
             this._model.switchActiveLock();
         }
     }
-
+    // add by jeff
+    switchOthersHide() {
+        if (!window.cvat.mode || window.cvat.mode === 'aam') {
+            this._model.switchOthersHide();
+        }
+    }
+    
     switchAllHide() {
         if (!window.cvat.mode || window.cvat.mode === 'aam') {
             this._model.switchObjectsHide();
