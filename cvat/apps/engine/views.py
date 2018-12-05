@@ -522,7 +522,7 @@ def set_user_currnet(request, jid):
             print("try get need_modify frame first")
             #user_record = models.TaskFrameUserRecord.objects.filter(task_id=db_job.segment.task.id,user=request.user.username,need_modify=True).first()
             start_time = time.time()
-            db_fcwTrains = models.FCWTrain.objects.filter(~Q(priority=0)).order_by('-priority')
+            db_fcwTrains = models.FCWTrain.objects.filter(~Q(priority=0)).order_by('-priority', 'task__created_date')
             print ("db_fcwTrains,",db_fcwTrains)
             print ("len  db_fcwTrains,",len(db_fcwTrains))
             if db_fcwTrains and len(db_fcwTrains):
@@ -553,7 +553,7 @@ def set_user_currnet(request, jid):
                 print("need modify is none, try get new frame")
                 #user_record = models.TaskFrameUserRecord.objects.filter(task_id=db_job.segment.task.id,user='').first()
                 start_time = time.time()
-                db_fcwTrains = models.FCWTrain.objects.filter(~Q(priority=0)).order_by('-priority')
+                db_fcwTrains = models.FCWTrain.objects.filter(~Q(priority=0)).order_by('-priority', 'task__created_date')
                 print ("db_fcwTrains,",db_fcwTrains)
                 print ("len  db_fcwTrains,",len(db_fcwTrains))
                 if db_fcwTrains and len(db_fcwTrains):
@@ -849,7 +849,7 @@ def get_FCW_Job(request):
             pass
             
 
-        db_fcwTrains = models.FCWTrain.objects.filter(~Q(priority=0)).order_by('-priority')
+        db_fcwTrains = models.FCWTrain.objects.filter(~Q(priority=0)).order_by('-priority', 'task__created_date')
         print ("db_fcwTrains,",db_fcwTrains)
         print ("len  db_fcwTrains,",len(db_fcwTrains))
         db_fcwTrain = db_fcwTrains.first()

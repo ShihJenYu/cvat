@@ -89,7 +89,7 @@ def get(jid,requestUser=None,frame=None):
                 print("try get need_modify frame first")
                 #user_record = models.TaskFrameUserRecord.objects.filter(task_id=db_job.segment.task.id,user=request.user.username,need_modify=True).first()
                 start_time = time.time()
-                db_fcwTrains = models.FCWTrain.objects.filter(~Q(priority=0)).order_by('-priority')
+                db_fcwTrains = models.FCWTrain.objects.filter(~Q(priority=0)).order_by('-priority', 'task__created_date')
                 print ("db_fcwTrains,",db_fcwTrains)
                 print ("len  db_fcwTrains,",len(db_fcwTrains))
                 if db_fcwTrains and len(db_fcwTrains):
@@ -119,7 +119,7 @@ def get(jid,requestUser=None,frame=None):
                 print ("use random pk cost time : ",(end_time - start_time))
 
                 if user_record is None:
-                    db_fcwTrains = models.FCWTrain.objects.filter(~Q(priority=0)).order_by('-priority')
+                    db_fcwTrains = models.FCWTrain.objects.filter(~Q(priority=0)).order_by('-priority', 'task__created_date')
                     print ("db_fcwTrains,",db_fcwTrains)
                     print ("len  db_fcwTrains,",len(db_fcwTrains))
                     if db_fcwTrains and len(db_fcwTrains):
