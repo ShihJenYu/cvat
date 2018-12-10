@@ -13,27 +13,59 @@ var goNext = false;
 var saveByShift = false;
 var setKeyFlag = false;
 var isAdminFlag = false;
+var passreload =false;
+var loadJobEvent = null;
 function callAnnotationUI(jid,setKeyMode=false) {
     initLogger(jid);
     setKeyFlag = setKeyMode;
-    let loadJobEvent = Logger.addContinuedEvent(Logger.EventType.loadJob);
-    serverRequest("/get/job/" + jid, function(job) {
+    loadJobEvent = Logger.addContinuedEvent(Logger.EventType.loadJob);
+    serverRequest("get/job/" + jid, function(job) {
         serverRequest("get/annotation/job/" + jid, function(data) {
             // console.log("get ann data 0 1 2",data); //[data, frame, new_jid]
 
-            if (data[2] == jid) {
+            if(data == "u dont have current need ask me") {
+                $.confirm({
+                    title: '要領取工作了嗎？',
+                    content: '將會得到圖片或影片',
+                    boxWidth: '30%',
+                    useBootstrap: false,
+                    draggable: false,
+                    buttons: {
+                        是: {
+                            keys: ['enter'],
+                            action: function(){
+                                console.log('confirm');
+                                serverRequest('get/current/job/'+jid, function(test){
+                                    serverRequest("get/job/" + test.jid, function(job2) {
+                                        serverRequest("get/annotation/job/" + test.jid, function(data2) {
+                                            if (data2[2] == test.jid) {
+                                                $('#loadingOverlay').remove();
+                                                setTimeout(() => {
+                                                    buildAnnotationUI(job2, data2, loadJobEvent);
+                                                }, 0);
+                                            }
+                                        });
+                                    });
+                                });
+                            }
+                        },
+                        否: {
+                            keys: ['esc'],
+                            action: function(){
+                                console.log("cancel,u dont have current need ask me");
+                            }
+                        }
+                    }
+                });
+            }
+            else if (data[2] == jid) {
                 $('#loadingOverlay').remove();
                 setTimeout(() => {
                     buildAnnotationUI(job, data, loadJobEvent);
                 }, 0);
             }
-            else {
-                serverRequest("/get/job/" + data[2], function(job) {
-                    $('#loadingOverlay').remove();
-                    setTimeout(() => {
-                        buildAnnotationUI(job, data, loadJobEvent);
-                    }, 0);
-                });
+            else{
+                console.log("some error");
             }
         });
     });
@@ -50,7 +82,7 @@ function initLogger(jobID) {
 
     Logger.setTimeThreshold(Logger.EventType.zoomImage);
 
-    serverRequest('/get/username', function(response) {
+    serverRequest('get/username', function(response) {
         Logger.setUsername(response.username);
     });
 }
@@ -122,7 +154,7 @@ function buildAnnotationUI(job, shapeData, loadJobEvent) {
         
     // });
     if(isAdminFlag){
-        window.history.replaceState(null, null, `${window.location.origin}/fcw?id=${job.jobid}&setKey=${setKeyFlag}`);
+        window.history.replaceState(null, null, `${window.location.origin}${window.location.pathname}?id=${job.jobid}&setKey=${setKeyFlag}`);
         $('#task_name').text(job.slug);
         serverRequest(`get/task/${job.jobid}/keyframes`, function(response) {
             let keyframes = response.frames.sort((a, b) => a - b)
@@ -186,7 +218,7 @@ function buildAnnotationUI(job, shapeData, loadJobEvent) {
         
     }
     else{
-        window.history.replaceState(null, null, `${window.location.origin}/fcw`);
+        window.history.replaceState(null, null, `${window.location.origin}${window.location.pathname}`);
         $('#task_name').text(job.slug + " , F" + String(+shapeData[1]+1).padStart(4, '0'));
         console.log(job.slug + " , F" + String(+shapeData[1]+1).padStart(4, '0'));
     }
@@ -316,6 +348,7 @@ function buildAnnotationUI(job, shapeData, loadJobEvent) {
     loadJobEvent.close();
 
     window.onbeforeunload = function(e) {
+        if (passreload)return;
         if (shapeCollectionModel.hasUnsavedChanges()) {
             let message = "You have unsaved changes. Leave this page?";
             e.returnValue = message;
@@ -717,9 +750,14 @@ function setupMenu(job, shapeCollectionModel, annotationParser, aamModel, player
             }
             else {
                 trainigsaveFlag = true;
-                goNext = true;
-                goNextRandom = true;
-                saveAnnotation(shapeCollectionModel, job);
+
+                if(!wasSend){
+                    console.log("to save");
+                    saveAnnotation(shapeCollectionModel, job);
+                }else{
+                    console.log("not to save");
+                }
+                    
             }
         }
         else {
@@ -871,6 +909,8 @@ function saveAnnotation(shapeCollectionModel, job) {
         // success
         shapeCollectionModel.updateHash();
         saveButton.text('Success!');
+        
+        goNext = true;
         goNextRandom = true;
         setTimeout(() => {
             saveButton.prop('disabled', false);

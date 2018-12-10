@@ -159,7 +159,7 @@ function setupTaskCreator() {
         let nickname = (e.target.value=='')? 'default': e.target.value;
         console.log(tid, nickname);
         $.ajax ({
-            url: `/set/task/${tid}/nickname/${nickname}`,
+            url: `set/task/${tid}/nickname/${nickname}`,
             success: function(response) {
                 console.log(response);
             },
@@ -176,7 +176,7 @@ function setupTaskCreator() {
         let nickname = (e.target.value=='')? 'default': e.target.value;
         console.log(tid, nickname);
         $.ajax ({
-            url: `/set/task/${tid}/nickname/${nickname}`,
+            url: `set/task/${tid}/nickname/${nickname}`,
             success: function(response) {
                 console.log(response);
             },
@@ -486,7 +486,7 @@ function setupTaskUpdater() {
 
     updateModal[0].loadCurrentLabels = function() {
         $.ajax({
-            url: '/get/task/' + window.cvat.dashboard.taskID,
+            url: 'get/task/' + window.cvat.dashboard.taskID,
             success: function(data) {
                 let labels = new LabelsInfo(data.spec);
                 oldLabels.attr('value', labels.normalize());
@@ -552,7 +552,7 @@ function setPriorityRequest(selectTasks, priority, successCallback)
     priorityData.append('selectTasks', selectTasks);
     priorityData.append('priority', priority);
     $.ajax({
-        url: '/set/tasks/priority',
+        url: 'set/tasks/priority',
         type: 'POST',
         data: priorityData,
         contentType: false,
@@ -563,7 +563,7 @@ function setPriorityRequest(selectTasks, priority, successCallback)
 
 function createTaskRequest(oData, onSuccessRequest, onSuccessCreate, onError, onComplete, onUpdateStatus) {
     $.ajax({
-        url: '/create/task',
+        url: 'create/task',
         type: 'POST',
         data: oData,
         contentType: false,
@@ -585,7 +585,7 @@ function createTaskRequest(oData, onSuccessRequest, onSuccessCreate, onError, on
 
         let requestInterval = setInterval(function() {
             $.ajax({
-                url: '/check/task/' + tid,
+                url: 'check/task/' + tid,
                 success: receiveStatus,
                 error: function(data) {
                     clearInterval(requestInterval);
@@ -622,7 +622,7 @@ function UpdateTaskRequest(labels) {
     oData.append('labels', labels);
 
     $.ajax({
-        url: '/update/task/' + window.cvat.dashboard.taskID,
+        url: 'update/task/' + window.cvat.dashboard.taskID,
         type: 'POST',
         data: oData,
         contentType: false,
@@ -644,7 +644,7 @@ function RemoveTaskRequest() {
 
     function confirmCallback() {
         $.ajax ({
-            url: '/delete/task/' + window.cvat.dashboard.taskID,
+            url: 'delete/task/' + window.cvat.dashboard.taskID,
             success: function() {
                 $(`#dashboardTask_${window.cvat.dashboard.taskID}`).remove();
                 showMessage('Task removed.');
@@ -678,7 +678,7 @@ function uploadAnnotationRequest() {
         let xmlText = e.target.result;
         overlay.setMessage('Request task data from server..');
         $.ajax({
-            url: '/get/task/' + window.cvat.dashboard.taskID,
+            url: 'get/task/' + window.cvat.dashboard.taskID,
             success: function(data) {
                 let annotationParser = new AnnotationParser({
                     start: 0,
@@ -700,7 +700,7 @@ function uploadAnnotationRequest() {
 
                     let asyncSave = function() {
                         $.ajax({
-                            url: '/save/annotation/task/' + window.cvat.dashboard.taskID,
+                            url: 'save/annotation/task/' + window.cvat.dashboard.taskID,
                             type: 'POST',
                             data: JSON.stringify(parsed),
                             contentType: 'application/json',

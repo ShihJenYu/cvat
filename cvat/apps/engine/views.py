@@ -9,6 +9,7 @@ import traceback
 # add by jeff
 import time, random
 from django.utils import timezone
+from ipware import get_client_ip
 
 from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.shortcuts import redirect, render
@@ -60,7 +61,7 @@ def dispatch_request(request):
                 'js_3rdparty': JS_3RDPARTY.get('engine', [])
             })
         else:
-            return redirect('/dashboard/')
+            return redirect('/dashboard/fcw')
     else:
         return render(request, 'engine/annotation_training.html', {
             'js_3rdparty': JS_3RDPARTY.get('engine', [])
@@ -461,7 +462,8 @@ def save_annotation_for_task(request, tid):
 
 @login_required
 def get_username(request):
-    response = {'username': request.user.username}
+    client_ip, is_routable = get_client_ip(request)
+    response = {'username': request.user.username,'ip':client_ip}
     return JsonResponse(response, safe=False)
 
 @login_required
@@ -513,6 +515,36 @@ def set_user_currnet(request, jid):
                 user_record.save()
                 db_fcwTrain.save()
             print ("user: {}'s user_record.save()".format(request.user.username))
+        except ObjectDoesNotExist:
+            print ("user: {}'s not found current frame".format(request.user.username))
+            raise Exception('user_record is None')
+
+        return JsonResponse({'data':"success"})
+
+    except Exception as e:
+        print("error is !!!!",str(e))
+        job_logger[jid].error("cannot set {} currnet for {} job".format(request.user.username,jid), exc_info=True)
+        return HttpResponseBadRequest(str(e))
+
+@login_required
+@permission_required(perm=['engine.view_task', 'engine.change_annotation'], raise_exception=True)
+def get_user_currnet(request, jid):
+    try:        
+        job_logger[jid].info("set {} currnet for {} job".format(request.user.username,jid))
+        
+        #db_job = models.Job.objects.get(id=jid)
+        
+        user_record = None
+        new_jid = None # use taskid
+        
+        # set current frame to submit
+        try:
+            with transaction.atomic():
+                user_record = models.TaskFrameUserRecord.objects.select_for_update().get(user=request.user.username,current=True)
+                db_fcwTrain = models.FCWTrain.objects.select_for_update().get(task_id=user_record.task_id)
+                print ("user: {} find current {}".format(request.user.username,user_record.frame))
+                return JsonResponse({'jid':user_record.task_id,'frame': user_record.frame})
+
         except ObjectDoesNotExist:
             print ("user: {}'s not found current frame".format(request.user.username))            
             
@@ -587,15 +619,17 @@ def set_user_currnet(request, jid):
         
         if user_record:
             print ("have current")
+            return JsonResponse({'jid':user_record.task_id,'frame': user_record.frame})
         else:
             print ("user_record is None, will error")
-            raise Exception('user_record is None')
+            return "u dont have current need ask me"
+            #raise Exception('user_record is None')
 
-        db_job = models.Job.objects.get(id=new_jid)
+        # db_job = models.Job.objects.get(id=new_jid)
 
-        mAnnotation = annotation._AnnotationForJob(db_job)
-        mAnnotation.init_from_db(user_record.frame)
-        return JsonResponse({'data':mAnnotation.to_client(),'jid':new_jid,'frame': user_record.frame})
+        # mAnnotation = annotation._AnnotationForJob(db_job)
+        # mAnnotation.init_from_db(user_record.frame)
+        # return JsonResponse({'jid':new_jid,'frame': user_record.frame})
 
     except Exception as e:
         print("error is !!!!",str(e))

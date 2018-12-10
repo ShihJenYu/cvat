@@ -94,7 +94,7 @@ function dumpAnnotationRequest(dumpButton, taskID) {
     dumpButton.attr('disabled', true);
 
     $.ajax({
-        url: '/dump/annotation/task/' + taskID,
+        url: 'dump/annotation/task/' + taskID,
         success: onDumpRequestSuccess,
         error: onDumpRequestError,
     });
@@ -107,7 +107,7 @@ function dumpAnnotationRequest(dumpButton, taskID) {
             if (requestSended) return;
             requestSended = true;
             $.ajax({
-                url: '/check/annotation/task/' + taskID,
+                url: 'check/annotation/task/' + taskID,
                 success: onDumpCheckSuccess,
                 error: onDumpCheckError,
                 complete: () => requestSended = false,
@@ -129,9 +129,9 @@ function dumpAnnotationRequest(dumpButton, taskID) {
 
             function getDumpedFile() {
                 $.ajax({
-                    url: '/download/annotation/task/' + taskID,
+                    url: 'download/annotation/task/' + taskID,
                     error: onGetDumpError,
-                    success: () => window.location = '/download/annotation/task/' + taskID,
+                    success: () => window.location = 'download/annotation/task/' + taskID,
                     complete: () => dumpButton.attr('disabled', false)
                 });
 

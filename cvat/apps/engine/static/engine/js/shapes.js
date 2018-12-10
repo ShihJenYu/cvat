@@ -914,10 +914,10 @@ class BoxModel extends ShapeModel {
                 ydr = detectpoints[3];
 
                 if (ydl != "-1" && ydr != "-1") {
-                    if(xdl == "-1")xdl=parseFloat(1/10).toFixed(2);
-                    if(xdr == "-1")xdr=parseFloat(9/10).toFixed(2);
+                    if(xdl == "-1")xdl=+parseFloat(1/10).toFixed(2);
+                    if(xdr == "-1")xdr=+parseFloat(9/10).toFixed(2);
                     
-                    let new_y = parseFloat(pos.ytl + (pos.ybr - pos.ytl) * 2/3).toFixed(2);
+                    let new_y = +parseFloat(pos.ytl + (pos.ybr - pos.ytl) * 2/3).toFixed(2);
 
                     this.updateAttribute(frame, attrId, "\"" + xdl + "," + new_y + " " + xdr + "," + new_y + "\"");
                 }
@@ -3707,13 +3707,12 @@ class PolygonView extends PolyShapeView {
     constructor(polygonModel, polygonController, svgContent, UIContent) {
         super(polygonModel, polygonController, svgContent, UIContent);
     }
-
-    _drawShapeUI(position) {
-        this._uis.shape = this._scenes.svg.polygon(position.points).fill(this._appearance.colors.shape).attr({
+    _drawShapeUI(interpolation, id_) {
+        this._uis.shape = this._scenes.svg.polygon(interpolation.position.points).fill(this._appearance.colors.shape).attr({
             'fill': this._appearance.fill || this._appearance.colors.shape,
             'stroke': this._appearance.stroke || this._appearance.colors.shape,
             'stroke-width': STROKE_WIDTH / window.cvat.player.geometry.scale,
-            'z_order': position.z_order,
+            'z_order': interpolation.position.z_order,
             'fill-opacity': this._appearance.fillOpacity
         }).addClass('shape');
 
@@ -3748,12 +3747,11 @@ class PolylineView extends PolyShapeView {
     constructor(polylineModel, polylineController, svgScene, menusScene) {
         super(polylineModel, polylineController, svgScene, menusScene);
     }
-
-    _drawShapeUI(position) {
-        this._uis.shape = this._scenes.svg.polyline(position.points).fill(this._appearance.colors.shape).attr({
+    _drawShapeUI(interpolation, id_) {
+        this._uis.shape = this._scenes.svg.polyline(interpolation.position.points).fill(this._appearance.colors.shape).attr({
             'stroke': this._appearance.stroke || this._appearance.colors.shape,
             'stroke-width': STROKE_WIDTH / window.cvat.player.geometry.scale,
-            'z_order': position.z_order,
+            'z_order': interpolation.position.z_order,
         }).addClass('shape polyline');
 
         ShapeView.prototype._drawShapeUI.call(this);
@@ -3898,11 +3896,11 @@ class PointsView extends PolyShapeView {
     }
 
 
-    _drawShapeUI(position) {
-        this._uis.shape = this._scenes.svg.polyline(position.points).addClass('shape points').attr({
-            'z_order': position.z_order,
+    _drawShapeUI(interpolation, id_) {
+        this._uis.shape = this._scenes.svg.polyline(interpolation.position.points).addClass('shape points').attr({
+            'z_order': interpolation.position.z_order,
         });
-        this._drawPointMarkers(position);
+        this._drawPointMarkers(interpolation.position);
         ShapeView.prototype._drawShapeUI.call(this);
     }
 

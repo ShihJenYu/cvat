@@ -31,7 +31,7 @@ window.onload = function() {
         setKey = true;
     }
 
-    serverRequest('/get/isAdmin', function(response) {
+    serverRequest('get/isAdmin', function(response) {
         isAdminFlag = response.isAdmin;
         if(isAdminFlag){
             setKeyFlag = true;
@@ -41,7 +41,7 @@ window.onload = function() {
         }
         else{
             setKeyFlag = false;
-            serverRequest("/get/fcw/job", function(response) {
+            serverRequest("get/fcw/job", function(response) {
                 console.log("setKey",setKey);
                 callAnnotationUI(response.jid,setKeyMode=setKey);
             });

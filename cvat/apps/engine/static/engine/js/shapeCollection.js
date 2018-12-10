@@ -1276,14 +1276,6 @@ class ShapeCollectionController {
         }
     }
 
-    // Add by jeff
-    // setDetectPoint() {
-    //     //working
-    //     this._model.setDetectPoint();
-        
-        
-    // }
-
     switchDraggableForActive() {
         let activeShape = this._model.activeShape;
         if (activeShape && typeof(activeShape.draggable) != 'undefined') {
@@ -1907,9 +1899,12 @@ class ShapeCollectionView {
 // add by jeff
 function setDetectPoint(activeShape){
     $(".detectpoint").remove();
+
+    if(activeShape._type !== "annotation_box"){return;}
     
     console.log("in set ");
     if(activeShape && activeShape._hiddenShape===false){
+        menuScroll = true;
         console.log("in if");
         let DETECTPOINT = "detectpoint";
         let DETECTPOINTAIM = "detectpointAim";
@@ -1959,83 +1954,85 @@ function setDetectPoint(activeShape){
         if (xdl == -1) return;
         
         //if (xdl == -1) xdl = parseFloat(1/10);
-        if (ydl == -1) ydl = parseFloat(ytl + (ybr - ytl) * 2/3).toFixed(2);
+        if (ydl == -1) ydl = +parseFloat(ytl + (ybr - ytl) * 2/3).toFixed(2);
         //if (xdr == -1) xdr = parseFloat(9/10);
-        if (ydr == -1) ydr = parseFloat(ytl + (ybr - ytl) * 2/3).toFixed(2);
+        if (ydr == -1) ydr = +parseFloat(ytl + (ybr - ytl) * 2/3).toFixed(2);
 
-        let xdl_draw = parseFloat(xtl + xdl * (xbr-xtl)).toFixed(2);
-        let xdr_draw = parseFloat(xtl + xdr * (xbr-xtl)).toFixed(2);
+        let xdl_draw = +parseFloat(xtl + xdl * (xbr-xtl)).toFixed(2);
+        let xdr_draw = +parseFloat(xtl + xdr * (xbr-xtl)).toFixed(2);
 
         let scaledR = POINT_RADIUS / window.cvat.player.geometry.scale;
         let thisframeContent = SVG.adopt($('#frameContent')[0]);
 
-        thisframeContent.rect(scaledR*3,scaledR*3).draggable({
-            minX: xtl - scaledR*1.5,
-            minY: ydl - scaledR*1.5,
-            maxX: xbr + scaledR*1.5,
-            maxY: ydl + scaledR*1.5,
-            snapToGrid: 0.1 
-        }).center(xdl_draw,ydl).addClass(DETECTPOINT).fill('#ffff00').attr({
-            'stroke-width': STROKE_WIDTH / window.cvat.player.geometry.scale * 1.5,
-            'id': DETECTPOINT + "_" + activeShape._id + "_L"
-        }).on('dragend', function(e){
-            e.preventDefault();
-            mousedownAtDetectPoint = false;
+        if (activeShape.active) {
+            thisframeContent.rect(scaledR*3,scaledR*3).draggable({
+                minX: xtl - scaledR*1.5,
+                minY: +ydl - scaledR*1.5,
+                maxX: xbr + scaledR*1.5,
+                maxY: +ydl + scaledR*1.5,
+                snapToGrid: 0.1 
+            }).center(xdl_draw,ydl).addClass(DETECTPOINT).fill('#ffff00').attr({
+                'stroke-width': STROKE_WIDTH / window.cvat.player.geometry.scale * 1.5,
+                'id': DETECTPOINT + "_" + activeShape._id + "_L"
+            }).on('dragend', function(e){
+                e.preventDefault();
+                mousedownAtDetectPoint = false;
 
-            let x = parseFloat(e.target.getAttribute('x')) + parseFloat(scaledR*1.5);
+                let x = parseFloat(e.target.getAttribute('x')) + parseFloat(scaledR*1.5);
 
-            let out_xl = parseFloat((x - xtl) / (xbr - xtl)).toFixed(2);
-            let out_xr = parseFloat((xdr_draw - xtl) / (xbr - xtl)).toFixed(2);
-            
-            activeShape.updateAttribute(frame, attrId_detectpoint, "\"" + out_xl + "," + ydl + " " + out_xr + "," + ydl + "\"");
+                let out_xl = +parseFloat((x - xtl) / (xbr - xtl)).toFixed(2);
+                let out_xr = +parseFloat((xdr_draw - xtl) / (xbr - xtl)).toFixed(2);
+                
+                activeShape.updateAttribute(frame, attrId_detectpoint, "\"" + out_xl + "," + ydl + " " + out_xr + "," + ydl + "\"");
 
-            xdl_draw = parseFloat(xtl + out_xl * (xbr-xtl)).toFixed(2);
-            xdr_draw = parseFloat(xtl + out_xr * (xbr-xtl)).toFixed(2);
+                xdl_draw = +parseFloat(xtl + out_xl * (xbr-xtl)).toFixed(2);
+                xdr_draw = +parseFloat(xtl + out_xr * (xbr-xtl)).toFixed(2);
 
-            let content = $('#frameContent');
-            let shapes = $(content.find('.detectpointAim')).toArray();
-            for (let shape of shapes) {
-                content.append(shape);
-            }
-            shapes = $(content.find('.detectpoint')).toArray();
-            for (let shape of shapes) {
-                content.append(shape);
-            }
-        });
+                let content = $('#frameContent');
+                let shapes = $(content.find('.detectpointAim')).toArray();
+                for (let shape of shapes) {
+                    content.append(shape);
+                }
+                shapes = $(content.find('.detectpoint')).toArray();
+                for (let shape of shapes) {
+                    content.append(shape);
+                }
+            });
 
-        thisframeContent.rect(scaledR*3,scaledR*3).draggable({
-            minX: xtl - scaledR*1.5,
-            minY: ydr - scaledR*1.5,
-            maxX: xbr + scaledR*1.5,
-            maxY: ydr + scaledR*1.5,
-            snapToGrid: 0.1 
-        }).center(xdr_draw,ydr).addClass(DETECTPOINT).fill('#ffff00').attr({
-            'stroke-width': STROKE_WIDTH / window.cvat.player.geometry.scale * 1.5,
-            'id': DETECTPOINT + "_" + activeShape._id + "_R"
-        }).on('dragend', function(e){
-            e.preventDefault();
-            mousedownAtDetectPoint = false;
+            thisframeContent.rect(scaledR*3,scaledR*3).draggable({
+                minX: xtl - scaledR*1.5,
+                minY: ydr - scaledR*1.5,
+                maxX: xbr + scaledR*1.5,
+                maxY: ydr + scaledR*1.5,
+                snapToGrid: 0.1 
+            }).center(xdr_draw,ydr).addClass(DETECTPOINT).fill('#ffff00').attr({
+                'stroke-width': STROKE_WIDTH / window.cvat.player.geometry.scale * 1.5,
+                'id': DETECTPOINT + "_" + activeShape._id + "_R"
+            }).on('dragend', function(e){
+                e.preventDefault();
+                mousedownAtDetectPoint = false;
 
-            let x = parseFloat(e.target.getAttribute('x')) + parseFloat(scaledR*1.5);
+                let x = parseFloat(e.target.getAttribute('x')) + parseFloat(scaledR*1.5);
 
-            let out_xl = parseFloat((xdl_draw - xtl) / (xbr - xtl)).toFixed(2);
-            let out_xr = parseFloat((x - xtl) / (xbr - xtl)).toFixed(2);
-            
-            activeShape.updateAttribute(frame, attrId_detectpoint, "\"" + out_xl + "," + ydr + " " + out_xr + "," + ydr + "\"");
+                let out_xl = +parseFloat((xdl_draw - xtl) / (xbr - xtl)).toFixed(2);
+                let out_xr = +parseFloat((x - xtl) / (xbr - xtl)).toFixed(2);
+                
+                activeShape.updateAttribute(frame, attrId_detectpoint, "\"" + out_xl + "," + ydr + " " + out_xr + "," + ydr + "\"");
 
-            xdl_draw = parseFloat(xtl + out_xl * (xbr-xtl)).toFixed(2);
-            xdr_draw = parseFloat(xtl + out_xr * (xbr-xtl)).toFixed(2);
+                xdl_draw = +parseFloat(xtl + out_xl * (xbr-xtl)).toFixed(2);
+                xdr_draw = +parseFloat(xtl + out_xr * (xbr-xtl)).toFixed(2);
 
-            let content = $('#frameContent');
-            let shapes = $(content.find('.detectpointAim')).toArray();
-            for (let shape of shapes) {
-                content.append(shape);
-            }
-            shapes = $(content.find('.detectpoint')).toArray();
-            for (let shape of shapes) {
-                content.append(shape);
-            }
-        });
+                let content = $('#frameContent');
+                let shapes = $(content.find('.detectpointAim')).toArray();
+                for (let shape of shapes) {
+                    content.append(shape);
+                }
+                shapes = $(content.find('.detectpoint')).toArray();
+                for (let shape of shapes) {
+                    content.append(shape);
+                }
+            });
+        }
 
         thisframeContent.line(xdl_draw, ytl, xdl_draw, ybr).attr({
             'stroke-width': STROKE_WIDTH / 2 / window.cvat.player.geometry.scale ,'stroke': '#ffff00',

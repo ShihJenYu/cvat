@@ -83,78 +83,78 @@ def get(jid,requestUser=None,frame=None):
             print ("user: {}, get frame: {} in job: {}".format(requestUser.username,frame,jid))
         except ObjectDoesNotExist:
             user_record = None
-            try:
-                start_time = time.time()
-                # select need_modify
-                print("try get need_modify frame first")
-                #user_record = models.TaskFrameUserRecord.objects.filter(task_id=db_job.segment.task.id,user=request.user.username,need_modify=True).first()
-                start_time = time.time()
-                db_fcwTrains = models.FCWTrain.objects.filter(~Q(priority=0)).order_by('-priority', 'task__created_date')
-                print ("db_fcwTrains,",db_fcwTrains)
-                print ("len  db_fcwTrains,",len(db_fcwTrains))
-                if db_fcwTrains and len(db_fcwTrains):
-                    print ("db_fcwTrains has {} data".format(len(db_fcwTrains)))
-                    for db_fcwTrain in db_fcwTrains:
-                        tmp_tid = db_fcwTrain.task.id
-                        qs = models.TaskFrameUserRecord.objects.select_for_update().filter(task_id=tmp_tid,user=requestUser.username,need_modify=True)
-                        ids = qs.values_list('id', flat=True)
-                        if len(ids):
-                            index = random.randint(0, len(ids)-1)
-                            try:
-                                user_record = qs[index]#models.TaskFrameUserRecord.objects.get(pk=ids[index])
-                                new_jid = tmp_tid
-                                frame = user_record.frame
+            # try:
+            #     start_time = time.time()
+            #     # select need_modify
+            #     print("try get need_modify frame first")
+            #     #user_record = models.TaskFrameUserRecord.objects.filter(task_id=db_job.segment.task.id,user=request.user.username,need_modify=True).first()
+            #     start_time = time.time()
+            #     db_fcwTrains = models.FCWTrain.objects.filter(~Q(priority=0)).order_by('-priority', 'task__created_date')
+            #     print ("db_fcwTrains,",db_fcwTrains)
+            #     print ("len  db_fcwTrains,",len(db_fcwTrains))
+            #     if db_fcwTrains and len(db_fcwTrains):
+            #         print ("db_fcwTrains has {} data".format(len(db_fcwTrains)))
+            #         for db_fcwTrain in db_fcwTrains:
+            #             tmp_tid = db_fcwTrain.task.id
+            #             qs = models.TaskFrameUserRecord.objects.select_for_update().filter(task_id=tmp_tid,user=requestUser.username,need_modify=True)
+            #             ids = qs.values_list('id', flat=True)
+            #             if len(ids):
+            #                 index = random.randint(0, len(ids)-1)
+            #                 try:
+            #                     user_record = qs[index]#models.TaskFrameUserRecord.objects.get(pk=ids[index])
+            #                     new_jid = tmp_tid
+            #                     frame = user_record.frame
 
-                                user_record.user = requestUser.username
-                                user_record.current = True
-                                user_record.userModifyGet_date = timezone.now()
-                                user_record.save()
-                                break
-                            except ObjectDoesNotExist:
-                                user_record = None
-                                new_jid = None
-                else:
-                    print ("!!!!!!!!!\n {} have not any video is priority > 0 \n".format(db_fcwTrains))
-                end_time = time.time()
-                print ("use random pk cost time : ",(end_time - start_time))
+            #                     user_record.user = requestUser.username
+            #                     user_record.current = True
+            #                     user_record.userModifyGet_date = timezone.now()
+            #                     user_record.save()
+            #                     break
+            #                 except ObjectDoesNotExist:
+            #                     user_record = None
+            #                     new_jid = None
+            #     else:
+            #         print ("!!!!!!!!!\n {} have not any video is priority > 0 \n".format(db_fcwTrains))
+            #     end_time = time.time()
+            #     print ("use random pk cost time : ",(end_time - start_time))
 
-                if user_record is None:
-                    db_fcwTrains = models.FCWTrain.objects.filter(~Q(priority=0)).order_by('-priority', 'task__created_date')
-                    print ("db_fcwTrains,",db_fcwTrains)
-                    print ("len  db_fcwTrains,",len(db_fcwTrains))
-                    if db_fcwTrains and len(db_fcwTrains):
-                        print ("db_fcwTrains has {} data".format(len(db_fcwTrains)))
-                        for db_fcwTrain in db_fcwTrains:
-                            tmp_tid = db_fcwTrain.task.id
-                            print ("try get job {} anntation".format(tmp_tid))
+            #     if user_record is None:
+            #         db_fcwTrains = models.FCWTrain.objects.filter(~Q(priority=0)).order_by('-priority', 'task__created_date')
+            #         print ("db_fcwTrains,",db_fcwTrains)
+            #         print ("len  db_fcwTrains,",len(db_fcwTrains))
+            #         if db_fcwTrains and len(db_fcwTrains):
+            #             print ("db_fcwTrains has {} data".format(len(db_fcwTrains)))
+            #             for db_fcwTrain in db_fcwTrains:
+            #                 tmp_tid = db_fcwTrain.task.id
+            #                 print ("try get job {} anntation".format(tmp_tid))
 
-                            qs = models.TaskFrameUserRecord.objects.select_for_update().filter(task_id=tmp_tid,user='')
-                            ids = qs.values_list('id', flat=True)
-                            if len(ids):
-                                index = random.randint(0, len(ids)-1)
-                                try:
-                                    user_record = qs[index]#models.TaskFrameUserRecord.objects.get(pk=ids[index])
-                                    frame = user_record.frame
-                                    new_jid = tmp_tid
+            #                 qs = models.TaskFrameUserRecord.objects.select_for_update().filter(task_id=tmp_tid,user='')
+            #                 ids = qs.values_list('id', flat=True)
+            #                 if len(ids):
+            #                     index = random.randint(0, len(ids)-1)
+            #                     try:
+            #                         user_record = qs[index]#models.TaskFrameUserRecord.objects.get(pk=ids[index])
+            #                         frame = user_record.frame
+            #                         new_jid = tmp_tid
 
-                                    user_record.user = requestUser.username
-                                    user_record.current = True
-                                    user_record.userGet_date = timezone.now()
-                                    user_record.save()
-                                    break
-                                except ObjectDoesNotExist:
-                                    new_jid = None
-                                    user_record = None                    
-                    else:
-                        print ("!!!!!!!!!\n {} have not any video is priority > 0 \n".format(db_fcwTrains))
-                    end_time = time.time()
+            #                         user_record.user = requestUser.username
+            #                         user_record.current = True
+            #                         user_record.userGet_date = timezone.now()
+            #                         user_record.save()
+            #                         break
+            #                     except ObjectDoesNotExist:
+            #                         new_jid = None
+            #                         user_record = None                    
+            #         else:
+            #             print ("!!!!!!!!!\n {} have not any video is priority > 0 \n".format(db_fcwTrains))
+            #         end_time = time.time()
                     
-                    print ("user='' find empty first frame",frame)
-                    print ("use random pk cost time : ",(end_time - start_time))
-            except Exception as e:
-                user_record = None
-                print("error is !!!!",str(e))
-                print ("no user's current or empty can set current!!")
+            #         print ("user='' find empty first frame",frame)
+            #         print ("use random pk cost time : ",(end_time - start_time))
+            # except Exception as e:
+            #     user_record = None
+            #     print("error is !!!!",str(e))
+            #     print ("no user's current or empty can set current!!")
         
         print(user_record)
 
@@ -162,7 +162,8 @@ def get(jid,requestUser=None,frame=None):
             print ("have current")
         else:
             print ("user_record is None, will error")
-            raise Exception('user_record is None')
+            return "u dont have current need ask me"
+            #raise Exception('user_record is None')
 
 
     annotation = _AnnotationForJob(db_job)

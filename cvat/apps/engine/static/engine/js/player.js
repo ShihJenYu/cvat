@@ -7,6 +7,7 @@
 /* exported PlayerModel PlayerController PlayerView */
 "use strict";
 var keyframeStage = null;
+var wasSend = false;
 class FrameProvider extends Listener {
     constructor(stop, tid) {
         super('onFrameLoad', () => this._loaded);
@@ -687,26 +688,47 @@ class PlayerController {
         let jid = this._model.tid;//window.location.href.match('id=[0-9]+')[0].slice(3);
         var data;
         $.ajax({
-            url: "/set/current/job/" + jid,
+            url: "set/current/job/" + jid,
             dataType: "json",
             async: false,
             success: function(respone) {
                 console.log("done set/current", respone);
                 data = respone;
+                wasSend = true;
+                $('#nextButton_training')[0].setAttribute("class","playerButton_training disabledPlayerButton disabled");
+                $('#nextButton_training').unbind('click');
             },
             error: serverError
         });
-        // if(data) {
-        //     is_one_frame_mode = true;
-        //     one_frame_data = data.data;
-        //     // console.log("pritn test one_frame_data",one_frame_data,"in",data.frame)
-        //     this._model.setframes(data.frame);
-        //     this._model.shift(0);
-        //     this._model.pause();
-        // }
-        console.log("replace");
-        window.location.replace(window.location.href);
-        console.log("replace done");
+        window.cvat.data.clear();
+        $('#frameContent').addClass('hidden');
+        $('#frameBackground').addClass('hidden');
+        $('#frameLoadingAnim').removeClass('hidden');
+        $.confirm({
+            title: '要領取工作了嗎？',
+            content: '將會得到圖片或影片',
+            boxWidth: '30%',
+            useBootstrap: false,
+            draggable: false,
+            buttons: {
+                是: {
+                    keys: ['enter'],
+                    action: function(){
+                        console.log('confirm');
+                        serverRequest('get/current/job/'+jid, function(test){
+                            passreload = true;
+                            window.location.replace(window.location.href);
+                        });
+                    }
+                },
+                否: {
+                    keys: ['esc'],
+                    action: function(){
+                        console.log("cancel,u dont have current need ask me");
+                    }
+                }
+            }
+        });
     }
 
     previous() {
@@ -970,28 +992,28 @@ class PlayerView {
                         keys: ['enter'],
                         action: function(){
                             console.log('confirm');
-                            $('#saveButton').click();
                             goNextRandom = false;
+                            $('#saveButton').click();
                             function checkFlag() {
-                                if(goNextRandom == false) {
+                                if(wasSend == false && goNextRandom == false) {
                                     console.log("QQ");
                                     window.setTimeout(checkFlag, 100); /* this checks the flag every 100 milliseconds*/
                                 } else {
                                     goNextRandom = false;
-                                    me[0]._controller.next_random_frame();
+                                    if(!wasSend)me[0]._controller.next_random_frame();
                                 }
                             }
                             checkFlag();
                         }
                     },
                     取消: {
-                        keys: ['enter'],
+                        keys: ['esc'],
                         action: function(){
                             console.log('cancel');
-                            $('#saveButton').click();
                             goNextRandom = false;
+                            $('#saveButton').click();
                             function checkFlag() {
-                                if(goNextRandom == false) {
+                                if(wasSend == false && goNextRandom == false) {
                                     console.log("QQ");
                                     window.setTimeout(checkFlag, 100); /* this checks the flag every 100 milliseconds*/
                                 } else {

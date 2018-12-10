@@ -78,12 +78,14 @@ def DetailTaskInfo(request, task, dst_dict):
     host = request.get_host()
     dst_dict['segments'] = []
 
+    pro = request.path.split('/')[2]
+
     for segment in task.segment_set.all():
         for job in segment.job_set.all():
-            segment_url = "{0}://{1}/?id={2}".format(scheme, host, job.id)
+            segment_url = "{0}://{1}/{2}/?id={3}".format(scheme, host, pro, job.id)
             #url_fcw = "{0}://{1}/fcw?id={2}".format(scheme, host, job.id)
-            url_fcw = "{0}://{1}/fcw".format(scheme, host)
-            url_fcw_key = "{0}://{1}/fcw?id={2}&setKey=true".format(scheme, host, job.id)
+            url_fcw = "{0}://{1}/{2}/".format(scheme, host, pro)
+            url_fcw_key = "{0}://{1}/{2}/?id={3}&setKey=true".format(scheme, host, pro, job.id)
             
             dst_dict["segments"].append({
                 'id': job.id,
@@ -116,7 +118,7 @@ def DetailTaskInfo(request, task, dst_dict):
 
 
 @login_required
-@permission_required('engine.view_task', raise_exception=True)
+@permission_required('engine.add_task', raise_exception=True)
 def DashboardView(request):
     filter_name = request.GET['name'] if 'name' in request.GET else None
     filter_nickname = request.GET['nickname'] if 'nickname' in request.GET else None
