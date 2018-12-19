@@ -55,29 +55,31 @@ def dispatch_request(request):
     #         })
     # else:
     #     return redirect('/dashboard/')
+    project = list(filter(None, request.path.split('/')))[0]
     if request.user.groups.filter(name='admin').exists(): #and request.method == 'GET' and 'setKey' in request.GET and request.GET['setKey'].upper() == "TRUE":
         if request.method == 'GET' and 'id' in request.GET:
             return render(request, 'engine/annotation_keyframe.html', {
                 'js_3rdparty': JS_3RDPARTY.get('engine', [])
             })
         else:
-            return redirect('/dashboard/fcw')
+            print ("url is",request.path)
+            project = list(filter(None, request.path.split('/')))[0]
+            return redirect('/dashboard/' + project)
     else:
-        return render(request, 'engine/annotation_training.html', {
+        web = ''
+        if project == 'fcw_training' and request.user.groups.filter(name='fcw_training').exists():
+            web = 'annotation_training'
+        elif project == 'fcw_testing' and request.user.groups.filter(name='fcw_testing').exists():
+            web = 'annotation_fcw_testing'
+        else:
+            return redirect('/')
+
+
+
+        return render(request, 'engine/{}.html'.format(web), {
             'js_3rdparty': JS_3RDPARTY.get('engine', [])
         })
- 
-    # else:
-    #     return redirect('/dashboard/')
-@login_required
-def dispatch_request2(request):
-    """An entry point to dispatch legacy requests"""
-    # if request.method == 'GET' and 'id' in request.GET:
-    #     return render(request, 'engine/annotation_keyframe.html', {
-    #         'js_3rdparty': JS_3RDPARTY.get('engine', [])
-    #     })
-    # else:
-    return redirect('/dashboard/')
+
 
 # Add by Eric
 @login_required
@@ -390,7 +392,8 @@ def get_annotation(request, jid):
     try:
         job_logger[jid].info("get annotation for {} job".format(jid))
         #change by jeff
-        response = annotation.get(jid, requestUser=request.user)
+        project = list(filter(None, request.path.split('/')))[0]
+        response = annotation.get(jid, project=project, requestUser=request.user)
         
     except Exception as e:
         job_logger[jid].error("cannot get annotation for job {}".format(jid), exc_info=True)
@@ -405,7 +408,8 @@ def get_annotation_frame(request, jid, frame):
     try:
         job_logger[jid].info("get annotation for {} job".format(jid))
         #change by jeff
-        response = annotation.get(jid, requestUser=request.user,frame=frame)
+        project = list(filter(None, request.path.split('/')))[0]
+        response = annotation.get(jid, project=project, requestUser=request.user,frame=frame)
         
     except Exception as e:
         job_logger[jid].error("cannot get annotation for job {}".format(jid), exc_info=True)
@@ -622,7 +626,7 @@ def get_user_currnet(request, jid):
             return JsonResponse({'jid':user_record.task_id,'frame': user_record.frame})
         else:
             print ("user_record is None, will error")
-            return "u dont have current need ask me"
+            return "you need to get new work"
             #raise Exception('user_record is None')
 
         # db_job = models.Job.objects.get(id=new_jid)
@@ -642,50 +646,49 @@ def get_user_currnet(request, jid):
 @transaction.atomic
 @permission_required('engine.add_task', raise_exception=True)
 def set_frame_isKeyFrame(request, tid, frame, flag):
-    try: 
-        if flag:
-            db_task = models.Task.objects.select_for_update().get(pk=tid)
-            db_taskFrameUserRecord = models.TaskFrameUserRecord()
-            db_taskFrameUserRecord.task = db_task
-            db_taskFrameUserRecord.frame = frame
-            
+    try:
+        project = list(filter(None, request.path.split('/')))[0]
+
+        if project == 'fcw_training':
+            print('fcw_training',project)
             db_fcwTrain = models.FCWTrain.objects.select_for_update().get(task_id=tid)
-            db_fcwTrain.keyframe_count += 1
-            db_fcwTrain.priority = 0
-
-            db_fcwTrain.save()
-            db_taskFrameUserRecord.save()
-            print("tid:{} frame:{} is add".format(tid,frame))
-        else:
-            try:
-                db_fcwTrain = models.FCWTrain.objects.select_for_update().get(task_id=tid)
-                tmp = db_fcwTrain.keyframe_count
-                db_fcwTrain.keyframe_count = tmp-1 if tmp-1>0 else 0
-
-                keyframe = models.TaskFrameUserRecord.objects.select_for_update().get(task_id=tid,frame=frame)
-                if keyframe.user_submit:
-                    tmp = db_fcwTrain.unchecked_count
-                    db_fcwTrain.unchecked_count = tmp-1 if tmp-1>0 else 0
-                elif keyframe.checked:
-                    tmp = db_fcwTrain.checked_count
-                    db_fcwTrain.checked_count = tmp-1 if tmp-1>0 else 0
-                elif keyframe.need_modify:
-                    tmp = db_fcwTrain.need_modify_count
-                    db_fcwTrain.need_modify_count = tmp-1 if tmp-1>0 else 0
+            if flag:
+                db_task = models.Task.objects.select_for_update().get(pk=tid)
+                db_taskFrameUserRecord = models.TaskFrameUserRecord()
+                db_taskFrameUserRecord.task = db_task
+                db_taskFrameUserRecord.frame = frame
                 
+                db_fcwTrain.keyframe_count += 1
+                db_fcwTrain.priority = 0
                 db_fcwTrain.save()
-                keyframe.delete()
 
-            except ObjectDoesNotExist:
-                print("tid:{} frame:{} is delete".format(tid,frame))
+                db_taskFrameUserRecord.save()
+                print("tid:{} frame:{} is add".format(tid,frame))
+            else:
+                try:
+                    keyframe = models.TaskFrameUserRecord.objects.get(task_id=tid,frame=frame)
+                    keyframe.delete()
 
-        qs = models.TaskFrameUserRecord.objects.select_for_update().filter(task_id=tid)
-        frames = qs.values_list('frame', flat=True)
-        print(list(frames))
-        return JsonResponse({'frames': list(frames)}, safe=False)
+                    db_fcwTrain.keyframe_count -= 1
+                    db_fcwTrain.checked_count = models.TaskFrameUserRecord.objects.filter(task_id=tid,checked=True).count()
+                    db_fcwTrain.unchecked_count = models.TaskFrameUserRecord.objects.filter(task_id=tid,user_submit=True).count()
+                    db_fcwTrain.need_modify_count = models.TaskFrameUserRecord.objects.filter(task_id=tid,need_modify=True).count()
+                    db_fcwTrain.save()
 
-        # response = {'frame': frame,'add_del':flag}
-        # return JsonResponse(response, safe=False)
+                except ObjectDoesNotExist:
+                    print("tid:{} frame:{} is delete".format(tid,frame))
+
+            qs = models.TaskFrameUserRecord.objects.select_for_update().filter(task_id=tid)
+            frames = qs.values_list('frame', flat=True)
+            print(list(frames))
+            return JsonResponse({'frames': list(frames)}, safe=False)
+
+        elif project == 'fcw_testing':
+            print('fcw_testing',project)
+            qs = models.FCWTest_FrameUserRecord.objects.select_for_update().filter(task_id=tid)
+            frames = qs.values_list('frame', flat=True)
+            print(list(frames),'but test not show ')
+            return JsonResponse({'frames': []}, safe=False)
     except Exception as e:
         print("error is !!!!",str(e))
         return HttpResponseBadRequest(str(e))
@@ -701,7 +704,7 @@ def get_frame_isKeyFrame(request, tid, frame):
             response = {'isKeyFrame': True}
         except ObjectDoesNotExist:
             response = {'isKeyFrame': False}
-        
+
         return JsonResponse(response, safe=False)
     except Exception as e:
         print("error is !!!!",str(e))
@@ -713,16 +716,33 @@ def get_frame_isKeyFrame(request, tid, frame):
 @permission_required('engine.view_task', raise_exception=True)
 def get_keyFrame_stage(request, tid, frame):
     try:
-        keyframe = models.TaskFrameUserRecord.objects.select_for_update().get(task_id=tid,frame=frame)
-        response = {
-            'annotator': keyframe.user,
-            'current': keyframe.current,
-            'user_submit': keyframe.user_submit,
-            'need_modify': keyframe.need_modify,
-            'checked': keyframe.checked,
-            'comment': keyframe.comment
-        }
-        return JsonResponse(response, safe=False)
+        project = list(filter(None, request.path.split('/')))[0]
+        response = None
+        if project == 'fcw_training':
+            keyframe = models.TaskFrameUserRecord.objects.select_for_update().get(task_id=tid,frame=frame)
+            response = {
+                'annotator': keyframe.user,
+                'current': keyframe.current,
+                'user_submit': keyframe.user_submit,
+                'need_modify': keyframe.need_modify,
+                'checked': keyframe.checked,
+                'comment': keyframe.comment
+            }
+        elif project == 'fcw_testing':
+            keyframe = models.FCWTest_FrameUserRecord.objects.select_for_update().get(task_id=tid,frame=frame)
+            video_user = models.FCWTest.objects.select_for_update().get(task_id=tid).user
+            response = {
+                'annotator': video_user,
+                'current': keyframe.current,
+                'user_submit': keyframe.user_submit,
+                'need_modify': keyframe.need_modify,
+                'checked': keyframe.checked,
+                'comment': keyframe.comment
+            }
+        if response:
+            return JsonResponse(response, safe=False)
+        else:
+            return HttpResponseBadRequest("no get_keyFrame_stage")
     except Exception as e:
         print("error is !!!!",str(e))
         return HttpResponseBadRequest(str(e))
@@ -731,38 +751,37 @@ def get_keyFrame_stage(request, tid, frame):
 @transaction.atomic
 @permission_required('engine.add_task', raise_exception=True)
 def set_frame_isComplete(request, tid, frame, flag):
-    try: 
-        keyframe = models.TaskFrameUserRecord.objects.select_for_update().get(task_id=tid,frame=frame)
-        db_fcwTrain = models.FCWTrain.objects.select_for_update().get(task_id=tid)
+    try:
+        project = list(filter(None, request.path.split('/')))[0]
+        keyframe = None
+        db_project = None
+        qs_project = None
+
+        if project == 'fcw_training':
+            keyframe = models.TaskFrameUserRecord.objects.select_for_update().get(task_id=tid,frame=frame)
+            db_project = models.FCWTrain.objects.select_for_update().get(task_id=tid)
+            qs_project = models.TaskFrameUserRecord.objects.all()
+        elif project == 'fcw_testing':
+            keyframe = models.FCWTest_FrameUserRecord.objects.select_for_update().get(task_id=tid,frame=frame)
+            db_project = models.FCWTest.objects.select_for_update().get(task_id=tid)
+            qs_project = models.FCWTest_FrameUserRecord.objects.all()
+
         if flag:
             keyframe.checker = request.user.username
             keyframe.checked = True
             keyframe.user_submit = False
-            
-            db_fcwTrain.checked_count += 1
-
-            tmp = db_fcwTrain.unchecked_count
-            db_fcwTrain.unchecked_count = tmp-1 if tmp-1>0 else 0
-
-            if db_fcwTrain.keyframe_count == db_fcwTrain.checked_count:
-                db_fcwTrain.priority = 0
-
-            db_fcwTrain.save()
             keyframe.save()
             print("tid:{} frame:{} is Complete".format(tid,frame))
         else:
             keyframe.checker = request.user.username
             keyframe.checked = False
             keyframe.user_submit = True
-
-            tmp = db_fcwTrain.checked_count
-            db_fcwTrain.checked_count = tmp-1 if tmp-1>0 else 0
-
-            db_fcwTrain.unchecked_count += 1
-
-            db_fcwTrain.save()
             keyframe.save()
 
+        db_project.checked_count = qs_project.filter(task_id=tid,checked=True).count()
+        db_project.unchecked_count = qs_project.filter(task_id=tid,user_submit=True).count()
+        db_project.need_modify_count = qs_project.filter(task_id=tid,need_modify=True).count()
+        db_project.save()
 
         response = {'frame': frame,'isComplete':flag}
         return JsonResponse(response, safe=False)
@@ -774,35 +793,38 @@ def set_frame_isComplete(request, tid, frame, flag):
 @transaction.atomic
 @permission_required('engine.add_task', raise_exception=True)
 def set_frame_isRedo(request, tid, frame, flag):
-    try: 
-        keyframe = models.TaskFrameUserRecord.objects.select_for_update().get(task_id=tid,frame=frame)
-        db_fcwTrain = models.FCWTrain.objects.select_for_update().get(task_id=tid)
+    try:
+        
+        project = list(filter(None, request.path.split('/')))[0]
+        keyframe = None
+        db_project = None
+        qs_project = None
+
+        if project == 'fcw_training':
+            keyframe = models.TaskFrameUserRecord.objects.select_for_update().get(task_id=tid,frame=frame)
+            db_project = models.FCWTrain.objects.select_for_update().get(task_id=tid)
+            qs_project = models.TaskFrameUserRecord.objects.all()
+        elif project == 'fcw_testing':
+            keyframe = models.FCWTest_FrameUserRecord.objects.select_for_update().get(task_id=tid,frame=frame)
+            db_project = models.FCWTest.objects.select_for_update().get(task_id=tid)
+            qs_project = models.FCWTest_FrameUserRecord.objects.all()
+
         if flag:
             keyframe.checker = request.user.username
             keyframe.need_modify = True
             keyframe.user_submit = False
-            
-            db_fcwTrain.need_modify_count += 1
-
-            tmp = db_fcwTrain.unchecked_count
-            db_fcwTrain.unchecked_count = tmp-1 if tmp-1>0 else 0
-
-            db_fcwTrain.save()
             keyframe.save()
             print("tid:{} frame:{} is Redo".format(tid,frame))
         else:
             keyframe.checker = request.user.username
             keyframe.need_modify = False
             keyframe.user_submit = True
-
-            tmp = db_fcwTrain.need_modify_count
-            db_fcwTrain.need_modify_count = tmp-1 if tmp-1>0 else 0
-
-            db_fcwTrain.unchecked_count += 1
-
-            db_fcwTrain.save()
             keyframe.save()
 
+        db_project.checked_count = qs_project.filter(task_id=tid,checked=True).count()
+        db_project.unchecked_count = qs_project.filter(task_id=tid,user_submit=True).count()
+        db_project.need_modify_count = qs_project.filter(task_id=tid,need_modify=True).count()
+        db_project.save()
 
         response = {'frame': frame,'isRedo':flag}
         return JsonResponse(response, safe=False)
@@ -817,8 +839,13 @@ def set_frame_redoComment(request, tid, frame, comment):
     try:
         if comment == 'ok':
             comment = ''
-        keyframe = models.TaskFrameUserRecord.objects.select_for_update().get(task_id=tid,frame=frame)
-        db_fcwTrain = models.FCWTrain.objects.select_for_update().get(task_id=tid)
+        project = list(filter(None, request.path.split('/')))[0]
+        keyframe = None
+        if project == 'fcw_training':
+            keyframe = models.TaskFrameUserRecord.objects.select_for_update().get(task_id=tid,frame=frame)
+        elif project == 'fcw_testing':
+            keyframe = models.FCWTest_FrameUserRecord.objects.select_for_update().get(task_id=tid,frame=frame)
+        
         keyframe.checker = request.user.username
         keyframe.comment = comment
         keyframe.save()
@@ -840,18 +867,43 @@ def set_tasks_priority(request):
         params = request.POST.dict()
         priority = params['priority']
 
+        project = params['project']
+        print('project', project)
+
         if(params['selectTasks'] != ''):
             tasks = params['selectTasks'].split(',')
-            for tid in tasks:
-                db_fcwTrain = models.FCWTrain.objects.select_for_update().get(task_id=int(tid))
-                db_fcwTrain.priority = priority
-                db_fcwTrain.save()
+            if project == 'fcw_training':
+                for tid in tasks:
+                    db_fcwTrain = models.FCWTrain.objects.select_for_update().get(task_id=int(tid))
+                    db_fcwTrain.priority = priority
+                    db_fcwTrain.save()
+            elif project == 'fcw_testing':
+                for tid in tasks:
+                    db_fcwTest = models.FCWTest.objects.select_for_update().get(task_id=int(tid))
+                    db_fcwTest.priority = priority
+                    db_fcwTest.save()
 
     except Exception as e:
         print("error is !!!!",str(e))
         return HttpResponseBadRequest(str(e))
 
     return JsonResponse({'data':params}, safe=False)
+
+# add by eric
+@login_required
+@transaction.atomic
+@permission_required('engine.add_task', raise_exception=True)
+def set_Video_Catogory(request, tid, catogory):
+    try:
+        task = models.Task.objects.select_for_update().get(pk=tid)
+        task.category = catogory
+        task.save()
+    except Exception as e:
+        print("error is !!!!",str(e))
+        return HttpResponseBadRequest(str(e))
+
+    return JsonResponse("success.", safe=False)
+
 
 @login_required
 @transaction.atomic
@@ -900,6 +952,270 @@ def get_FCW_Job(request):
         print("error is !!!!",str(e))
         return HttpResponseBadRequest(str(e))
 
+
+# add by jeff
+@login_required
+@permission_required(perm=['engine.view_task', 'engine.change_annotation'], raise_exception=True)
+def save_currentJob(request):
+    try:        
+       
+        user_record = None
+        tid = None # use taskid
+
+        project = list(filter(None, request.path.split('/')))[0]
+        
+        if project == 'fcw_training':
+            try:
+                with transaction.atomic():
+                    user_record = models.TaskFrameUserRecord.objects.select_for_update().get(user=request.user.username,current=True)
+                    tid = user_record.task_id
+                    print ("user: {} find current {}".format(request.user.username,user_record.frame))
+                    user_record.current = False
+                    user_record.user_submit = True
+                    
+                    if user_record.need_modify:
+                        user_record.userModifySubmit_date = timezone.now()
+                    else:
+                        user_record.userSubmit_date = timezone.now()
+
+                    user_record.need_modify = False
+                    user_record.save()
+
+                print ("user: {}'s user_record.save()".format(request.user.username))
+            except ObjectDoesNotExist:
+                print ("user: {}'s not found current frame".format(request.user.username))
+                raise Exception('user_record is None')
+        elif project == 'fcw_testing':
+            try:
+                with transaction.atomic():
+                    user_record = models.FCWTest.objects.select_for_update().get(user=request.user.username,current=True)
+                    tid = user_record.task_id
+                    print ("user: {} find current {}".format(request.user.username,tid))
+                    user_record.current = False
+                    user_record.user_submit = True
+                    
+                    if user_record.need_modify:
+                        user_record.userModifySubmit_date = timezone.now()
+                    else:
+                        user_record.userSubmit_date = timezone.now()
+
+                    user_record.need_modify = False
+                    user_record.save()
+
+                print ("user: {}'s user_record.save()".format(request.user.username))
+            except ObjectDoesNotExist:
+                print ("user: {}'s not found current frame".format(request.user.username))
+                raise Exception('user_record is None')
+
+        db_project = None
+        qs_project = None
+        with transaction.atomic():
+            if project == 'fcw_training':
+                db_project = models.FCWTrain.objects.select_for_update().get(task_id=tid)
+                qs_project = models.TaskFrameUserRecord.objects.all()
+            elif project == 'fcw_testing':
+                db_project = models.FCWTest.objects.select_for_update().get(task_id=tid)
+                qs_project = models.FCWTest_FrameUserRecord.objects.all()
+
+            db_project.checked_count = qs_project.filter(task_id=tid,checked=True).count()
+            db_project.unchecked_count = qs_project.filter(task_id=tid,user_submit=True).count()
+            db_project.need_modify_count = qs_project.filter(task_id=tid,need_modify=True).count()
+            db_project.save()
+
+        return JsonResponse({'data':"success"})
+
+    except Exception as e:
+        print("error is !!!!",str(e))
+        job_logger[jid].error("cannot set {} currnet for {} job".format(request.user.username,jid), exc_info=True)
+        return HttpResponseBadRequest(str(e))
+
+# add by jeff
+@login_required
+@transaction.atomic
+@permission_required('engine.view_task', raise_exception=True)
+def get_currentJob(request):
+    try:
+        project = list(filter(None, request.path.split('/')))[0]
+
+        # find current jid, job
+        # if no current return no current
+        #    js will ask user get new job ? yes or not
+        jid = None
+        job = None
+        data = None
+
+        user_record = None
+        try:
+            if project == 'fcw_training':
+                user_record = models.TaskFrameUserRecord.objects.select_for_update().get(user=request.user.username,current=True)
+            elif project == 'fcw_testing':
+                user_record = models.FCWTest.objects.select_for_update().get(user=request.user.username,current=True)
+            jid = user_record.task_id
+        except ObjectDoesNotExist:
+            return JsonResponse("you need to get new work", safe=False)
+
+        try:
+            job_logger[jid].info("get job #{} request".format(jid))
+            job = task.get_job(jid)
+        except Exception as e:
+            job_logger[jid].error("cannot get job #{}".format(jid), exc_info=True)
+            return HttpResponseBadRequest(str(e))
+
+        try:
+            job_logger[jid].info("get annotation for {} job".format(jid))
+            data = annotation.get(jid, project=project, requestUser=request.user)
+        except Exception as e:
+            job_logger[jid].error("cannot get annotation for job {}".format(jid), exc_info=True)
+            return HttpResponseBadRequest(str(e))
+
+        return JsonResponse({'project':project,'jid':jid,'job':job,'data':data}, safe=False)
+
+    except Exception as e:
+        print("error is !!!!",str(e))
+        return HttpResponseBadRequest(str(e))
+
+def set_currentWithJob(username,qs=None,time=None):
+    user_record = None
+    new_jid = None
+    ids = qs.values_list('id', flat=True)
+    if len(ids):
+        index = random.randint(0, len(ids)-1)
+        try:
+            user_record = qs[index]
+            new_jid = user_record.task_id
+
+            user_record.user = username
+            user_record.current = True
+            if time == 'modify':
+                user_record.userModifyGet_date = timezone.now()
+            if time == 'new':
+                user_record.userGet_date = timezone.now()
+            user_record.save()
+        except ObjectDoesNotExist:
+            print("error in set_currentJob fcw_training modify")
+            user_record = None
+            new_jid = None
+    return user_record, new_jid
+
+# add by jeff
+@login_required
+@transaction.atomic
+@permission_required('engine.view_task', raise_exception=True)
+def set_currentJob(request):
+    try:
+        project = list(filter(None, request.path.split('/')))[0]
+
+        user_record = None
+        new_jid = None
+
+        if project == 'fcw_training':
+            start_time = time.time()
+            db_fcwTrains = models.FCWTrain.objects.filter(~Q(priority=0)).order_by('-priority', 'task__created_date')
+            print ("db_fcwTrains,",db_fcwTrains)
+            print ("len  db_fcwTrains,",len(db_fcwTrains))
+            if db_fcwTrains and len(db_fcwTrains):
+                print ("db_fcwTrains has {} data".format(len(db_fcwTrains)))
+                for db_fcwTrain in db_fcwTrains:
+                    tmp_tid = db_fcwTrain.task.id
+                    with transaction.atomic():
+                        qs = models.TaskFrameUserRecord.objects.filter(task_id=tmp_tid,user=request.user.username,need_modify=True)
+                        ids = qs.values_list('id', flat=True)
+                        if len(ids):
+                            index = random.randint(0, len(ids)-1)
+                            try:
+                                user_record = qs[index]
+                                new_jid = tmp_tid
+
+                                user_record.user = request.user.username
+                                user_record.current = True
+                                user_record.userModifyGet_date = timezone.now()
+                                user_record.save()
+                                break
+                            except ObjectDoesNotExist:
+                                print("error in set_currentJob fcw_training modify")
+                                user_record = None
+                                new_jid = None
+            end_time = time.time()
+            print ("use random pk cost time : ",(end_time - start_time))
+            if user_record:
+                print ("get modify is success job",new_jid,user_record.frame)
+            else:
+                print("need modify is none, try get new frame")
+                start_time = time.time()
+                print ("db_fcwTrains,",db_fcwTrains)
+                print ("len  db_fcwTrains,",len(db_fcwTrains))
+                if db_fcwTrains and len(db_fcwTrains):
+                    print ("db_fcwTrains has {} data".format(len(db_fcwTrains)))
+                    for db_fcwTrain in db_fcwTrains:
+                        tmp_tid = db_fcwTrain.task.id
+                        with transaction.atomic():
+                            qs = models.TaskFrameUserRecord.objects.select_for_update().filter(task_id=tmp_tid,user='')
+                            ids = qs.values_list('id', flat=True)
+                            if len(ids):
+                                index = random.randint(0, len(ids)-1)
+                                try:
+                                    user_record = qs[index]
+                                    new_jid = tmp_tid
+
+                                    user_record.user = request.user.username
+                                    user_record.current = True
+                                    user_record.userGet_date = timezone.now()
+                                    user_record.save()
+                                    break
+                                except ObjectDoesNotExist:
+                                    user_record = None
+                                    new_jid = None
+                end_time = time.time()
+                print ("use random pk cost time : ",(end_time - start_time))
+                print ("try get new is success job",new_jid,user_record.frame)
+
+        elif project == 'fcw_testing':
+            start_time = time.time()
+            db_fcwTests = models.FCWTest.objects.filter(~Q(priority=0) & Q(user=request.user.username) & Q(need_modify=True)).order_by('-priority', 'task__created_date')
+            print ("db_fcwTrains,",db_fcwTests)
+            print ("len  db_fcwTrains,",len(db_fcwTests))
+            user_record, new_jid = set_currentWithJob(request.user.username, db_fcwTests, time='modify')
+            end_time = time.time()
+            print ("use random pk cost time : ",(end_time - start_time))
+            
+            if user_record is None:
+                print("need modify is none, try get new frame")
+                start_time = time.time()
+                db_fcwTests = models.FCWTest.objects.filter(~Q(priority=0),Q(user=request.user.username),Q(userGet_date=None)).order_by('-priority', 'task__created_date')
+                print ("db_fcwTests,",db_fcwTests)
+                print ("len  db_fcwTests,",len(db_fcwTests))
+                user_record, new_jid = set_currentWithJob(request.user.username, db_fcwTests, time='new')
+                end_time = time.time()
+                print ("use random pk cost time : ",(end_time - start_time))
+                
+            if user_record:
+                print ("try get new Assign is success job",new_jid)
+            else:
+                print("need modify is none, try get new frame")
+                start_time = time.time()
+                db_fcwTests = models.FCWTest.objects.filter(~Q(priority=0),Q(user='')).order_by('-priority', 'task__created_date')
+                print ("db_fcwTests,",db_fcwTests)
+                print ("len  db_fcwTests,",len(db_fcwTests))
+                user_record, new_jid = set_currentWithJob(request.user.username, db_fcwTests, time='new')
+                end_time = time.time()
+                print ("use random pk cost time : ",(end_time - start_time))
+                print ("try get new Empty is success job",new_jid)
+
+    except Exception as e:
+        user_record = None
+        print("error is !!!!",str(e))
+        job_logger[new_jid].error("cannot set {} currnet for {} job".format(request.user.username,new_jid), exc_info=True)
+        return HttpResponseBadRequest(str(e))
+        
+    if user_record:
+        print ("have current")
+        job_logger[new_jid].info("set {} currnet for {} job".format(request.user.username,new_jid))
+        return JsonResponse({'jid':new_jid})
+    else:
+        print ("user_record is None, will error")
+        return "u dont have current Ask the administrator"
+
+
 @login_required
 def get_FCW_Job_Name(request, tid):
     try: 
@@ -915,11 +1231,16 @@ def get_FCW_Job_Name(request, tid):
 @permission_required('engine.view_task', raise_exception=True)
 def get_keyFrames(request, tid):
     try:
+        project = list(filter(None, request.path.split('/')))[0]
         
-        qs = models.TaskFrameUserRecord.objects.select_for_update().filter(task_id=tid)
-        frames = qs.values_list('frame', flat=True)
-        print(list(frames))
-        return JsonResponse({'frames': list(frames)}, safe=False)
+        if project == 'fcw_training':
+            qs = models.TaskFrameUserRecord.objects.select_for_update().filter(task_id=tid)
+            frames = qs.values_list('frame', flat=True)
+            print(list(frames))
+            return JsonResponse({'frames': list(frames)}, safe=False)
+        elif project == 'fcw_testing':
+            print('fcw_testing no show keyframe')
+            return JsonResponse({'frames': []}, safe=False)
     except Exception as e:
         print("error is !!!!",str(e))
         return HttpResponseBadRequest(str(e))

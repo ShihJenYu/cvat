@@ -64,7 +64,6 @@ document.addEventListener("DOMContentLoaded", buildDashboard);
 
 function buildDashboard() {
     /* Setup static content */
-    console.log('ttttttttttttttttttttttttttttttttt')
     setupTaskCreator();
     setupTaskUpdater();
     setupSearch();
@@ -188,18 +187,14 @@ function setupTaskCreator() {
     });
 
     setVideoPriority.on('click', function() {
-        // $('#setVideoPriority').prop('disabled',true);
         let priority = $('#priority').val();
         if (priority == '' || priority < 0) priority = 0;
         if (priority > 50) priority = 50;
-        console.log("priority",priority);
         
         var IDs = $(".selectTask[id]")         // find spans with ID attribute
                     .map(function() { if($(this).prop("checked")) return this.id.split('_')[1]; }) // convert to set of IDs
                     .get(); // convert to instance of Array (optional)
-        console.log("IDs",IDs.toString());
         setPriorityRequest(IDs, priority, function(response) {
-            console.log(response);
             $('#setVideoPriority').prop('disabled',false);
             IDs.forEach(element => {
                 $(`#detailPriority_${element}`).html(parseInt(priority));
@@ -350,6 +345,7 @@ function setupTaskCreator() {
 
         let taskData = new FormData();
         taskData.append('task_name', name);
+        taskData.append('project', window.location.pathname.split('/')[2]);
         taskData.append('bug_tracker_link', bugTrackerLink);
         taskData.append('labels', labels);
         taskData.append('flip_flag', flipImages);
@@ -368,7 +364,6 @@ function setupTaskCreator() {
 
         for (let file of files) {
             taskData.append('data', file);
-            console.log("taskData",file);
         }
         
         submitCreate.prop('disabled', true);
@@ -431,12 +426,10 @@ function setupTaskCreator() {
 
     localKeyframeUploader.on('change', function(e) {
         keyframefiles = e.target.files;
-        console.log(keyframefiles, "GGGGGGGGG");
         updateKeyframeFiles();
     });
 
     function updateKeyframeFiles() {
-        console.log(keyframefiles, "UPUPUPUUPU");
         switch (keyframefiles.length) {
         case 0:
             KeyframeUploaderLabel.text('No Files').css('color', 'black');
@@ -551,6 +544,7 @@ function setPriorityRequest(selectTasks, priority, successCallback)
     let priorityData = new FormData();
     priorityData.append('selectTasks', selectTasks);
     priorityData.append('priority', priority);
+    priorityData.append('project', window.location.pathname.split('/')[2]);
     $.ajax({
         url: 'set/tasks/priority',
         type: 'POST',
@@ -615,7 +609,6 @@ function createTaskRequest(oData, onSuccessRequest, onSuccessCreate, onError, on
         }
     }
 }
-
 
 function UpdateTaskRequest(labels) {
     let oData = new FormData();

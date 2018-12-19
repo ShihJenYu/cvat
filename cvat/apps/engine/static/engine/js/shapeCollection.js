@@ -1033,7 +1033,7 @@ class ShapeCollectionController {
 
             //add by Eric
             let removedetectPointHandler = Logger.shortkeyLogDecorator(function() {
-                this.removeDetectPoint();
+                // this.removeDetectPoint();
             }.bind(this));
 
             let incZHandler = Logger.shortkeyLogDecorator(function() {
@@ -1285,7 +1285,7 @@ class ShapeCollectionController {
 
     removeActiveShape(e) {
         if (window.cvat.mode === null) {
-            this._model.selectShape(this._model.lastPosition, false);
+            //this._model.selectShape(this._model.lastPosition, false);
             let activeShape = this._model.activeShape;
             if (activeShape && (!activeShape.lock || e && e.shiftKey)) {
                 activeShape.remove();

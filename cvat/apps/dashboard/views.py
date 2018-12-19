@@ -12,6 +12,7 @@ from cvat.apps.authentication.decorators import login_required
 
 from cvat.apps.engine.models import Task as TaskModel
 from cvat.apps.engine.models import FCWTrain as FCWTrainModel
+from cvat.apps.engine.models import FCWTest as FCWTestModel
 from cvat.settings.base import JS_3RDPARTY
 
 import os
@@ -78,14 +79,14 @@ def DetailTaskInfo(request, task, dst_dict):
     host = request.get_host()
     dst_dict['segments'] = []
 
-    pro = request.path.split('/')[2]
+    project = list(filter(None, request.path.split('/')))[1]
 
     for segment in task.segment_set.all():
         for job in segment.job_set.all():
-            segment_url = "{0}://{1}/{2}/?id={3}".format(scheme, host, pro, job.id)
+            segment_url = "{0}://{1}/{2}/?id={3}".format(scheme, host, project, job.id)
             #url_fcw = "{0}://{1}/fcw?id={2}".format(scheme, host, job.id)
-            url_fcw = "{0}://{1}/{2}/".format(scheme, host, pro)
-            url_fcw_key = "{0}://{1}/{2}/?id={3}&setKey=true".format(scheme, host, pro, job.id)
+            url_fcw = "{0}://{1}/{2}/".format(scheme, host, project)
+            url_fcw_key = "{0}://{1}/{2}/?id={3}&setKey=true".format(scheme, host, project, job.id)
             
             dst_dict["segments"].append({
                 'id': job.id,
@@ -105,41 +106,63 @@ def DetailTaskInfo(request, task, dst_dict):
 
     dst_dict['labels'] = attributes
 
-    
-    db_FCWTrain = FCWTrainModel.objects.get(task_id=task.id)
+    db_Project = None
+    if project == 'fcw_training':
+        db_Project = FCWTrainModel.objects.get(task_id=task.id)
+    elif project == 'fcw_testing':
+        db_Project = FCWTestModel.objects.get(task_id=task.id)
+
     dst_dict['videostage'] = {
-        'keyframe_count': db_FCWTrain.keyframe_count,
-        'undo_count': db_FCWTrain.keyframe_count - db_FCWTrain.unchecked_count - db_FCWTrain.checked_count - db_FCWTrain.need_modify_count,
-        'unchecked_count': db_FCWTrain.unchecked_count,
-        'checked_count': db_FCWTrain.checked_count,
-        'need_modify_count': db_FCWTrain.need_modify_count,
-        'priority': db_FCWTrain.priority,
+        'keyframe_count': db_Project.keyframe_count,
+        'undo_count': db_Project.keyframe_count - db_Project.unchecked_count - db_Project.checked_count - db_Project.need_modify_count,
+        'unchecked_count': db_Project.unchecked_count,
+        'checked_count': db_Project.checked_count,
+        'need_modify_count': db_Project.need_modify_count,
+        'priority': db_Project.priority,
     }
 
 
 @login_required
 @permission_required('engine.add_task', raise_exception=True)
 def DashboardView(request):
-    filter_name = request.GET['name'] if 'name' in request.GET else None
-    filter_nickname = request.GET['nickname'] if 'nickname' in request.GET else None
-    filter_createdate = request.GET['createdate'] if 'createdate' in request.GET else None
+    try:
+        filter_name = request.GET['name'] if 'name' in request.GET else None
+        filter_nickname = request.GET['nickname'] if 'nickname' in request.GET else None
+        filter_createdate = request.GET['createdate'] if 'createdate' in request.GET else None
+        
+        project = list(filter(None, request.path.split('/')))[1]
+        
+        qs = None
+        if project == 'fcw_training':
+            qs = FCWTrainModel.objects.all()
+        elif project == 'fcw_testing':
+            qs = FCWTestModel.objects.all()
 
-    tasks_query_set = list(TaskModel.objects.prefetch_related('segment_set').order_by('-created_date').all())
-    if filter_name is not None:
-        tasks_query_set = list(filter(lambda x: filter_name.lower() in x.name.lower() and \
-                                                 filter_nickname.lower() in x.nickname.lower() and \
-                                                 filter_createdate in datetime.strftime(x.created_date, '%Y/%m/%d'), tasks_query_set))
-    data = []
-    for task in tasks_query_set:
-        task_info = {}
-        MainTaskInfo(task, task_info)
-        DetailTaskInfo(request, task, task_info)
-        data.append(task_info)
+        id_list = list(qs.values_list('task_id', flat=True))
+        print('task_id_list:',id_list)
 
-    return render(request, 'dashboard/dashboard.html', {
-        'data': data,
-        'max_upload_size': settings.LOCAL_LOAD_MAX_FILES_SIZE,
-        'max_upload_count': settings.LOCAL_LOAD_MAX_FILES_COUNT,
-        'share_path': os.getenv('CVAT_SHARE_URL', default=r'${cvat_root}/share'),
-        'js_3rdparty': JS_3RDPARTY.get('dashboard', [])
-    })
+        tasks_query_set = list(TaskModel.objects.prefetch_related('segment_set').filter(id__in=id_list).order_by('-created_date').all())
+        if filter_name is not None:
+            tasks_query_set = list(filter(lambda x: filter_name.lower() in x.name.lower() and \
+                                                    filter_nickname.lower() in x.nickname.lower() and \
+                                                    filter_createdate in datetime.strftime(x.created_date, '%Y/%m/%d'), tasks_query_set))
+        data = []
+        for task in tasks_query_set:
+            task_info = {}
+            MainTaskInfo(task, task_info)
+            DetailTaskInfo(request, task, task_info)
+            data.append(task_info)
+
+        print('url request', project)
+
+        return render(request, 'dashboard/dashboard.html', {
+            'project': project,
+            'data': data,
+            'max_upload_size': settings.LOCAL_LOAD_MAX_FILES_SIZE,
+            'max_upload_count': settings.LOCAL_LOAD_MAX_FILES_COUNT,
+            'share_path': os.getenv('CVAT_SHARE_URL', default=r'${cvat_root}/share'),
+            'js_3rdparty': JS_3RDPARTY.get('dashboard', [])
+        })
+    except Exception as e:
+        print(str(e))
+        return HttpResponseBadRequest(str(e))

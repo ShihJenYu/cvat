@@ -190,7 +190,6 @@ class ShapeModel extends Listener {
         for (let attrId in attributes) {
             let attrInfo = labelsInfo.attrInfo(attrId);
             if(attrInfo.name=="Type") {
-                console.log(attributes[attrId]);
                 this.mapColor(attributes[attrId]);
             }
             if (attrInfo.mutable) {

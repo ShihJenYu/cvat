@@ -27,7 +27,7 @@ window.onload = function() {
 
     let id = null;
     let setKey = false;
-    if (window.location.href.match(/setKey=true/gi)) {
+    if (window.location.search.match(/setKey=true/gi)) {
         setKey = true;
     }
 
@@ -35,23 +35,13 @@ window.onload = function() {
         isAdminFlag = response.isAdmin;
         if(isAdminFlag){
             setKeyFlag = true;
-            console.log(window.location.href)
-            id = window.location.href.match('id=[0-9]+')[0].slice(3);
+            console.log(window.location.search)
+            id = window.location.search.match('id=[0-9]+')[0].slice(3);
             callAnnotationUI(id,setKeyMode=setKeyFlag);
         }
         else{
             setKeyFlag = false;
-            serverRequest("get/fcw/job", function(response) {
-                console.log("setKey",setKey);
-                callAnnotationUI(response.jid,setKeyMode=setKey);
-            });
+            callAnnotationUI_annotator(setKeyFlag);
         }
     });
-
-
-    // serverRequest("/get/fcw/job", function(response) {
-    //     console.log("setKey",setKey);
-    //     callAnnotationUI(response.jid,setKeyMode=setKey);
-    // });
-    
 };

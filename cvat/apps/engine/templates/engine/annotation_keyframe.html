@@ -63,6 +63,40 @@
 <div style="margin-bottom: 5px;text-align:center;">
     <label id="task_name" class="regular h1" style="text-align:center;">Default</label>
     <select name="keyframes" id="select_keyframes" size="1" style="position:absolute; text-align:center;"></select> 
+    <!-- add by eric -->
+    <select id="Select_VideoCatogory_Time" mutiple="multiple">
+        <option value="白天">白天</option>
+        <option value="晚上">晚上</option>
+    </select>
+    <select id="Select_VideoCatogory_Weather" mutiple="multiple">
+        <option value="晴天">晴天</option>
+        <option value="陰天">陰天</option>
+        <option value="小雨">小雨</option>
+        <option value="大雨">大雨</option>
+    </select>
+    <select id="Select_VideoCatogory_Way" mutiple="multiple">
+        <option value="高速(平面)">高速(平面)</option>
+        <option value="高速(高架)">高速(高架)</option>
+        <option value="市區(高架)">市區(高架)</option>
+        <option value="市區(平面)">市區(平面)</option>
+        <option value="郊區">郊區</option>
+        <option value="巷弄">巷弄</option>
+    </select>
+    <input type="checkbox" id="Select_VideoCatogory_BackLight" value="逆光" />
+    <label class="regular h1" id="isBackLight" for="Select_VideoCatogory_BackLight">逆光</label>
+
+    <input type="checkbox" id="Select_VideoCatogory_Tunnel" value="隧道" />
+    <label class="regular h1" id="isTunnel" for="Select_VideoCatogory_Tunnel">隧道</label>
+
+    <input type="checkbox" id="Select_VideoCatogory_underbridge" value="有經過(橋下、涵洞)" />
+    <label class="regular h1" id="isunderbridge" for="Select_VideoCatogory_underbridge">有經過(橋下、涵洞)</label>
+
+    <button id="Submit_Cato" class="regular h2"> Submit </button>
+
+    <!-- add by eric -->
+
+
+
 </div>
 <div id="taskAnnotationCenterPanel">
     <div id="player">
@@ -326,7 +360,7 @@
         </div>
     </div>
 
-    <div id="annotationMenu" class="hidden regular">
+    <div id="annotationMenu" class="hidden regular keyframe">
         <center style="float:left; width: 28%; height: 100%;" id="engineMenuButtons">
             <button id="downloadAnnotationButton" class="menuButton semiBold h2"> Dump Annotation </button>
             <button id="uploadAnnotationButton" class="menuButton semiBold h2"> Upload Annotation </button>

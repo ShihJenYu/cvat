@@ -21,9 +21,8 @@ function callAnnotationUI(jid,setKeyMode=false) {
     loadJobEvent = Logger.addContinuedEvent(Logger.EventType.loadJob);
     serverRequest("get/job/" + jid, function(job) {
         serverRequest("get/annotation/job/" + jid, function(data) {
-            // console.log("get ann data 0 1 2",data); //[data, frame, new_jid]
-
-            if(data == "u dont have current need ask me") {
+            // data = {'shapeData':annotation.to_client(),'frame':frame,'jid':new_jid,'frameInfo':frameInfo}
+            if(data == "you need to get new work") {
                 $.confirm({
                     title: '要領取工作了嗎？',
                     content: '將會得到圖片或影片',
@@ -38,7 +37,7 @@ function callAnnotationUI(jid,setKeyMode=false) {
                                 serverRequest('get/current/job/'+jid, function(test){
                                     serverRequest("get/job/" + test.jid, function(job2) {
                                         serverRequest("get/annotation/job/" + test.jid, function(data2) {
-                                            if (data2[2] == test.jid) {
+                                            if (data2.jid == test.jid) {
                                                 $('#loadingOverlay').remove();
                                                 setTimeout(() => {
                                                     buildAnnotationUI(job2, data2, loadJobEvent);
@@ -52,13 +51,13 @@ function callAnnotationUI(jid,setKeyMode=false) {
                         否: {
                             keys: ['esc'],
                             action: function(){
-                                console.log("cancel,u dont have current need ask me");
+                                console.log("cancel,you need to get new work");
                             }
                         }
                     }
                 });
             }
-            else if (data[2] == jid) {
+            else if (data.jid == jid) {
                 $('#loadingOverlay').remove();
                 setTimeout(() => {
                     buildAnnotationUI(job, data, loadJobEvent);
@@ -69,6 +68,50 @@ function callAnnotationUI(jid,setKeyMode=false) {
             }
         });
     });
+}
+
+function callAnnotationUI_annotator(setKeyMode=false) {
+    setKeyFlag = setKeyMode;
+    function newWork() {
+        serverRequest("get/currentJob", function(response) {
+            console.log(response);
+            if(response == "you need to get new work") {
+                $.confirm({
+                    title: '要領取工作了嗎？',
+                    content: '將會得到圖片或影片',
+                    boxWidth: '30%',
+                    useBootstrap: false,
+                    draggable: false,
+                    buttons: {
+                        是: {
+                            keys: ['enter'],
+                            action: function(){
+                                console.log('confirm');
+                                serverRequest('set/currentJob', function(msg){
+                                    console.log('set/currentJob', msg)
+                                    newWork();
+                                });
+                            }
+                        },
+                        否: {
+                            keys: ['esc'],
+                            action: function(){
+                                console.log("cancel,u dont have current need set current");
+                            }
+                        }
+                    }
+                });
+            } else{
+                initLogger(response.jid);
+                loadJobEvent = Logger.addContinuedEvent(Logger.EventType.loadJob);
+                $('#loadingOverlay').remove();
+                setTimeout(() => {
+                    buildAnnotationUI(response.job, response.data, loadJobEvent);
+                }, 0);
+            }
+        });
+    }
+    newWork();
 }
 
 function initLogger(jobID) {
@@ -88,11 +131,16 @@ function initLogger(jobID) {
 }
 
 function buildAnnotationUI(job, shapeData, loadJobEvent) {
+    // data = {'shapeData':annotation.to_client(),'frame':frame,'jid':new_jid,'frameInfo':frameInfo}
+    current_lang = 1;
+    $.each(_LANG, function(index, value) {
+        $(`#${index}`).text(value[current_lang]);
+    }); 
     // Setup some API
     // shapeData = [data, frame], change by jeff
-    console.log("sssssssssss",shapeData[0]);
     console.log(job.start,job.stop);
     window.cvat = {
+        frameInfo: shapeData.frameInfo,
         labelsInfo: new LabelsInfo(job),
         player: {
             geometry: {
@@ -100,9 +148,9 @@ function buildAnnotationUI(job, shapeData, loadJobEvent) {
             },
             frames: {
                 // change by jeff
-                current: (shapeData[1]!= null)? shapeData[1]: job.start,
-                start: (shapeData[1]!= null)? shapeData[1]: job.start,
-                stop:  (shapeData[1]!= null)? shapeData[1]: job.stop,
+                current: (shapeData.frame!= null)? shapeData.frame: job.start,
+                start: (shapeData.frame!= null)? shapeData.frame: job.start,
+                stop:  (shapeData.frame!= null)? shapeData.frame: job.stop,
             }
         },
         mode: null,
@@ -153,6 +201,11 @@ function buildAnnotationUI(job, shapeData, loadJobEvent) {
     //     isAdminFlag = response.isAdmin;
         
     // });
+
+    if(window.location.pathname.split('/')[1]!='fcw_training'){
+        $('#isKeyFrame').prop('disabled',true);
+    }
+    
     if(isAdminFlag){
         window.history.replaceState(null, null, `${window.location.origin}${window.location.pathname}?id=${job.jobid}&setKey=${setKeyFlag}`);
         $('#task_name').text(job.slug);
@@ -219,8 +272,8 @@ function buildAnnotationUI(job, shapeData, loadJobEvent) {
     }
     else{
         window.history.replaceState(null, null, `${window.location.origin}${window.location.pathname}`);
-        $('#task_name').text(job.slug + " , F" + String(+shapeData[1]+1).padStart(4, '0'));
-        console.log(job.slug + " , F" + String(+shapeData[1]+1).padStart(4, '0'));
+        $('#task_name').text(job.slug + " , F" + String(+shapeData.frame+1).padStart(4, '0'));
+        console.log(job.slug + " , F" + String(+shapeData.frame+1).padStart(4, '0'));
     }
 
     
@@ -230,10 +283,9 @@ function buildAnnotationUI(job, shapeData, loadJobEvent) {
     // Setup components
     let annotationParser = new AnnotationParser(job, window.cvat.labelsInfo);
 
-    let shapeCollectionModel = new ShapeCollectionModel().import(shapeData[0]).updateHash();
+    let shapeCollectionModel = new ShapeCollectionModel().import(shapeData.shapeData).updateHash();
     let shapeCollectionController = new ShapeCollectionController(shapeCollectionModel);
     let shapeCollectionView = new ShapeCollectionView(shapeCollectionModel, shapeCollectionController);
-    console.log("shapeData",shapeData[0])
 
     window.cvat.data = {
         get: () => shapeCollectionModel.export(),
@@ -287,7 +339,7 @@ function buildAnnotationUI(job, shapeData, loadJobEvent) {
     };
 
     // add by jeff, set frame in playermodel
-    let playerModel = new PlayerModel(job, playerGeometry,shapeData[1]);
+    let playerModel = new PlayerModel(job, playerGeometry,shapeData.frame);
     //let playerModel = new PlayerModel(job, playerGeometry);
     let playerController = new PlayerController(playerModel,
         () => shapeCollectionModel.activeShape,
@@ -544,10 +596,22 @@ function setupShortkeys(shortkeys, models) {
         return false;
     });
 
+    // add by jeff
+    let translateHandler = Logger.shortkeyLogDecorator(function(e) {
+        e.preventDefault();
+        if(current_lang == 0) current_lang = 1;
+        else current_lang = 0;
+
+        $.each(_LANG, function(index, value) {
+            $(`#${index}`).text(value[current_lang]);
+        }); 
+    });
+
     Mousetrap.bind(shortkeys["open_help"].value, openHelpHandler, 'keydown');
     Mousetrap.bind(shortkeys["open_settings"].value, openSettingsHandler, 'keydown');
     Mousetrap.bind(shortkeys["save_work"].value, saveHandler, 'keydown');
     Mousetrap.bind(shortkeys["cancel_mode"].value, cancelModeHandler, 'keydown');
+    Mousetrap.bind(shortkeys["translate"].value, translateHandler, 'keydown');
 }
 
 
@@ -738,30 +802,29 @@ function setupMenu(job, shapeCollectionModel, annotationParser, aamModel, player
 
     $('#saveButton').on('click', () => {
         trainigsaveFlag = true;
-        if(keyframeStage!=null) {
-            if((isAdminFlag ) && ( keyframeStage.current || keyframeStage.annotator=='' || $('#isRedo').prop("checked"))){
-                if(saveByShift) {goNext = true; saveByShift = false; }
+        let saveFrame = null;
+        if (saveByShift) saveFrame = playerModel._frame.previous
+        else saveFrame = window.cvat.player.frames.current
+        let StatusInfo = window.cvat.frameInfo[saveFrame];
+        if(isAdminFlag){
+            if(StatusInfo==null) {return; /* not keyframe */ }
+            else if(StatusInfo.need_modify || StatusInfo.current || StatusInfo.user==''){
+                if(saveByShift) {saveByShift = false;}
                 else {
                     let annotator = '';
-                    if (keyframeStage.annotator=='')annotator="none"
-                    else annotator = keyframeStage.annotator
-                    alert(`Hello! annotator is working !!! Current:${keyframeStage.current} Annotator:${annotator} Redo:${$('#isRedo').prop("checked")}`);
+                    if (StatusInfo.userr=='')annotator="none"
+                    else annotator = StatusInfo.user
+                    if(annotator!="none") alert(`Hello! annotator is working !!! Current:${StatusInfo.current} Annotator:${annotator} Redo:${StatusInfo.need_modify}`);
+                    else alert('no any annotator get this frame, u cannot save!!');
                 }
             }
             else {
-                trainigsaveFlag = true;
-
-                if(!wasSend){
-                    console.log("to save");
-                    saveAnnotation(shapeCollectionModel, job);
-                }else{
-                    console.log("not to save");
-                }
-                    
+                console.log("to save");
+                saveAnnotation(shapeCollectionModel, job);
             }
         }
         else {
-            goNext = true;
+            saveAnnotation(shapeCollectionModel, job);
         }
     });
     $('#saveButton').attr('title', `
@@ -902,25 +965,25 @@ function saveAnnotation(shapeCollectionModel, job) {
     };
 
     saveButton.prop('disabled', true);
-    saveButton.text('Saving..');
+    saveButton.text(_LANG_saveSaveing[current_lang]);
     console.log("this data is will save in db",data);
     saveJobRequest(job.jobid, data, (response) => {
         console.log("saveJobRequest is success",response);
         // success
         shapeCollectionModel.updateHash();
-        saveButton.text('Success!');
+        saveButton.text(_LANG_saveSuccess[current_lang]);
         
         goNext = true;
         goNextRandom = true;
         setTimeout(() => {
             saveButton.prop('disabled', false);
-            saveButton.text('Save Work');
+            saveButton.text(_LANG_saveButton[current_lang]);
         }, 3000);
     }, (response) => {
         // error
         console.log("saveJobRequest is error",response);
         saveButton.prop('disabled', false);
-        saveButton.text('Save Work');
+        saveButton.text(_LANG_saveButton[current_lang]);
         let message = `Impossible to save job. Errors was occured. Status: ${response.status}`;
         showMessage(message + ' ' + 'Please immediately report the problem to support team');
         throw Error(message);

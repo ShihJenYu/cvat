@@ -55,4 +55,106 @@ cvat_groups_definition = {
             },
         'ldap_groups': AUTH_LDAP_ADMIN_GROUPS,
     },
+
+    'otofcw_training': {
+        'description': '',
+        'permissions':  {
+            'task': ['view'],
+            'annotation': ['view', 'change'],
+            },
+        'ldap_groups': AUTH_LDAP_DATA_ANNOTATORS_GROUPS,
+    },
+    'fcw_training': {
+        'description': '',
+        'permissions':  {
+            'task': ['view'],
+            'annotation': ['view', 'change'],
+            },
+        'ldap_groups': AUTH_LDAP_DATA_ANNOTATORS_GROUPS,
+    },
+    
+    'otofcw_testing': {
+        'description': '',
+        'permissions':  {
+            'task': ['view'],
+            'annotation': ['view', 'change'],
+            },
+        'ldap_groups': AUTH_LDAP_DATA_ANNOTATORS_GROUPS,
+    },
+    'fcw_testing': {
+        'description': '',
+        'permissions':  {
+            'task': ['view'],
+            'annotation': ['view', 'change'],
+            },
+        'ldap_groups': AUTH_LDAP_DATA_ANNOTATORS_GROUPS,
+    },
+    
+    'otoapacorenr': {
+        'description': '',
+        'permissions':  {
+            'task': ['view'],
+            'annotation': ['view', 'change'],
+            },
+        'ldap_groups': AUTH_LDAP_DATA_ANNOTATORS_GROUPS,
+    },
+    'apacorenr': {
+        'description': '',
+        'permissions':  {
+            'task': ['view'],
+            'annotation': ['view', 'change'],
+            },
+        'ldap_groups': AUTH_LDAP_DATA_ANNOTATORS_GROUPS,
+    },
+
+    'otoapasegmentation': {
+        'description': '',
+        'permissions':  {
+            'task': ['view'],
+            'annotation': ['view', 'change'],
+            },
+        'ldap_groups': AUTH_LDAP_DATA_ANNOTATORS_GROUPS,
+    },
+    'apasegmentation': {
+        'description': '',
+        'permissions':  {
+            'task': ['view'],
+            'annotation': ['view', 'change'],
+            },
+        'ldap_groups': AUTH_LDAP_DATA_ANNOTATORS_GROUPS,
+    },
+
+    'otoldws_training': {
+        'description': '',
+        'permissions':  {
+            'task': ['view'],
+            'annotation': ['view', 'change'],
+            },
+        'ldap_groups': AUTH_LDAP_DATA_ANNOTATORS_GROUPS,
+    },
+    'ldws_training': {
+        'description': '',
+        'permissions':  {
+            'task': ['view'],
+            'annotation': ['view', 'change'],
+            },
+        'ldap_groups': AUTH_LDAP_DATA_ANNOTATORS_GROUPS,
+    },
+    
+    'otoldws_testing': {
+        'description': '',
+        'permissions':  {
+            'task': ['view'],
+            'annotation': ['view', 'change'],
+            },
+        'ldap_groups': AUTH_LDAP_DATA_ANNOTATORS_GROUPS,
+    },
+    'ldws_testing': {
+        'description': '',
+        'permissions':  {
+            'task': ['view'],
+            'annotation': ['view', 'change'],
+            },
+        'ldap_groups': AUTH_LDAP_DATA_ANNOTATORS_GROUPS,
+    },
 }

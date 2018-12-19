@@ -66,116 +66,100 @@ def check(tid):
     return response
 
 @transaction.atomic
-def get(jid,requestUser=None,frame=None):
+def get(jid,project=None,requestUser=None,frame=None):
     """
     Get annotations for the job.
     """
-    #requestUser.groups.filter(name='annotator').exists()
+    
     db_job = models.Job.objects.select_for_update().get(id=jid)
+    annotation = _AnnotationForJob(db_job)
     new_jid = jid # use taskid
+    frameInfo = None
     if requestUser.groups.filter(name='annotator').exists():
         user_record = None
-        try:
-            user_record = models.TaskFrameUserRecord.objects.select_for_update().get(user=requestUser.username,current=True)
-            frame = user_record.frame
-            new_jid  = user_record.task_id
 
-            print ("user: {}, get frame: {} in job: {}".format(requestUser.username,frame,jid))
-        except ObjectDoesNotExist:
-            user_record = None
-            # try:
-            #     start_time = time.time()
-            #     # select need_modify
-            #     print("try get need_modify frame first")
-            #     #user_record = models.TaskFrameUserRecord.objects.filter(task_id=db_job.segment.task.id,user=request.user.username,need_modify=True).first()
-            #     start_time = time.time()
-            #     db_fcwTrains = models.FCWTrain.objects.filter(~Q(priority=0)).order_by('-priority', 'task__created_date')
-            #     print ("db_fcwTrains,",db_fcwTrains)
-            #     print ("len  db_fcwTrains,",len(db_fcwTrains))
-            #     if db_fcwTrains and len(db_fcwTrains):
-            #         print ("db_fcwTrains has {} data".format(len(db_fcwTrains)))
-            #         for db_fcwTrain in db_fcwTrains:
-            #             tmp_tid = db_fcwTrain.task.id
-            #             qs = models.TaskFrameUserRecord.objects.select_for_update().filter(task_id=tmp_tid,user=requestUser.username,need_modify=True)
-            #             ids = qs.values_list('id', flat=True)
-            #             if len(ids):
-            #                 index = random.randint(0, len(ids)-1)
-            #                 try:
-            #                     user_record = qs[index]#models.TaskFrameUserRecord.objects.get(pk=ids[index])
-            #                     new_jid = tmp_tid
-            #                     frame = user_record.frame
+        if project == 'fcw_training':
+            try:
+                user_record = models.TaskFrameUserRecord.objects.select_for_update().get(user=requestUser.username,current=True)
+                frame = user_record.frame
+                new_jid  = user_record.task_id
 
-            #                     user_record.user = requestUser.username
-            #                     user_record.current = True
-            #                     user_record.userModifyGet_date = timezone.now()
-            #                     user_record.save()
-            #                     break
-            #                 except ObjectDoesNotExist:
-            #                     user_record = None
-            #                     new_jid = None
-            #     else:
-            #         print ("!!!!!!!!!\n {} have not any video is priority > 0 \n".format(db_fcwTrains))
-            #     end_time = time.time()
-            #     print ("use random pk cost time : ",(end_time - start_time))
+                frameInfo = {}
+                frameInfo[frame] = {'current':user_record.current,
+                                    'user_submit':user_record.user_submit,
+                                    'need_modify':user_record.need_modify,
+                                    'checked':user_record.checked,
+                                    'comment':user_record.comment,
+                                    'defaultCategory':user_record.defaultCategory,
+                                    'extraCategory':user_record.extraCategory}
 
-            #     if user_record is None:
-            #         db_fcwTrains = models.FCWTrain.objects.filter(~Q(priority=0)).order_by('-priority', 'task__created_date')
-            #         print ("db_fcwTrains,",db_fcwTrains)
-            #         print ("len  db_fcwTrains,",len(db_fcwTrains))
-            #         if db_fcwTrains and len(db_fcwTrains):
-            #             print ("db_fcwTrains has {} data".format(len(db_fcwTrains)))
-            #             for db_fcwTrain in db_fcwTrains:
-            #                 tmp_tid = db_fcwTrain.task.id
-            #                 print ("try get job {} anntation".format(tmp_tid))
+                print ("user: {}, get frame: {} in job: {}".format(requestUser.username,frame,jid))
+            except ObjectDoesNotExist:
+                user_record = None
 
-            #                 qs = models.TaskFrameUserRecord.objects.select_for_update().filter(task_id=tmp_tid,user='')
-            #                 ids = qs.values_list('id', flat=True)
-            #                 if len(ids):
-            #                     index = random.randint(0, len(ids)-1)
-            #                     try:
-            #                         user_record = qs[index]#models.TaskFrameUserRecord.objects.get(pk=ids[index])
-            #                         frame = user_record.frame
-            #                         new_jid = tmp_tid
+        elif project == 'fcw_testing':
+            try:
+                user_record = models.FCWTest.objects.select_for_update().get(user=requestUser.username,current=True)
+                frame = None
+                new_jid  = user_record.task_id
 
-            #                         user_record.user = requestUser.username
-            #                         user_record.current = True
-            #                         user_record.userGet_date = timezone.now()
-            #                         user_record.save()
-            #                         break
-            #                     except ObjectDoesNotExist:
-            #                         new_jid = None
-            #                         user_record = None                    
-            #         else:
-            #             print ("!!!!!!!!!\n {} have not any video is priority > 0 \n".format(db_fcwTrains))
-            #         end_time = time.time()
-                    
-            #         print ("user='' find empty first frame",frame)
-            #         print ("use random pk cost time : ",(end_time - start_time))
-            # except Exception as e:
-            #     user_record = None
-            #     print("error is !!!!",str(e))
-            #     print ("no user's current or empty can set current!!")
-        
+                frameInfo = {}
+                records = models.FCWTest_FrameUserRecord.objects.select_for_update().filter(task_id=new_jid).order_by('frame')
+                for record in records:
+                    frameInfo[record.frame] = {'current':record.current,
+                                                'user_submit':record.user_submit,
+                                                'need_modify':record.need_modify,
+                                                'checked':record.checked,
+                                                'comment':record.comment,
+                                                'defaultCategory':record.defaultCategory,
+                                                'extraCategory':record.extraCategory}
+                print ("user: {}, in job: {}".format(requestUser.username,new_jid))
+            except ObjectDoesNotExist:
+                user_record = None
+
         print(user_record)
-
         if user_record:
             print ("have current")
         else:
             print ("user_record is None, will error")
-            return "u dont have current need ask me"
+            return "you need to get new work"
             #raise Exception('user_record is None')
-
-
-    annotation = _AnnotationForJob(db_job)
-    if requestUser.groups.filter(name='annotator').exists():
+        print('u are get anntation with training on frame:',frame,'!')
         annotation.init_from_db(frame=frame)
+        
     elif requestUser.groups.filter(name='admin').exists():
         if frame:
             annotation.init_from_db(frame=frame)
         else:
-            annotation.init_from_db(frame=0)
+            annotation.init_from_db(frame=None)
 
-    return annotation.to_client(),frame,new_jid
+        records = None
+        video_user = None
+        if project == 'fcw_training':
+            print('project is',project)
+            records = models.TaskFrameUserRecord.objects.select_for_update().filter(task_id=new_jid).order_by('frame')
+        elif project == 'fcw_testing':
+            print('project is',project)
+            records = models.FCWTest_FrameUserRecord.objects.select_for_update().filter(task_id=new_jid).order_by('frame')
+            video_user = models.FCWTest.objects.select_for_update().get(task_id=new_jid).user
+            print('video_user is',video_user)
+            
+        print('records is',records)
+        print('records len is',len(records))
+        frameInfo = {}
+        for record in records:
+            frameInfo[record.frame] = {'user':video_user if not video_user is None else record.user,
+                                        'current':record.current,
+                                        'user_submit':record.user_submit,
+                                        'need_modify':record.need_modify,
+                                        'checked':record.checked,
+                                        'comment':record.comment,
+                                        'defaultCategory':record.defaultCategory,
+                                        'extraCategory':record.extraCategory}
+
+    print("frame info",frameInfo)
+
+    return {'shapeData':annotation.to_client(),'frame':frame,'jid':new_jid,'frameInfo':frameInfo}
 
 @transaction.atomic
 def save_job(jid, data, oneFrameFlag=False,frame=None):

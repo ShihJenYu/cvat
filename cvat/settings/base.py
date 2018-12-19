@@ -22,7 +22,7 @@ from pathlib import Path
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = str(Path(__file__).parents[2])
 
-ALLOWED_HOSTS = ['localhost', '192.168.2.71','*']
+ALLOWED_HOSTS = ['localhost', '192.168.2.71', "*"]
 INTERNAL_IPS = ['127.0.0.1']
 
 try:
@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'cvat.apps.dashboard',
     'cvat.apps.authentication',
     'cvat.apps.documentation',
+    'cvat.apps.others',
     'django_rq',
     'compressor',
     'cacheops',

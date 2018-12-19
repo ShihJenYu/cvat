@@ -600,23 +600,29 @@ def _save_task_to_db(db_task, task_params):
         db_job.id = db_task.id
         db_job.save()
 
-    db_FCWTrain = models.FCWTrain()
-    db_FCWTrain.task = db_task
-    db_FCWTrain.keyframe_count = 0
-    db_FCWTrain.unchecked_count = 0
-    db_FCWTrain.checked_count = 0
-    db_FCWTrain.need_modify_count = 0
-    db_FCWTrain.priority = 0
-    db_FCWTrain.save()
-    #add by jeff to create user record
-    # frame_list = list(range(0, db_task.size))
-    # random.shuffle(frame_list)
-    # print ("list",frame_list)
-    # for x in range(0, len(frame_list)):
-    #     db_taskFrameUserRecord = models.TaskFrameUserRecord()
-    #     db_taskFrameUserRecord.task = db_task
-    #     db_taskFrameUserRecord.frame = frame_list[x]
-    #     db_taskFrameUserRecord.save()
+    # add by jeff
+    project = task_params['project']
+    if project == 'fcw_training':
+        db_FCWTrain = models.FCWTrain()
+        db_FCWTrain.task = db_task
+        db_FCWTrain.keyframe_count = 0
+        db_FCWTrain.unchecked_count = 0
+        db_FCWTrain.checked_count = 0
+        db_FCWTrain.need_modify_count = 0
+        db_FCWTrain.priority = 0
+        db_FCWTrain.save()
+    elif project == 'fcw_testing':
+        db_FCWTest = models.FCWTest()
+        db_FCWTest.task = db_task
+        db_FCWTest.keyframe_count = db_task.size
+        db_FCWTest.unchecked_count = 0
+        db_FCWTest.checked_count = 0
+        db_FCWTest.need_modify_count = 0
+        db_FCWTest.priority = 0
+        db_FCWTest.save()
+
+        objs = [models.FCWTest_FrameUserRecord(task=db_task,frame=i) for i in range(db_task.size)]
+        models.FCWTest_FrameUserRecord.objects.bulk_create(objs)
 
     parsed_labels = _parse_labels(task_params['labels'])
     for label in parsed_labels:
@@ -681,6 +687,8 @@ def _create_thread(tid, params):
         'compress': int(params.get('compress_quality', 100)),
         'segment': int(params.get('segment_size', sys.maxsize)),
         'labels': params['labels'],
+        # add by jeff
+        'project': params['project'],
     }
     task_params['overlap'] = int(params.get('overlap_size', 5 if task_params['mode'] == 'interpolation' else 0))
     task_params['overlap'] = min(task_params['overlap'], task_params['segment'] - 1)

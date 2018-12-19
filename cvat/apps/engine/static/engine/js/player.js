@@ -11,7 +11,7 @@ var wasSend = false;
 class FrameProvider extends Listener {
     constructor(stop, tid) {
         super('onFrameLoad', () => this._loaded);
-        this._MAX_LOAD = 20;
+        this._MAX_LOAD = 500;
 
         this._stack = [];
         this._loadInterval = null;
@@ -152,6 +152,8 @@ class PlayerModel extends Listener {
         this._continueAfterLoad = false;
         this._continueTimeout = null;
 
+        this._rewinding = false;
+
         this._geometry = {
             scale: 1,
             left: 0,
@@ -266,7 +268,7 @@ class PlayerModel extends Listener {
                 }
                 return;
             }
-
+            
             let skip = Math.max( Math.floor(this._settings.fps / 25), 1 );
             if (!this.shift(skip)) this.pause();   // if not changed, pause
         }.bind(this), 1000 / this._settings.fps);
@@ -288,8 +290,7 @@ class PlayerModel extends Listener {
 
     shift(delta, absolute) {
         // Modify by ericlou.
-        
-        console.log(delta);
+        //console.log(delta);
 
         if (['resize', 'drag'].indexOf(window.cvat.mode) != -1) {
             return false;
@@ -325,36 +326,10 @@ class PlayerModel extends Listener {
             $('.detectpoint').remove();
             $('.detectpointAim').remove();
             saveByShift = true;
-            $('#saveButton').click();
             
-            var me = $(this);
-            function checkFlag() {
-                if(goNext ==false) {
-                    console.log("QQ");
-                    window.setTimeout(checkFlag, 50); /* this checks the flag every 100 milliseconds*/
-                } else {
-                    goNext = false;
-                    var data;
-                    $.ajax({
-                        url: `get/annotation/job/${me[0].tid}/frame/${me[0]._frame.current}`,
-                        dataType: "json",
-                        async: false,
-                        success: function(respone) {
-                            console.log("get/annotation/job/${tid}/frame/${this._frame.current}", respone);
-                            data = respone[0];
-                        },
-                        error: function(respone){
-                            console.log(respone);
-                        }
-                    });
-                    window.cvat.data.set(data);
-                }
+            if(this._frame.previous!=null && !this.playing && !this._rewinding) {
+                $('#saveButton').click();
             }
-            checkFlag();
-            //shapeCollectionModel.empty();
-            
-            //shapeCollectionModel.import(data);
-            //shapeCollectionModel.update();
 
         }
         if (this._settings.resetZoom || this._frame.previous === null) {  // fit in annotation mode or once in interpolation mode
@@ -606,11 +581,13 @@ class PlayerController {
 
     progressMouseDown(e) {
         this._rewinding = true;
+        this._model._rewinding = true;
         this._rewind(e);
     }
 
     progressMouseUp() {
         this._rewinding = false;
+        this._model._rewinding = false;
         if (this._events.jump) {
             this._events.jump.close();
             this._events.jump = null;
@@ -688,7 +665,7 @@ class PlayerController {
         let jid = this._model.tid;//window.location.href.match('id=[0-9]+')[0].slice(3);
         var data;
         $.ajax({
-            url: "set/current/job/" + jid,
+            url: "save/currentJob",
             dataType: "json",
             async: false,
             success: function(respone) {
@@ -715,7 +692,7 @@ class PlayerController {
                     keys: ['enter'],
                     action: function(){
                         console.log('confirm');
-                        serverRequest('get/current/job/'+jid, function(test){
+                        serverRequest('set/currentJob', function(test){
                             passreload = true;
                             window.location.replace(window.location.href);
                         });
@@ -724,7 +701,7 @@ class PlayerController {
                 否: {
                     keys: ['esc'],
                     action: function(){
-                        console.log("cancel,u dont have current need ask me");
+                        console.log("cancel,you need to get new work");
                     }
                 }
             }
@@ -821,10 +798,45 @@ class PlayerView {
             if (Number.isInteger(+e.target.value)) {
                 this._controller.seek(+e.target.value);
                 blurAllElements();
-                console.log("papapapapapapaapapp");
                 $("#frameNumber_show").prop("value", parseInt($("#frameNumber").prop("value"))+1);
                 console.log( $("#frameNumber_show").prop("value"));
             }
+        });
+
+        // add by eric
+        // working
+        let SubmitKeyframe = $('#Submit_Cato');
+        SubmitKeyframe.on('click', function() {
+
+            var BackLight_value = ""
+            var Tunnel_value = ""
+            var underbridge_value = ""
+            var Time_value = $('#Select_VideoCatogory_Time').val();
+            var Weather_value = $('#Select_VideoCatogory_Weather').val();
+            var Way_value = $('#Select_VideoCatogory_Way').val();
+         
+            if ($("#Select_VideoCatogory_BackLight").is(":checked")){
+                BackLight_value = "逆光"
+            }
+            if ($("#Select_VideoCatogory_Tunnel").is(":checked")){
+                Tunnel_value = "隧道"
+            }
+            if ($("#Select_VideoCatogory_underbridge").is(":checked")){
+                underbridge_value = "有經過(橋下、涵洞)"
+            }
+            
+            var Catogory_out = Time_value + "," + Weather_value + "," + Way_value + "," + BackLight_value + "," + Tunnel_value + "," + underbridge_value
+
+            $.ajax ({
+                url: `set/task/${playerModel.tid}/catogory/${Catogory_out}`,
+                success: function(response) {
+                    console.log(Catogory_out);
+                },
+                error: function(response) {
+                    let message = 'Abort. Reason: ' + response.responseText;
+                    showMessage(message);
+                }
+            });  
         });
 
         $("#frameNumber_show").on('change', (e) => {
@@ -839,11 +851,16 @@ class PlayerView {
 
         // add by jeff
         this._isKeyFrame.unbind('click').on('click', () => {
+            if(window.location.pathname.split('/')[1] != 'fcw_training'){
+                $('#isKeyFrame').prop('checked',true);
+                return;
+            }
+            console.log(window.cvat.frameInfo);
             $('#isKeyFrame').prop('disabled',true);
             let flag = $('#isKeyFrame').prop('checked');
             console.log(flag);
             if(flag) {
-                serverRequest(`set/task/${playerModel.tid}/frame/${playerModel.frames.current}/isKeyFrame/${+flag}`, function(response) {
+                serverRequest(`set/task/${playerModel.tid}/frame/${playerModel.frames.current}/isKeyFrame/${+flag}`, function(response){
                     console.log(response);
                     let keyframes = response.frames.sort((a, b) => a - b)
                     console.log("frames",keyframes);
@@ -853,9 +870,17 @@ class PlayerView {
                         $('#select_keyframes').append($("<option></option>").attr("value",value+1).text(value+1));
                     });
                     $("#select_keyframes").prop("value",playerModel.frames.current+1);
-                    
-
-                    resetAdminCheckBox(playerModel.tid, playerModel.frames.current);
+                    let frame = playerModel.frames.current;
+                    window.cvat.frameInfo[frame] = {'user':'',
+                                                    'current':false,
+                                                    'user_submit':false,
+                                                    'need_modify':false,
+                                                    'checked':false,
+                                                    'comment':'',
+                                                    'defaultCategory':'',
+                                                    'extraCategory':''};
+                    console.log(window.cvat.frameInfo);
+                    resetStatusColumn(playerModel.tid, frame);
                     $('#isKeyFrame').prop('disabled',false);
                 });
             }
@@ -866,7 +891,7 @@ class PlayerView {
                     {
                         $('#isKeyFrame').prop('checked',true);
                         $('#isKeyFrame').prop('disabled',false);
-                        resetAdminCheckBox(playerModel.tid, playerModel.frames.current);
+                        resetStatusColumn(playerModel.tid, playerModel.frames.current);
                         $.dialog({
                             title: 'You can not do it !',
                             content: '已有標記員使用過',
@@ -887,6 +912,10 @@ class PlayerView {
                             });
                             $("#select_keyframes").prop("value","null");
 
+                            let frame = playerModel.frames.current;
+                            delete window.cvat.frameInfo[frame];
+                            console.log(window.cvat.frameInfo);
+
                             $('#isComplete').prop('disabled',false);
                             $('#isComplete_text').prop('disabled',false);
                             $('#isRedo').prop('disabled',false);
@@ -906,7 +935,11 @@ class PlayerView {
             console.log(flag);
             serverRequest(`set/task/${playerModel.tid}/frame/${playerModel.frames.current}/isComplete/${+flag}`, function(response) {
                 console.log(response);
-                resetAdminCheckBox(playerModel.tid, playerModel.frames.current);
+                let frame = playerModel.frames.current;
+                window.cvat.frameInfo[frame].checked = flag;
+                resetStatusColumn(playerModel.tid, frame);
+                console.log(window.cvat.frameInfo);
+
                 $('#isComplete').prop('disabled',false);
             });
         });
@@ -918,7 +951,10 @@ class PlayerView {
             }
             serverRequest(`set/task/${playerModel.tid}/frame/${playerModel.frames.current}/redoComment/${comment}`, function(response) {
                 console.log(response);
-                resetAdminCheckBox(playerModel.tid, playerModel.frames.current);
+                let frame = playerModel.frames.current;
+                window.cvat.frameInfo[frame].comment = comment;
+                resetStatusColumn(playerModel.tid, frame);
+                console.log(window.cvat.frameInfo);
                 $('#saveRedoComment').prop('disabled',false);
             });
         });
@@ -947,16 +983,15 @@ class PlayerView {
                                     $.alert('provide a valid comment');
                                     return false;
                                 }
-                                // $('#redoComment').prop('value',comment);
-                                // $('#isRedo').prop('checked',true);
-                                // $('#isRedo').prop('disabled',true);
-                                // $('#isComplete').prop('disabled',true);
-                                
+                                let frame = playerModel.frames.current;
                                 serverRequest(`set/task/${playerModel.tid}/frame/${playerModel.frames.current}/isRedo/${+true}`, function(response) {
                                     console.log(response);
+                                    window.cvat.frameInfo[frame].need_modify = true;
                                     serverRequest(`set/task/${playerModel.tid}/frame/${playerModel.frames.current}/redoComment/${comment}`, function(response) {
                                         console.log(response);
-                                        resetAdminCheckBox(playerModel.tid, playerModel.frames.current);
+                                        window.cvat.frameInfo[frame].comment = comment;
+                                        resetStatusColumn(playerModel.tid, frame);
+                                        console.log(window.cvat.frameInfo);
                                     });
                                 });
                             }
@@ -1225,40 +1260,99 @@ class PlayerView {
         this._frameNumber.prop('value', frames.current);
         $("#frameNumber_show").prop("value", (frames.current+1));
 
-        
-        
-        serverRequest(`get/task/${model.tid}/frame/${frames.current}/isKeyFrame`, function(response) {
-            console.log(response);
-            $('#isKeyFrame').prop('checked',response.isKeyFrame);
-            if(response.isKeyFrame) {
-                // console.log("start get keyframe stage");
-                $('#select_keyframes').prop("value", (frames.current+1));
-                if(isAdminFlag)
-                    resetAdminCheckBox(model.tid, frames.current);
-                else {
-                    serverRequest(`get/task/${model.tid}/frame/${frames.current}/keyframeStage`, function(response) {
-                        keyframeStage = response;
-                        $('#redoComment_readonly').text(response.comment);
-                    });
-                }
+        let isKeyFrame = window.cvat.frameInfo.hasOwnProperty(frames.current);
+        $('#isKeyFrame').prop('checked',isKeyFrame);
+        if(isKeyFrame) {
+            $('#select_keyframes').prop("value", (frames.current+1));
+            if(isAdminFlag) {
+                resetStatusColumn(model.tid, frames.current);
             }
             else {
-                $('#select_keyframes').prop("value", "null");
-                $('#isKeyFrame').prop('disabled',false);
-                $('#isComplete').prop('disabled',true);
-                $('#isComplete_text').prop('disabled',true);
-                $('#isRedo').prop('disabled',true);
-                $('#isRedo_text').prop('disabled',true);
-                $('#redoComment').prop('disabled',true);
-                $('#saveRedoComment').prop('disabled',true);
-                let keyframeStage_str = "annotator: None";
-                $('#beAnnotatorUsing_text').text(keyframeStage_str);
+                $('#redoComment_readonly').text(window.cvat.frameInfo[frames.current].comment);
             }
-        });
+        }
+        else {
+            $('#select_keyframes').prop("value", "null");
+            $('#isKeyFrame').prop('disabled',false);
+            $('#isComplete').prop('disabled',true);
+            $('#isComplete_text').prop('disabled',true);
+            $('#isRedo').prop('disabled',true);
+            $('#isRedo_text').prop('disabled',true);
+            $('#redoComment').prop('disabled',true);
+            $('#saveRedoComment').prop('disabled',true);
+            let keyframeStage_str = "annotator: None";
+            $('#beAnnotatorUsing_text').text(keyframeStage_str);
+        }
     }
 }
 
+function resetStatusColumn(tid,frame){
 
+    let StatusInfo = window.cvat.frameInfo[frame];
+    let annotator_name = (StatusInfo.user!='')? StatusInfo.user : "None";
+    let current_str = (StatusInfo.current!='')? "標記中" : "未檢查";
+    if (StatusInfo.checked)
+        current_str = "已檢查"
+
+    let keyframeStage_str = "annotator: " + annotator_name + ', ' + current_str;
+    $('#beAnnotatorUsing_text').text(keyframeStage_str);
+
+    $('#isComplete').prop('checked',StatusInfo.checked);
+    $('#isRedo').prop('checked',StatusInfo.need_modify);
+    $('#redoComment').prop('value',StatusInfo.comment);
+
+    if(StatusInfo.user == '') {
+        // console.log("keyframeStage.annotator == ''");
+        $('#isKeyFrame').prop('disabled',false);
+        $('#isComplete').prop('disabled',true);
+        $('#isComplete_text').prop('disabled',true);
+        $('#isRedo').prop('disabled',true);
+        $('#isRedo_text').prop('disabled',true);
+        $('#redoComment').prop('disabled',true);
+        $('#saveRedoComment').prop('disabled',true);
+    }
+    else if(StatusInfo.current || StatusInfo.need_modify) {
+        // console.log("keyframeStage.current || keyframeStage.need_modify");
+        $('#isKeyFrame').prop('disabled',true);
+        $('#isComplete').prop('disabled',true);
+        $('#isComplete_text').prop('disabled',true);
+        $('#isRedo').prop('disabled',true);
+        $('#isRedo_text').prop('disabled',true);
+        $('#redoComment').prop('disabled',false);
+        $('#saveRedoComment').prop('disabled',false);
+    }
+    else if(StatusInfo.checked) {
+        // console.log("keyframeStage.checked");
+        $('#isKeyFrame').prop('disabled',false);
+        $('#isComplete').prop('disabled',false);
+        $('#isComplete_text').prop('disabled',false);
+        $('#isRedo').prop('disabled',true);
+        $('#isRedo_text').prop('disabled',true);
+        $('#redoComment').prop('disabled',true);
+        $('#saveRedoComment').prop('disabled',true);
+    }
+    else if(StatusInfo.user_submit) {
+        // console.log("keyframeStage.user_submit");
+        $('#isKeyFrame').prop('disabled',false);
+        $('#isComplete').prop('disabled',false);
+        $('#isComplete_text').prop('disabled',false);
+        $('#isRedo').prop('disabled',false);
+        $('#isRedo_text').prop('disabled',false);
+        $('#redoComment').prop('disabled',false);
+        $('#saveRedoComment').prop('disabled',false);
+    }
+    else if(!StatusInfo.current && !StatusInfo.need_modify) {
+        // console.log("!keyframeStage.current && !keyframeStage.need_modify");
+        $('#isKeyFrame').prop('disabled',false);
+        $('#isComplete').prop('disabled',false);
+        $('#isComplete_text').prop('disabled',false);
+        $('#isRedo').prop('disabled',false);
+        $('#isRedo_text').prop('disabled',false);
+        $('#redoComment').prop('disabled',false);
+        $('#saveRedoComment').prop('disabled',false);
+    }
+}
+// not use
 function resetAdminCheckBox(tid,frame){
     serverRequest(`get/task/${tid}/frame/${frame}/keyframeStage`, function(response) {
         // console.log("in get keyframe stage",response);

@@ -60,9 +60,6 @@
 
 
 {% block content %}
-<div style="margin-bottom: 5px;text-align:center;">
-    <label id="task_name" class="regular h1" style="text-align:center;">Default</label>
-</div>
 <div id="taskAnnotationCenterPanel">
     <div id="player">
         <div id="playerFrame">
@@ -80,23 +77,13 @@
                 </defs>
                 <rect width="100%" height="100%" fill="url(#playerGridPattern)" />
             </svg>
-
             <ul id="shapeContextMenu" class='custom-menu' oncontextmenu="return false;">
-                <li action="object_url"> Copy Object URL </li>
                 <li action="change_color"> Change Color </li>
                 <li action="remove_shape"> Remove Shape </li>
                 <li action="switch_occluded"> Switch Occluded </li>
                 <li action="switch_lock"> Switch Lock </li>
-                <!-- add by jeff -->
-                <li action="detect_point"> Detect Point </li>
-                <li action="remove_detect_point"> Remove Detect Point </li>
                 <li class="interpolationItem" action="split_track"> Split </li>
                 <li class="polygonItem" action="drag_polygon"> Enable Dragging </li>
-            </ul>
-
-            <ul id="playerContextMenu" class='custom-menu' oncontextmenu="return false;">
-                <li action="job_url"> Copy Job URL </li>
-                <li action="frame_url"> Copy Frame URL </li>
             </ul>
 
             <ul id="pointContextMenu" class='custom-menu' oncontextmenu="return false;">
@@ -104,22 +91,38 @@
             </ul>
         </div>
         <div id="playerPanel">
+            <svg id="firstButton" class="playerButton">
+                <polygon points="100,0 100,80 75,60 75,80 50,60, 50,80 0,40 50,0 50,20 75,0 75,20" transform="scale(0.4)"/>
+            </svg>
+            <svg id="multiplePrevButton" class="playerButton">
+                <polygon points="100,0 100,80 75,60 75,80 25,40 75,0 75,20" transform="scale(0.4)"/>
+            </svg>
 
-            <!-- add by jeff -->
-            <div>
-                <!-- <input type="checkbox" id="nextButtonFlag" value="nextButtonFlag" /> -->
-                <!-- <label class="regular h1" id="nextButtonFlag_text" for="nextButtonFlag">Cannot be changed after sending</label> -->
-                <!-- Add by Ericlou disabledPlayerButton--> 
-                <svg id="nextButton_training" class="playerButton_training">
-                    <polygon points="10,20 10,60 50,60 50,80 90,40 50,0 50,20" transform="scale(0.4)"/>
-                </svg>
-            </div>
-            <div>
-                <label class="regular h2"> 建議:</label>
-                <label class="regular h2" id="redoComment_readonly"></label>
-            </div>
+            <svg id="prevButton" class="playerButton">
+                <polygon points="90,20 90,60 50,60 50,80 10,40 50,0 50,20" transform="scale(0.4)"/>
+            </svg>
 
-            <input type = "hidden" id = "playerProgress"/>
+            <svg id="playButton" class="playerButton">
+                <polygon points="35,0 35,80 85,40" transform="scale(0.4)"/>
+            </svg>
+
+            <svg id="pauseButton" class="playerButton hidden">
+                <rect x="25" y="0" width="20" height="80" transform="scale(0.4)" />
+                <rect x="65" y="0" width="20" height="80" transform="scale(0.4)" />
+            </svg>
+
+            <svg id="nextButton" class="playerButton">
+                <polygon points="10,20 10,60 50,60 50,80 90,40 50,0 50,20" transform="scale(0.4)"/>
+            </svg>
+
+            <svg id="multipleNextButton" class="playerButton">
+                <polygon points="1,1 1,80 25,60 25,80 75,40 25,0 25,20" transform="scale(0.4)"/>
+            </svg>
+
+            <svg id="lastButton" class="playerButton">
+                <polygon points="1,1 1,80 25,60 25,80 50,60 50,80 100,40 50,0 50,20 25,0 25,20" transform="scale(0.4)"/>
+            </svg>
+            <input type = "range" id = "playerProgress"/>
         </div>  <!-- END of PLAYER PANEL -->
         <div style="margin-top: 20px">
             <button id="menuButton" class="regular h1"> Open Menu </button>
@@ -132,9 +135,9 @@
                 <option id="lastRedoText" title="Redo Action"> None </option>
             </select>
             <button class="regular h1 hidden" id="redoButton" disabled> &#10227; </button>
-            <div style="float: right;">   
-                <label class="regular h1" style="display:none"> Frame </label>
-                <input class="regular h2" style="width: 3.5em; display:none" type="number" id="frameNumber" >
+            <div style="float: right;">
+                <label class="regular h1"> Frame </label>
+                <input class="regular h2" style="width: 3.5em;" type="number" id="frameNumber">
             </div>
             <hr>
             <table class="regular" cellpadding="20">
@@ -282,14 +285,13 @@
                         <td> <label> AAM Zoom Margin </label> </td>
                         <td> <input type="range" min="0" max="1000" value="100" id="aamZoomMargin"/> </td>
                     </tr>
-                    <!-- modify by eric -->
                     <tr>
                         <td> <label> Enable Auto Saving </label> </td>
                         <td> <input type = "checkbox"  id="autoSaveBox" class="settingsBox"/> </td>
                     </tr>
                     <tr>
                         <td> <label> Auto Saving Interval (Min) </label> </td>
-                        <td> <input type = "number"  id="autoSaveTime" style="width: 3em" min="5" max="60" value="0.15" class="regular h2"/> </td>
+                        <td> <input type = "number"  id="autoSaveTime" style="width: 3em" min="5" max="60" value="15" class="regular h2"/> </td>
                     </tr>
                     <tr>
                         <td> <label> Propagate Frames </label> </td>
@@ -314,7 +316,7 @@
             <button id="saveButton" class="menuButton semiBold h2"> Save Work </button>
             <input type="file" id="annotationFileSelector" style="display: none"/>
         </center>
-        <div style="float:left; width: 28%; height: 100%; text-align: left;" class="selectable hidden">
+        <div style="float:left; width: 70%; height: 100%; text-align: left;" class="selectable hidden">
             <center>
                 <label id="statTaskName" class="semiBold h2"> </label>  <br>
                 <label id="statTaskStatus" class="regular h2"> </label>
@@ -381,7 +383,7 @@
 <div id="taskAnnotationRightPanel">
     <div id="uiContent"> </div>
     <div id="labelsContent" class="hidden"> </div>
-    <div id="trackManagement" class="">  <!-- need hidden -->
+    <div id="trackManagement">
         <button id="createShapeButton" class="regular h2" style="width: 80%;"> Create Shape </button>
         <button id="mergeTracksButton" class="regular h2" style="width: 80%; margin-top: 5px;"> Merge Shapes </button>
         <button id="groupShapesButton" class="regular h2" style="width: 80%; margin-top: 5px;"> Group Shapes </button>
@@ -409,4 +411,8 @@
         </div>
     </div>
 </div>
+<!-- Hide for bug, add by ericlou-->
+<svg id="nextButton_training" class="playerButton_training disabledPlayerButton">
+    <polygon points="0,0"/>
+</svg>
 {% endblock %}

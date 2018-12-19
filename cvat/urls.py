@@ -22,16 +22,25 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from django.conf.urls import url  
 import os
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('fcw/', include('cvat.apps.engine.urls')),
+    path('', include('cvat.apps.others.urls')),
     path('dashboard/', include('cvat.apps.dashboard.urls')),
     path('django-rq/', include('django_rq.urls')),
     path('auth/', include('cvat.apps.authentication.urls')),
     path('documentation/', include('cvat.apps.documentation.urls')),
-    path('logs/', include('cvat.apps.log_proxy.urls'))
+    path('logs/', include('cvat.apps.log_proxy.urls')),
+
+    # projects
+    path('fcw_testing/', include('cvat.apps.engine.urls')),
+    path('otofcw_testing/', include('cvat.apps.engine.urls')),
+    path('fcw_training/', include('cvat.apps.engine.urls')),
+    path('otofcw_training/', include('cvat.apps.engine.urls')),
+    path('apacorenr/', include('cvat.apps.engine.urls')),
+    path('otoapacorenr/', include('cvat.apps.engine.urls')),
 ]
 
 if 'yes' == os.environ.get('TF_ANNOTATION', 'no'):

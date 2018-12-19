@@ -225,9 +225,15 @@ class Config {
             },
 
             open_settings: {
-                value: "f2",
-                view_value: "F2",
-                description: "open settings window "
+                value: "alt+f2",
+                view_value: "alt+F2",
+                description: "open settings window"
+            },
+
+            translate: {
+                value: "f3",
+                view_value: "F3",
+                description: "繁體中文 English"
             },
 
             save_work: {

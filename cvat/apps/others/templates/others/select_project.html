@@ -1,0 +1,33 @@
+
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Computer Vision Annotation Tool (CVAT)</title>
+        <style>
+            body {
+               background-color: lightyellow;
+            }
+            em {
+                color: LightSeaGreen;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>用 戶 ： {{ username }}</h1>
+        <h2>狀 態 ： {{ permission }}</h2>
+        <br>
+        <em>I P : {{ ip }}</em>
+        <em>{{ is_routable }}</em>
+        <br>
+        <table class="regular">
+            {% for project in projects %}
+                <tr>
+                    <td> 專案： </td>
+                    <td> <a href="/{{project}}"> {{project}} </a> </td>
+                </tr>
+            {% endfor %}
+        </table>
+        <br>
+        <button onclick="window.location.href='/auth/logout'"> 登出 </button>
+    </body>
+</html>
