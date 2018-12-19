@@ -10,6 +10,7 @@ var _LANG_saveSaveing = ['Saving...','儲 存 中...'];
 
 var _LANG = {
     menuButton: ['Open Menu','選 單'],
+    sendButton: ['Send','送 出'],
     helpButton: ['Help','幫 助'],
     saveButton: ['Save Work','儲 存'],
     sidePanelObjectsButton: ['Objects','物件欄'],

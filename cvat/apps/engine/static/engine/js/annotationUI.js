@@ -15,6 +15,7 @@ var setKeyFlag = false;
 var isAdminFlag = false;
 var passreload =false;
 var loadJobEvent = null;
+var LOCKALL = false;
 function callAnnotationUI(jid,setKeyMode=false) {
     initLogger(jid);
     setKeyFlag = setKeyMode;
@@ -23,39 +24,39 @@ function callAnnotationUI(jid,setKeyMode=false) {
         serverRequest("get/annotation/job/" + jid, function(data) {
             // data = {'shapeData':annotation.to_client(),'frame':frame,'jid':new_jid,'frameInfo':frameInfo}
             if(data == "you need to get new work") {
-                $.confirm({
-                    title: '要領取工作了嗎？',
-                    content: '將會得到圖片或影片',
-                    boxWidth: '30%',
-                    useBootstrap: false,
-                    draggable: false,
-                    buttons: {
-                        是: {
-                            keys: ['enter'],
-                            action: function(){
-                                console.log('confirm');
-                                serverRequest('get/current/job/'+jid, function(test){
-                                    serverRequest("get/job/" + test.jid, function(job2) {
-                                        serverRequest("get/annotation/job/" + test.jid, function(data2) {
-                                            if (data2.jid == test.jid) {
-                                                $('#loadingOverlay').remove();
-                                                setTimeout(() => {
-                                                    buildAnnotationUI(job2, data2, loadJobEvent);
-                                                }, 0);
-                                            }
-                                        });
-                                    });
-                                });
-                            }
-                        },
-                        否: {
-                            keys: ['esc'],
-                            action: function(){
-                                console.log("cancel,you need to get new work");
-                            }
-                        }
-                    }
-                });
+                // $.confirm({
+                //     title: '要領取工作了嗎？',
+                //     content: '將會得到圖片或影片',
+                //     boxWidth: '30%',
+                //     useBootstrap: false,
+                //     draggable: false,
+                //     buttons: {
+                //         是: {
+                //             keys: ['enter'],
+                //             action: function(){
+                //                 console.log('confirm');
+                //                 serverRequest('get/current/job/'+jid, function(test){
+                //                     serverRequest("get/job/" + test.jid, function(job2) {
+                //                         serverRequest("get/annotation/job/" + test.jid, function(data2) {
+                //                             if (data2.jid == test.jid) {
+                //                                 $('#loadingOverlay').remove();
+                //                                 setTimeout(() => {
+                //                                     buildAnnotationUI(job2, data2, loadJobEvent);
+                //                                 }, 0);
+                //                             }
+                //                         });
+                //                     });
+                //                 });
+                //             }
+                //         },
+                //         否: {
+                //             keys: ['esc'],
+                //             action: function(){
+                //                 console.log("cancel,you need to get new work");
+                //             }
+                //         }
+                //     }
+                // });
             }
             else if (data.jid == jid) {
                 $('#loadingOverlay').remove();
@@ -88,8 +89,14 @@ function callAnnotationUI_annotator(setKeyMode=false) {
                             action: function(){
                                 console.log('confirm');
                                 serverRequest('set/currentJob', function(msg){
-                                    console.log('set/currentJob', msg)
-                                    newWork();
+                                    if(msg.status!=null){
+                                        showOverlay(msg.text);
+                                        $('#loadingOverlay_msg').text(msg.text);
+                                    }
+                                    else {
+                                        console.log('set/currentJob', msg)
+                                        newWork();
+                                    }
                                 });
                             }
                         },
@@ -97,6 +104,7 @@ function callAnnotationUI_annotator(setKeyMode=false) {
                             keys: ['esc'],
                             action: function(){
                                 console.log("cancel,u dont have current need set current");
+                                $('#loadingOverlay_msg').text("你剛剛按了否, 想再領取工作, 請重新整理此網頁");
                             }
                         }
                     }

@@ -428,15 +428,19 @@ def save_annotation_for_job(request, jid):
                 annotation.save_job(jid, json.loads(data['annotation']),oneFrameFlag=True,frame=data['current_frame'])
             else:
                 annotation.save_job(jid, json.loads(data['annotation']),oneFrameFlag=True,frame=data['current_frame'])
-
-                with transaction.atomic():
-                    user_record = models.TaskFrameUserRecord.objects.select_for_update().get(user=request.user.username,current=True)
-                    # print ("user: {} find current {}".format(request.user.username,user_record.frame))
-                    if user_record.need_modify:
-                        user_record.userModifySave_date = timezone.now()
-                    else:
-                        user_record.userSave_date = timezone.now()
-                    user_record.save()
+                
+                project = list(filter(None, request.path.split('/')))[0]
+                if project == 'fcw_training':
+                    with transaction.atomic():
+                        user_record = models.TaskFrameUserRecord.objects.select_for_update().get(user=request.user.username,current=True)
+                        # print ("user: {} find current {}".format(request.user.username,user_record.frame))
+                        if user_record.need_modify:
+                            user_record.userModifySave_date = timezone.now()
+                        else:
+                            user_record.userSave_date = timezone.now()
+                        user_record.save()
+                elif project == 'fcw_testing':
+                    pass
                   
         if 'logs' in data:
             for event in json.loads(data['logs']):
@@ -1167,7 +1171,10 @@ def set_currentJob(request):
                                     new_jid = None
                 end_time = time.time()
                 print ("use random pk cost time : ",(end_time - start_time))
+            if user_record:
                 print ("try get new is success job",new_jid,user_record.frame)
+            else:
+                return JsonResponse({'status':"A01",'text':"找不到fcw_training的工作, 請聯絡管理員哦"})
 
         elif project == 'fcw_testing':
             start_time = time.time()
@@ -1199,7 +1206,11 @@ def set_currentJob(request):
                 user_record, new_jid = set_currentWithJob(request.user.username, db_fcwTests, time='new')
                 end_time = time.time()
                 print ("use random pk cost time : ",(end_time - start_time))
+            
+            if user_record:
                 print ("try get new Empty is success job",new_jid)
+            else:
+                return JsonResponse({'status':"A01",'text':"找不到fcw_testing的工作, 請聯絡管理員哦"})
 
     except Exception as e:
         user_record = None
@@ -1213,7 +1224,7 @@ def set_currentJob(request):
         return JsonResponse({'jid':new_jid})
     else:
         print ("user_record is None, will error")
-        return "u dont have current Ask the administrator"
+        return JsonResponse({'status':"A01",'text':"找不到任何的工作, 請聯絡管理員哦"})
 
 
 @login_required

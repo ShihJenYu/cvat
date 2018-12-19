@@ -134,7 +134,8 @@ class ShapeCreatorController {
             let shortkeys = window.cvat.config.shortkeys;
 
             let switchDrawHandler = Logger.shortkeyLogDecorator(function() {
-                this.switchCreateMode(false);
+                if(!LOCKALL)
+                    this.switchCreateMode(false);
             }.bind(this));
 
             let closeDrawHandler = Logger.shortkeyLogDecorator(function(e) {
@@ -374,8 +375,8 @@ class ShapeCreatorView {
     _create() {
         // modify by eric
         trainigsaveFlag = false;
-        $('#nextButtonFlag').prop('checked',false);
-        $('#nextButton_training')[0].setAttribute("class","playerButton_training");
+        //$('#nextButtonFlag').prop('checked',false);
+        //$('#nextButton_training')[0].setAttribute("class","playerButton_training");
         
         let sizeUI = null;
         switch(this._type) {

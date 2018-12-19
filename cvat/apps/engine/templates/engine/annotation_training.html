@@ -67,7 +67,11 @@
     <div id="player">
         <div id="playerFrame">
             <svg id="frameLoadingAnim" style="width: 100%; height: 100%;" class="hidden">
+                <text y="60%" x="50%" text-anchor="middle" font-size="20px">載入中,請稍候</text>
                 <circle r="30" cx="50%" cy="50%" id="frameLoadingAnimation"/>
+            </svg>
+            <svg id="talkToUser" style="width: 100%; height: 100%;" class="hidden">
+                <text y="50%" x="50%" text-anchor="middle" font-size="30px"></text>
             </svg>
             <svg id="frameContent"> </svg>
             <svg id="frameBackground"> </svg>
@@ -110,9 +114,9 @@
                 <!-- <input type="checkbox" id="nextButtonFlag" value="nextButtonFlag" /> -->
                 <!-- <label class="regular h1" id="nextButtonFlag_text" for="nextButtonFlag">Cannot be changed after sending</label> -->
                 <!-- Add by Ericlou disabledPlayerButton--> 
-                <svg id="nextButton_training" class="playerButton_training">
+                <!-- <svg id="nextButton_training" class="playerButton_training">
                     <polygon points="10,20 10,60 50,60 50,80 90,40 50,0 50,20" transform="scale(0.4)"/>
-                </svg>
+                </svg> -->
             </div>
             <div>
                 <label class="regular h2"> 建議:</label>
@@ -310,6 +314,8 @@
             <button id="settingsButton" class="menuButton semiBold h2"> Settings </button>
             <button id="fullScreenButton" class="menuButton semiBold h2"> Fullscreen Player </button>
             <button id="switchAAMButton" class="menuButton semiBold h2"> Switch AAM </button> -->
+            <button id="sendButton" class="menuButton semiBold h2"> Send </button>
+            <hr>
             <button id="helpButton" class="menuButton semiBold h2"> Help </button>
             <button id="saveButton" class="menuButton semiBold h2"> Save Work </button>
             <input type="file" id="annotationFileSelector" style="display: none"/>

@@ -601,7 +601,7 @@ class ShapeModel extends Listener {
         // modify by eric
         trainigsaveFlag = false;
         $('#nextButtonFlag').prop('checked',false);
-        $('#nextButton_training')[0].setAttribute("class","playerButton_training");
+        //$('#nextButton_training')[0].setAttribute("class","playerButton_training");
         
         Logger.addEvent(Logger.EventType.deleteObject, {
             count: 1,
@@ -1451,7 +1451,7 @@ class ShapeController {
     updatePosition(frame, position) {
         trainigsaveFlag = false;
         if($('#nextButtonFlag').length) $('#nextButtonFlag').prop('checked',false);
-        if($('#nextButton_training').length) $('#nextButton_training')[0].setAttribute("class","playerButton_training");
+       // if($('#nextButton_training').length) $('#nextButton_training')[0].setAttribute("class","playerButton_training");
         this._model.updatePosition(frame, position);
 
         // add by jeff woeking
@@ -1485,7 +1485,7 @@ class ShapeController {
     updateAttribute(frame, attrId, value) {
         trainigsaveFlag = false;
         if($('#nextButtonFlag').length) $('#nextButtonFlag').prop('checked',false);
-        if($('#nextButton_training').length) $('#nextButton_training')[0].setAttribute("class","playerButton_training");
+        //if($('#nextButton_training').length) $('#nextButton_training')[0].setAttribute("class","playerButton_training");
         this._model.updateAttribute(frame, attrId, value);
         
     }
@@ -1502,7 +1502,7 @@ class ShapeController {
     changeLabel(labelId) {
         trainigsaveFlag = false;
         if($('#nextButtonFlag').length) $('#nextButtonFlag').prop('checked',false);
-        if($('#nextButton_training').length) $('#nextButton_training')[0].setAttribute("class","playerButton_training");
+        //if($('#nextButton_training').length) $('#nextButton_training')[0].setAttribute("class","playerButton_training");
         this._model.changeLabel(labelId);
     }
 

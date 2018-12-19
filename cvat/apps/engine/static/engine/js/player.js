@@ -291,6 +291,7 @@ class PlayerModel extends Listener {
     shift(delta, absolute) {
         // Modify by ericlou.
         //console.log(delta);
+        if(LOCKALL)return;
 
         if (['resize', 'drag'].indexOf(window.cvat.mode) != -1) {
             return false;
@@ -669,18 +670,19 @@ class PlayerController {
             dataType: "json",
             async: false,
             success: function(respone) {
-                console.log("done set/current", respone);
+                console.log("done save/currentJob", respone);
                 data = respone;
                 wasSend = true;
-                $('#nextButton_training')[0].setAttribute("class","playerButton_training disabledPlayerButton disabled");
-                $('#nextButton_training').unbind('click');
+                $('#sendButton').prop('disabled',true);
+                $('#sendButton').unbind('click');
             },
             error: serverError
         });
         window.cvat.data.clear();
         $('#frameContent').addClass('hidden');
         $('#frameBackground').addClass('hidden');
-        $('#frameLoadingAnim').removeClass('hidden');
+        //$('#frameLoadingAnim').removeClass('hidden');
+        
         $.confirm({
             title: '要領取工作了嗎？',
             content: '將會得到圖片或影片',
@@ -692,16 +694,24 @@ class PlayerController {
                     keys: ['enter'],
                     action: function(){
                         console.log('confirm');
-                        serverRequest('set/currentJob', function(test){
-                            passreload = true;
-                            window.location.replace(window.location.href);
+                        serverRequest('set/currentJob', function(msg){
+                            if(msg.status!=null){
+                                showOverlay(msg.text);
+                            }
+                            else {
+                                passreload = true;
+                                window.location.replace(window.location.href);
+                            }
                         });
                     }
                 },
                 否: {
                     keys: ['esc'],
                     action: function(){
+                        LOCKALL = true;
                         console.log("cancel,you need to get new work");
+                        $('#talkToUser').removeClass('hidden');
+                        $('#talkToUser text').text("你剛剛按了否, 想再領取工作, 請重新整理此網頁");
                     }
                 }
             }
@@ -772,7 +782,7 @@ class PlayerView {
         this._redoComment = $('#redoComment');
         this._redoComment.on('keypress keydown keyup', (e) => e.stopPropagation());
         this._nextButtonFlag = $('#nextButtonFlag');
-        this._nextButtonTraining = $('#nextButton_training');
+        this._sendButton = $('#sendButton');
 
         $('*').on('mouseup', () => this._controller.frameMouseUp());
         this._playerUI.on('wheel', (e) => this._controller.zoom(e));
@@ -1014,7 +1024,7 @@ class PlayerView {
             }
         });
 
-        this._nextButtonTraining.unbind('click').on('click', () => {
+        this._sendButton.unbind('click').on('click', () => {
             var me = $(this);
             $.confirm({
                 title: '是否要送出？',
