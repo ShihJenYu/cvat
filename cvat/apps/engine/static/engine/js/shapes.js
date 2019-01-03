@@ -16,7 +16,7 @@ const TEXT_MARGIN = 10;
 var menuScroll = false;
 // add by eric
 var previous_type = null;
-var previous_rotation = null;
+// var previous_rotation = null;
 var previous_Light = null;
 var previous_cant_see = null;
 
@@ -41,10 +41,19 @@ class ShapeModel extends Listener {
         this._activeAAMAttributeId = null;
         this._merge = false;
         this._hiddenShape = false;
+        // add by eric, obj_id
+        this._obj_id = data.obj_id;
+        this._grouping = data.grouping;
+
+        this._groupingID = [];
+        this._groupingOrder = [];
+        this._importGrouping(data.grouping);
         // modify by eric, to change hiddentext state
         this._hiddenText = true;
         this._updateReason = null;
+
         this._importAttributes(data.attributes, positions);
+        
     }
     //add by jeff
     mapColor(type_value){
@@ -106,6 +115,29 @@ class ShapeModel extends Listener {
         }
     }
 
+    _importGrouping(grouping) {
+        if(grouping!=null && grouping.length) {
+            let groupingList = grouping.split(/(?:,|-| )+/);
+            for (let [index, value] of groupingList.entries()) {
+                if (index % 2 == 0) {
+                    this._groupingID.push(parseInt(value));
+                }
+                else {
+                    this._groupingOrder.push(parseInt(value));
+                }
+            }
+        }
+    }
+    _exportGrouping(groupingID,groupingOrder) {
+        this._grouping = '';
+        for (let [index, id] of groupingID.entries()) {
+            this._grouping += id.toString() + '-' + groupingOrder[index].toString();
+            if(index+1<groupingID.length) {
+                this._grouping += ',';
+            }
+        }
+    }
+
     _importAttributes(attributes, positions) {
         let converted = {};
         for (let attr of attributes) {
@@ -139,15 +171,13 @@ class ShapeModel extends Listener {
                     this.mapColor(this._attributes.mutable[this._frame][attrId]);
                 }
 
-                if (attrInfo.name=="Rotation"){
-                    if (previous_rotation===null){
-                        this._attributes.mutable[this._frame][attrId] = attrInfo.values[0];
-                        console.log(attrInfo.values[0], attrInfo.values[1], "mutable");
-                    } else {
-                        this._attributes.mutable[this._frame][attrId] = previous_rotation;
-                        console.log(previous_rotation, "mutable");
-                    }
-                }
+                // if (attrInfo.name=="Rotation"){
+                //     if (previous_rotation===null){
+                //         this._attributes.mutable[this._frame][attrId] = attrInfo.values[0];
+                //     } else {
+                //         this._attributes.mutable[this._frame][attrId] = previous_rotation;
+                //     }
+                // }
 
                 if (attrInfo.name=="有開燈"){
                     if (previous_Light===null){
@@ -680,10 +710,10 @@ class ShapeModel extends Listener {
                     console.log(this._attributes.mutable[this._frame][attrId], "Type");
                     previous_type = this._attributes.mutable[this._frame][attrId];
                 }
-                if (attrInfo.name=="Rotation"){
-                    console.log(this._attributes.mutable[this._frame][attrId], "Rotation");
-                    previous_rotation = this._attributes.mutable[this._frame][attrId];
-                } 
+                // if (attrInfo.name=="Rotation"){
+                //     console.log(this._attributes.mutable[this._frame][attrId], "Rotation");
+                //     previous_rotation = this._attributes.mutable[this._frame][attrId];
+                // } 
                 if (attrInfo.name=="有開燈"){
                     console.log(this._attributes.mutable[this._frame][attrId], "有開燈");
                     previous_Light = this._attributes.mutable[this._frame][attrId];
@@ -913,10 +943,10 @@ class BoxModel extends ShapeModel {
                 ydr = detectpoints[3];
 
                 if (ydl != "-1" && ydr != "-1") {
-                    if(xdl == "-1")xdl=+parseFloat(1/10).toFixed(2);
-                    if(xdr == "-1")xdr=+parseFloat(9/10).toFixed(2);
+                    if(xdl == "-1")xdl=+parseFloat(1/10).toFixed(6);
+                    if(xdr == "-1")xdr=+parseFloat(9/10).toFixed(6);
                     
-                    let new_y = +parseFloat(pos.ytl + (pos.ybr - pos.ytl) * 2/3).toFixed(2);
+                    let new_y = +parseFloat(pos.ytl + (pos.ybr - pos.ytl) * 2/3).toFixed(6);
 
                     this.updateAttribute(frame, attrId, "\"" + xdl + "," + new_y + " " + xdr + "," + new_y + "\"");
                 }
@@ -971,6 +1001,9 @@ class BoxModel extends ShapeModel {
                 value: this._attributes.immutable[attrId],
             });
         }
+        
+        //add by jeff
+        this._exportGrouping(this._groupingID, this._groupingOrder); 
 
         if (this._type === 'annotation_box') {
             if (this._frame in this._attributes.mutable) {
@@ -982,17 +1015,21 @@ class BoxModel extends ShapeModel {
                 }
             }
 
+            // add by ericlou, obj_id
             return Object.assign({}, this._positions[this._frame], {
                 attributes: immutableAttributes,
                 label_id: this._label,
                 group_id: this._groupId,
                 frame: this._frame,
+                obj_id: this._obj_id,
+                grouping: this._grouping,
             });
         }
         else {
             let boxPath = {
                 label_id: this._label,
                 group_id: this._groupId,
+                grouping: this._grouping,
                 frame: this._frame,
                 attributes: immutableAttributes,
                 shapes: [],
@@ -1167,6 +1204,9 @@ class PolyShapeModel extends ShapeModel {
             });
         }
 
+        //add by jeff
+        this._exportGrouping(this._groupingID, this._groupingOrder); 
+        
         if (this._type.startsWith('annotation')) {
             if (this._frame in this._attributes.mutable) {
                 for (let attrId in this._attributes.mutable[this._frame]) {
@@ -1181,13 +1221,16 @@ class PolyShapeModel extends ShapeModel {
                 attributes: immutableAttributes,
                 label_id: this._label,
                 group_id: this._groupId,
+                grouping: this._grouping,
                 frame: this._frame,
+                obj_id: this._obj_id,
             });
         }
         else {
             let polyPath = {
                 label_id: this._label,
                 group_id: this._groupId,
+                grouping: this._grouping,
                 frame: this._frame,
                 attributes: immutableAttributes,
                 shapes: [],
@@ -1646,7 +1689,7 @@ class PolygonController extends PolyShapeController {
 
 /******************************** SHAPE VIEWS  ********************************/
 class ShapeView extends Listener {
-    constructor(shapeModel, shapeController, svgScene, menusScene) {
+    constructor(shapeModel, shapeController, svgScene, menusScene, menusObj) {
         super('onShapeViewUpdate', () => this);
         this._uis = {
             menu: null,
@@ -1659,7 +1702,9 @@ class ShapeView extends Listener {
 
         this._scenes = {
             svg: svgScene,
-            menus: menusScene
+            menus: menusScene,
+            //add by jeff
+            menusObj: menusObj
         };
 
         this._appearance = {
@@ -1942,21 +1987,51 @@ class ShapeView extends Listener {
 
         // this._removeShapeText();
         if (this._uis.shape) {
-            let id = this._controller.id;
+            // modify by ericlou, obj_id
+            let id = this._controller._model._obj_id;//this._controller.id;
+            let grouping = this._controller._model._grouping;
+            let groupingID = this._controller._model._groupingID;
+            let groupingOrder = this._controller._model._groupingOrder;
             let label = ShapeView.labels()[this._controller.label];
             let bbox = this._uis.shape.node.getBBox();
+            
             let x = bbox.x + bbox.width + TEXT_MARGIN;
+            let y = bbox.y;
+
+            if (this._uis.shape.type=='polyline'){
+                x = this._uis.shape._array.value[0][0] + TEXT_MARGIN;
+                y = this._uis.shape._array.value[0][1];
+            }
+
+            let gruopText = '';
+            if (PROJECT=='fcw_testing') {
+                for (let i = 0; i < groupingID.length; i++) {
+                    if(i==0)
+                        gruopText = groupingID[i];
+                    else
+                        gruopText += ',' + groupingID[i];
+                }
+            }
+            else {
+                for (let i = 0; i < groupingID.length; i++) {
+                    if(i==0)
+                        gruopText = groupingID[i] + '-' + groupingOrder[i];
+                    else
+                        gruopText += ',' + groupingID[i] + '-' + groupingOrder[i];
+                }
+            }
 
             this._uis.text = this._scenes.svg.text((add) => {
                 // add.tspan(`${label.normalize()} ${id}`).addClass('bold');
                 add.tspan(`${id}`).addClass('bold');
+                add.tspan(`${gruopText}`).attr({ dy: '1em', x: x});
                 // for (let attrId in attributes) {
                 //     let value = attributes[attrId].value != AAMUndefinedKeyword ?
                 //         attributes[attrId].value : '';
                 //     let name = attributes[attrId].name;
                 //     add.tspan(`${name}: ${value}`).attr({ dy: '1em', x: x, attrId: attrId});
                 // }
-            }).move(x, bbox.y).addClass('shapeText regular');
+            }).move(x, y).addClass('shapeText regular');
         }
     }
 
@@ -2106,13 +2181,17 @@ class ShapeView extends Listener {
 
     _drawMenu(outside) {
         let id = this._controller.id;
+        // add by Ericlou
+        let obj_id = this._controller._model._obj_id;
+
         let label = ShapeView.labels()[this._controller.label];
         let type = this._controller.type;
         let shortkeys = ShapeView.shortkeys();
 
         // Use native java script code because draw UI is performance bottleneck
         let UI = document.createElement('div');
-        let titleBlock = makeTitleBlock.call(this, id, label, type, shortkeys);
+        let titleBlock = makeTitleBlock.call(this, obj_id, label, type, shortkeys);
+
         let buttonBlock = makeButtonBlock.call(this, type, outside, shortkeys);
         UI.appendChild(titleBlock);
         UI.appendChild(buttonBlock);
@@ -2133,7 +2212,28 @@ class ShapeView extends Listener {
         UI.style.backgroundColor = this._controller.color.ui;
 
         this._uis.menu = $(UI);
-        this._scenes.menus.append(this._uis.menu);
+
+        let index = this._scenes.menusObj.findIndex(x => x.obj_id==obj_id);
+        if (index==-1)
+            this._scenes.menusObj.push({'obj_id':obj_id, 'menu':this._uis.menu});
+        else
+            this._scenes.menusObj[index] = {'obj_id':obj_id, 'menu':this._uis.menu};
+
+        this._scenes.menusObj = this._scenes.menusObj.sort(function (a, b) {
+                                    return a.obj_id > b.obj_id ? 1 : -1;
+                                });
+
+                
+        
+        //for (let member in this._scenes.menus) delete this._scenes.menus[member];
+
+        // while (this._scenes.menus.firstChild) {
+        //     this._scenes.menus.removeChild(this._scenes.menus.firstChild);
+        // }
+        //this._scenes.menus.empty();
+
+        for (let member in this._scenes.menusObj) this._scenes.menus.append(this._scenes.menusObj[member].menu);
+        //this._scenes.menus.append(this._uis.menu);
 
         function makeTitleBlock(id, label, type, shortkeys) {
             let title = document.createElement('div');
@@ -2533,6 +2633,7 @@ class ShapeView extends Listener {
     _drawShapeUI() {
         this._uis.shape.on('click', function() {
             this._positionateMenus();
+            menuScroll = true;
             this._controller.click();
         }.bind(this));
 
@@ -2660,7 +2761,60 @@ class ShapeView extends Listener {
         }
 
         if ('delete' in this._uis.buttons) {
-            this._uis.buttons.delete.onclick = (e) => this._controller.remove(e);
+            
+            this._uis.buttons.delete.onclick = (e) => {
+                let index = this._scenes.menusObj.findIndex(x => x.obj_id==this._controller._model._obj_id);
+                
+                //清除當前shape值
+                let activeShape = this._controller._model;
+                let needDelgroupingID = [... activeShape._groupingID];
+                let needDelgroupingOrder = [... activeShape._groupingOrder];
+                let groupMap = window.cvat.groupingData.get();
+                if (PROJECT=='fcw_testing') {
+                    //清除map中有關的group
+                    for (let i = 0; i < needDelgroupingID.length; i++) {
+                        if(!(groupMap[needDelgroupingID[i]] === undefined)) {
+                            delete groupMap[needDelgroupingID[i]];
+                        }
+                    }
+                    //清除shape中有關的group
+                    let currentShapes = window.cvat.data.getCurrnetShapes();
+                    currentShapes.forEach(function(shape) {
+                        for (let i = 0; i < needDelgroupingID.length; i++) {
+                            let index = shape.model._groupingID.indexOf(needDelgroupingID[i]);
+                            if(index != -1){
+                                shape.model._groupingID.splice(index, 1);
+                                shape.model._groupingOrder.splice(index, 1);
+                                shape.model._updateReason = 'grouping';
+                                shape.model.notify();
+                            }
+                        }
+                    });
+                }
+                else {
+                    //清除map中有關的group
+                    for (let i = 0; i < needDelgroupingID.length; i++) {
+                        if(!(groupMap[needDelgroupingID[i]] === undefined)) {
+                            let index = groupMap[needDelgroupingID[i]].indexOf([needDelgroupingOrder[i]]);
+                            if(index!=-1) {
+                                groupMap[needDelgroupingID[i]].splice(index, 1);
+                            }
+                            // if [] will delete
+                            if(groupMap[needDelgroupingID[i]].length == 0) {
+                                delete groupMap[needDelgroupingID[i]];
+                            }
+                        }
+                    }
+                }
+                activeShape._grouping = '';
+                activeShape._groupingID = [];
+                activeShape._groupingOrder = [];
+                
+                if (index > -1) {
+                    this._scenes.menusObj.splice(index, 1);
+                }
+                this._controller.remove(e)
+            };
         }
 
         if ('outside' in this._uis.buttons) {
@@ -3060,10 +3214,20 @@ class ShapeView extends Listener {
                 let x = shapeBBox.x + shapeBBox.width + TEXT_MARGIN;
                 let y = shapeBBox.y;
 
+                if (this._uis.shape.type=='polyline'){
+                    console.log(this._uis.shape._array.value[0][0]);
+
+                    x = this._uis.shape._array.value[0][0] + TEXT_MARGIN;
+                    y = this._uis.shape._array.value[0][1];
+                }
+                // let x = shapeBBox.x + shapeBBox.width + TEXT_MARGIN;
+                // let y = shapeBBox.y;
+
                 if (x + textBBox.width * revscale > window.cvat.player.geometry.frameWidth) {
-                    x = shapeBBox.x - TEXT_MARGIN - textBBox.width * revscale;
+                    // x = shapeBBox.x - TEXT_MARGIN - textBBox.width * revscale;
+                    x = this._uis.shape._array.value[0][0] - TEXT_MARGIN - textBBox.width * revscale;
                     if (x < 0) {
-                        x = shapeBBox.x + TEXT_MARGIN;
+                        x = this._uis.shape._array.value[0][0] + TEXT_MARGIN;
                     }
                 }
 
@@ -3192,6 +3356,13 @@ class ShapeView extends Listener {
             }
             else {
                 this._deselect();
+            }
+            break;
+        }
+        case 'grouping': {
+            this._drawShapeText();
+            if(!model.active) {
+                this._removeShapeText();
             }
             break;
         }
@@ -3387,8 +3558,8 @@ ShapeView.labels = function() {
 
 
 class BoxView extends ShapeView {
-    constructor(boxModel, boxController, svgScene, menusScene) {
-        super(boxModel, boxController, svgScene, menusScene);
+    constructor(boxModel, boxController, svgScene, menusScene, menusObj) {
+        super(boxModel, boxController, svgScene, menusScene, menusObj);
     }
 
     _makeEditable() {
@@ -3583,8 +3754,8 @@ class BoxView extends ShapeView {
 
 
 class PolyShapeView extends ShapeView {
-    constructor(polyShapeModel, polyShapeController, svgScene, menusScene) {
-        super(polyShapeModel, polyShapeController, svgScene, menusScene);
+    constructor(polyShapeModel, polyShapeController, svgScene, menusScene, menusObj) {
+        super(polyShapeModel, polyShapeController, svgScene, menusScene, menusObj);
     }
 
 
@@ -3703,8 +3874,8 @@ class PolyShapeView extends ShapeView {
 
 
 class PolygonView extends PolyShapeView {
-    constructor(polygonModel, polygonController, svgContent, UIContent) {
-        super(polygonModel, polygonController, svgContent, UIContent);
+    constructor(polygonModel, polygonController, svgContent, UIContent, menusObj) {
+        super(polygonModel, polygonController, svgContent, UIContent, menusObj);
     }
     _drawShapeUI(interpolation, id_) {
         this._uis.shape = this._scenes.svg.polygon(interpolation.position.points).fill(this._appearance.colors.shape).attr({
@@ -3743,8 +3914,8 @@ class PolygonView extends PolyShapeView {
 
 
 class PolylineView extends PolyShapeView {
-    constructor(polylineModel, polylineController, svgScene, menusScene) {
-        super(polylineModel, polylineController, svgScene, menusScene);
+    constructor(polylineModel, polylineController, svgScene, menusScene, menusObj) {
+        super(polylineModel, polylineController, svgScene, menusScene, menusObj);
     }
     _drawShapeUI(interpolation, id_) {
         this._uis.shape = this._scenes.svg.polyline(interpolation.position.points).fill(this._appearance.colors.shape).attr({
@@ -3813,8 +3984,8 @@ class PolylineView extends PolyShapeView {
 
 
 class PointsView extends PolyShapeView {
-    constructor(pointsModel, pointsController, svgScene, menusScene) {
-        super(pointsModel, pointsController, svgScene, menusScene);
+    constructor(pointsModel, pointsController, svgScene, menusScene, menusObj) {
+        super(pointsModel, pointsController, svgScene, menusScene, menusObj);
         this._uis.points = null;
     }
 
@@ -4001,20 +4172,20 @@ function buildShapeController(shapeModel) {
 }
 
 
-function buildShapeView(shapeModel, shapeController, svgContent, UIContent) {
+function buildShapeView(shapeModel, shapeController, svgContent, UIContent, menusObj) {
     switch (shapeModel.type) {
     case 'interpolation_box':
     case 'annotation_box':
-        return new BoxView(shapeModel, shapeController, svgContent, UIContent);
+        return new BoxView(shapeModel, shapeController, svgContent, UIContent, menusObj);
     case 'interpolation_points':
     case 'annotation_points':
-        return new PointsView(shapeModel, shapeController, svgContent, UIContent);
+        return new PointsView(shapeModel, shapeController, svgContent, UIContent, menusObj);
     case 'interpolation_polyline':
     case 'annotation_polyline':
-        return new PolylineView(shapeModel, shapeController, svgContent, UIContent);
+        return new PolylineView(shapeModel, shapeController, svgContent, UIContent, menusObj);
     case 'interpolation_polygon':
     case 'annotation_polygon':
-        return new PolygonView(shapeModel, shapeController, svgContent, UIContent);
+        return new PolygonView(shapeModel, shapeController, svgContent, UIContent, menusObj);
     }
     throw Error('Unreacheable code was reached.');
 }

@@ -58,6 +58,21 @@ class ShapeCollectionModel extends Listener {
         this._colorIdx = 0;
         this._filter = new FilterModel(() => this.update());
         this._splitter = new ShapeSplitter();
+
+        //add by jeff
+        this._preShape = null;
+        this._currentGroupID = 0;
+        this._currentGroupOrder = 0;
+        this._groupMap = {};
+
+        this._isImported = false;
+
+    }
+
+    _cleanCurrentGroup() {
+        this._preShape = null;
+        this._currentGroupID = 0;
+        this._currentGroupOrder = 0;
     }
 
     _nextIdx() {
@@ -239,6 +254,9 @@ class ShapeCollectionModel extends Listener {
         for (let polyline_path of data.polyline_paths) {
             this.add(polyline_path, 'interpolation_polyline');
         }
+        //add by jeff
+        this._isImported = true;
+        this._preShape = null;
 
         this.notify();
         return this;
@@ -374,6 +392,82 @@ class ShapeCollectionModel extends Listener {
         if (groupIdx) {
             this._groups[groupIdx] = this._groups[groupIdx] || [];
             this._groups[groupIdx].push(model);
+        }
+
+        this._groupMap[model.frame] = this._groupMap[model.frame] || {};
+
+        for (let [index, id] of model._groupingID.entries()){
+            if (!this._groupMap[model.frame].hasOwnProperty(id)) {
+                this._groupMap[model.frame][id] = [];
+            }
+            if(this._groupMap[model.frame][id].indexOf(model._groupingOrder[index]) == -1) {
+                this._groupMap[model.frame][id].push(model._groupingOrder[index]);
+            }
+        }
+
+        // add by jeff
+        if(this._isImported && this._currentGroupID > 0) {
+            // find preshape then add group
+            // currentshape add group
+            if(this._groupMap[model.frame].hasOwnProperty(this._currentGroupID) && this._groupMap[model.frame][this._currentGroupID].length > 0) {
+                this._currentGroupOrder = Math.max.apply(null, this._groupMap[model.frame][this._currentGroupID]) + 1
+            }
+            else{
+                this._currentGroupOrder = 1;
+            }
+
+            if (PROJECT=='fcw_testing') {
+                this.addGrouping(0,this._preShape, this._currentGroupID, this._currentGroupOrder);
+                
+            }
+            this.addGrouping(1,model, this._currentGroupID, this._currentGroupOrder);
+            this._preShape = model;
+
+            if (PROJECT=='fcw_testing' && this._groupMap[model.frame].hasOwnProperty(this._currentGroupID) && this._groupMap[model.frame][this._currentGroupID].length>=2) {
+                this._currentGroupID += 1;
+                this._currentGroupOrder = 1;
+                if(!(this._groupMap[model.frame][this._currentGroupID] === undefined) && this._groupMap[model.frame][this._currentGroupID].length >= 2){
+                    this._currentGroupID = 0;
+                    this._currentGroupOrder = 0;
+                    $('#group_current_label').text("無");
+                }
+                else
+                {
+                    $('#group_current_label').text((this._currentGroupID).toString());
+                }
+            }
+        }
+    }
+
+    addGrouping(flag,model, currentGroupID, currentGroupOrder) {
+        if(model==null){return;}
+        
+        if (PROJECT=='fcw_testing'){
+            if(!(this._groupMap[model.frame][this._currentGroupID] === undefined) && this._groupMap[model.frame][this._currentGroupID].length >= 2){
+                flag = 0;
+                this._currentGroupID = 0;
+                this._currentGroupOrder = 0;
+                $('#group_current_label').text("無");
+            }
+        }
+        else{
+            flag=1;
+        }
+        
+        if (this._currentGroupID != null && this._currentGroupID > 0){
+            if (!this._groupMap[model.frame].hasOwnProperty(this._currentGroupID))
+                {this._groupMap[model.frame][this._currentGroupID] = [];flag=1;}
+
+            if(flag&&this._groupMap[model.frame][this._currentGroupID].indexOf(this._currentGroupOrder) == -1) 
+            {
+                this._groupMap[model.frame][this._currentGroupID].push(this._currentGroupOrder);
+                
+                model._groupingID.push( currentGroupID);
+                model._groupingOrder.push( currentGroupOrder);
+                this._currentGroupOrder += 1;
+                model._updateReason = 'grouping';
+                model.notify();
+            }
         }
     }
 
@@ -834,9 +928,17 @@ class ShapeCollectionModel extends Listener {
         let shapeModelTmp = [];
         for (let shape of this._currentShapes) {
             if (shape.model.removed) continue;
-            shapeModelTmp.push(shape.model);
+            shapeModelTmp.push({'obj_id':shape.model._obj_id, 'shape':shape.model});
         }
-        currentId = shapeModelTmp.indexOf(this._activeShape);
+
+        shapeModelTmp = shapeModelTmp.sort(function (a, b) {
+            return a.obj_id > b.obj_id ? 1 : -1;
+        });
+        if (this._activeShape)
+            currentId = shapeModelTmp.findIndex(x => x.obj_id==this._activeShape._obj_id);
+        else
+            currentId = -1;
+        
         this.resetActive();
 
         if (currentId == -1) {
@@ -853,8 +955,8 @@ class ShapeCollectionModel extends Listener {
             }
         }
 
-        shapeModelTmp[currentId].active = true;
-        this._activeShape = shapeModelTmp[currentId];
+        shapeModelTmp[currentId].shape.active = true;
+        this._activeShape = shapeModelTmp[currentId].shape;
     }
 
     removePointFromActiveShape(idx) {
@@ -944,6 +1046,7 @@ class ShapeCollectionModel extends Listener {
 class ShapeCollectionController {
     constructor(collectionModel) {
         this._model = collectionModel;
+        this._menusObj = [];
         this._filterController = new FilterController(collectionModel.filter);
         setupCollectionShortcuts.call(this);
 
@@ -1288,6 +1391,55 @@ class ShapeCollectionController {
             //this._model.selectShape(this._model.lastPosition, false);
             let activeShape = this._model.activeShape;
             if (activeShape && (!activeShape.lock || e && e.shiftKey)) {
+                // add by jeff
+                //清除當前shape值
+                let needDelgroupingID = [... activeShape._groupingID];
+                let needDelgroupingOrder = [... activeShape._groupingOrder];
+                if (PROJECT=='fcw_testing') {
+                    //清除map中有關的group
+                    for (let i = 0; i < needDelgroupingID.length; i++) {
+                        if(!(this._model._groupMap[activeShape.frame][needDelgroupingID[i]] === undefined)) {
+                            delete this._model._groupMap[activeShape.frame][needDelgroupingID[i]];
+                        }
+                    }
+                    //清除shape中有關的group
+                    this._model._currentShapes.forEach(function(shape) {
+                        for (let i = 0; i < needDelgroupingID.length; i++) {
+                            let index = shape.model._groupingID.indexOf(needDelgroupingID[i]);
+                            if(index != -1){
+                                shape.model._groupingID.splice(index, 1);
+                                shape.model._groupingOrder.splice(index, 1);
+                                shape.model._updateReason = 'grouping';
+                                shape.model.notify();
+                            }
+                        }
+                    });
+                }
+                else {
+                    //清除map中有關的group
+                    for (let i = 0; i < needDelgroupingID.length; i++) {
+                        if(!(this._model._groupMap[activeShape.frame][needDelgroupingID[i]] === undefined)) {
+                            let index = this._model._groupMap[activeShape.frame][needDelgroupingID[i]].indexOf([needDelgroupingOrder[i]]);
+                            if(index!=-1) {
+                                this._model._groupMap[activeShape.frame][needDelgroupingID[i]].splice(index, 1);
+                            }
+                            // if [] will delete
+                            if(this._model._groupMap[activeShape.frame][needDelgroupingID[i]].length == 0) {
+                                delete this._model._groupMap[activeShape.frame][needDelgroupingID[i]];
+                            }
+                        }
+                    }
+                }
+                activeShape._grouping = '';
+                activeShape._groupingID = [];
+                activeShape._groupingOrder = [];
+                //if (!this._groupMap.hasOwnProperty(this._currentGroupID))
+
+                let index = this._menusObj.findIndex(x => x.obj_id==activeShape._obj_id);
+                if (index > -1) {
+                    this._menusObj.splice(index, 1);
+                }
+
                 activeShape.remove();
             }
         }
@@ -1354,6 +1506,7 @@ class ShapeCollectionView {
         // add by jeff for temp delete current (load a frame)
         this._tempViews = [];
         this._tempModels = [];
+        
 
         this._activeShapeUI = null;
         this._scale = 1;
@@ -1709,6 +1862,7 @@ class ShapeCollectionView {
         if (frameChanged) {
             this._frameContent.node.parent = null;
             this._UIContent.detach();
+            this._controller._menusObj = [];
         }
 
         this._currentViews = [];
@@ -1756,7 +1910,7 @@ class ShapeCollectionView {
         
 
         function drawView(shape, model) {
-            let view = buildShapeView(model, buildShapeController(model), this._frameContent, this._UIContent);
+            let view = buildShapeView(model, buildShapeController(model), this._frameContent, this._UIContent, this._controller._menusObj);
             view.draw(shape.interpolation, model._id);
             view.updateColorSettings(this._colorSettings);
             model.subscribe(view);
@@ -1904,7 +2058,7 @@ function setDetectPoint(activeShape){
     
     console.log("in set ");
     if(activeShape && activeShape._hiddenShape===false){
-        menuScroll = true;
+        //menuScroll = true;
         console.log("in if");
         let DETECTPOINT = "detectpoint";
         let DETECTPOINTAIM = "detectpointAim";
@@ -1954,12 +2108,12 @@ function setDetectPoint(activeShape){
         if (xdl == -1) return;
         
         //if (xdl == -1) xdl = parseFloat(1/10);
-        if (ydl == -1) ydl = +parseFloat(ytl + (ybr - ytl) * 2/3).toFixed(2);
+        if (ydl == -1) ydl = +parseFloat(ytl + (ybr - ytl) * 2/3).toFixed(6);
         //if (xdr == -1) xdr = parseFloat(9/10);
-        if (ydr == -1) ydr = +parseFloat(ytl + (ybr - ytl) * 2/3).toFixed(2);
+        if (ydr == -1) ydr = +parseFloat(ytl + (ybr - ytl) * 2/3).toFixed(6);
 
-        let xdl_draw = +parseFloat(xtl + xdl * (xbr-xtl)).toFixed(2);
-        let xdr_draw = +parseFloat(xtl + xdr * (xbr-xtl)).toFixed(2);
+        let xdl_draw = +parseFloat(xtl + xdl * (xbr-xtl)).toFixed(6);
+        let xdr_draw = +parseFloat(xtl + xdr * (xbr-xtl)).toFixed(6);
 
         let scaledR = POINT_RADIUS / window.cvat.player.geometry.scale;
         let thisframeContent = SVG.adopt($('#frameContent')[0]);
@@ -1980,13 +2134,13 @@ function setDetectPoint(activeShape){
 
                 let x = parseFloat(e.target.getAttribute('x')) + parseFloat(scaledR*1.5);
 
-                let out_xl = +parseFloat((x - xtl) / (xbr - xtl)).toFixed(2);
-                let out_xr = +parseFloat((xdr_draw - xtl) / (xbr - xtl)).toFixed(2);
+                let out_xl = +parseFloat((x - xtl) / (xbr - xtl)).toFixed(6);
+                let out_xr = +parseFloat((xdr_draw - xtl) / (xbr - xtl)).toFixed(6);
                 
                 activeShape.updateAttribute(frame, attrId_detectpoint, "\"" + out_xl + "," + ydl + " " + out_xr + "," + ydl + "\"");
 
-                xdl_draw = +parseFloat(xtl + out_xl * (xbr-xtl)).toFixed(2);
-                xdr_draw = +parseFloat(xtl + out_xr * (xbr-xtl)).toFixed(2);
+                xdl_draw = +parseFloat(xtl + out_xl * (xbr-xtl)).toFixed(6);
+                xdr_draw = +parseFloat(xtl + out_xr * (xbr-xtl)).toFixed(6);
 
                 let content = $('#frameContent');
                 let shapes = $(content.find('.detectpointAim')).toArray();
@@ -2014,13 +2168,13 @@ function setDetectPoint(activeShape){
 
                 let x = parseFloat(e.target.getAttribute('x')) + parseFloat(scaledR*1.5);
 
-                let out_xl = +parseFloat((xdl_draw - xtl) / (xbr - xtl)).toFixed(2);
-                let out_xr = +parseFloat((x - xtl) / (xbr - xtl)).toFixed(2);
+                let out_xl = +parseFloat((xdl_draw - xtl) / (xbr - xtl)).toFixed(6);
+                let out_xr = +parseFloat((x - xtl) / (xbr - xtl)).toFixed(6);
                 
                 activeShape.updateAttribute(frame, attrId_detectpoint, "\"" + out_xl + "," + ydr + " " + out_xr + "," + ydr + "\"");
 
-                xdl_draw = +parseFloat(xtl + out_xl * (xbr-xtl)).toFixed(2);
-                xdr_draw = +parseFloat(xtl + out_xr * (xbr-xtl)).toFixed(2);
+                xdl_draw = +parseFloat(xtl + out_xl * (xbr-xtl)).toFixed(6);
+                xdr_draw = +parseFloat(xtl + out_xr * (xbr-xtl)).toFixed(6);
 
                 let content = $('#frameContent');
                 let shapes = $(content.find('.detectpointAim')).toArray();

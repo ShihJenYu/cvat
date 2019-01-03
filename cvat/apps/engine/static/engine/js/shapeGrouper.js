@@ -14,6 +14,14 @@ class ShapeGrouperModel extends Listener {
         this._shapeCollection = shapeCollection;
         this._active = false;
         this._selectedObjects = [];
+
+        this.keyinGroupID = null;
+        this.keyinGroupOrder = null;
+        // add by jeff
+        // this._preShapeId = shapeCollection._preShapeId;
+        // this._currentGroupID = shapeCollection._currentGroupID;
+        // this._currentGroupOrder = shapeCollection._currentGroupOrder;
+        // this._groupMap = shapeCollection._groupMap;
     }
 
     _unselectObjects() {
@@ -85,6 +93,220 @@ class ShapeGrouperModel extends Listener {
         }
     }
 
+    // add by jeff
+    clearGrouping(withAlt) {
+        if (withAlt) {
+            //清除預設值
+            this._shapeCollection._currentGroupID = 0;
+            this._shapeCollection._currentGroupOrder = 0;
+            this._shapeCollection._preShape = null;
+
+            $('#group_current_label').text("無");
+        }
+        else {
+            //清除當前shape值
+            if(this._shapeCollection._activeShape==null){return};
+            let activeShape = this._shapeCollection._activeShape;
+            let needDelgroupingID = [... activeShape._groupingID];
+            let needDelgroupingOrder = [... activeShape._groupingOrder];
+
+            let frame = window.cvat.player.frames.current;
+            this._shapeCollection._groupMap[frame] = this._shapeCollection._groupMap[frame] || {};
+            if (PROJECT=='fcw_testing') {
+                //清除map中有關的group
+                for (let i = 0; i < needDelgroupingID.length; i++) {
+                    if(!(this._shapeCollection._groupMap[activeShape.frame][needDelgroupingID[i]] === undefined)) {
+                        delete this._shapeCollection._groupMap[activeShape.frame][needDelgroupingID[i]];
+                    }
+                }
+                //清除shape中有關的group
+                this._shapeCollection._currentShapes.forEach(function(shape) {
+                    for (let i = 0; i < needDelgroupingID.length; i++) {
+                        let index = shape.model._groupingID.indexOf(needDelgroupingID[i]);
+                        if(index != -1){
+                            shape.model._groupingID.splice(index, 1);
+                            shape.model._groupingOrder.splice(index, 1);
+                            shape.model._updateReason = 'grouping';
+                            shape.model.notify();
+                        }
+                    }
+                });
+            }
+            else {
+                //清除map中有關的group
+                for (let i = 0; i < needDelgroupingID.length; i++) {
+                    if(!(this._shapeCollection._groupMap[activeShape.frame][needDelgroupingID[i]] === undefined)) {
+                        let index = this._shapeCollection._groupMap[activeShape.frame][needDelgroupingID[i]].indexOf([needDelgroupingOrder[i]]);
+                        if(index!=-1) {
+                            this._shapeCollection._groupMap[activeShape.frame][needDelgroupingID[i]].splice(index, 1);
+                        }
+                        // if [] will delete
+                        if(this._shapeCollection._groupMap[activeShape.frame][needDelgroupingID[i]].length == 0) {
+                            delete this._shapeCollection._groupMap[activeShape.frame][needDelgroupingID[i]];
+                        }
+                    }
+                }
+            }
+            activeShape._grouping = '';
+            activeShape._groupingID = [];
+            activeShape._groupingOrder = [];
+            activeShape._updateReason = 'grouping';
+            activeShape.notify();
+        }
+        console.log(this._shapeCollection._groupMap,this._shapeCollection._currentGroupID,
+            this._shapeCollection._currentGroupOrder,this._shapeCollection._preShape);
+    }
+    setNextGroup(withAlt,groupId) {
+        this._shapeCollection._currentGroupID = 0;
+        this._shapeCollection._currentGroupOrder = 0;
+        this._shapeCollection._preShape = null;
+        let frame = window.cvat.player.frames.current;
+        $('#group_current_label').text("無");
+        let flag = true;
+        this._shapeCollection._groupMap[frame] = this._shapeCollection._groupMap[frame] || {};
+            
+        if (withAlt) {
+            //設定預設值
+            if (PROJECT=='fcw_testing') {
+                if (this._shapeCollection._groupMap[frame].hasOwnProperty(groupId)) {
+                    //group [] >=2 will error
+                    if (this._shapeCollection._groupMap[frame][groupId].length >= 2) {
+                        flag = false;
+                        alert("[order,...] >=2 will error");
+                    }
+                    else if (this._shapeCollection._groupMap[frame][groupId].length == 0) {
+                        this._shapeCollection._currentGroupID = groupId;
+                        this._shapeCollection._currentGroupOrder = 1;
+                    }
+                    else {
+                        this._shapeCollection._currentGroupID = groupId;
+                        this._shapeCollection._currentGroupOrder = this._shapeCollection._groupMap[frame][groupId][this._shapeCollection._groupMap[frame][groupId].length-1] + 1;
+                    }
+                }
+                else {
+                    this._shapeCollection._currentGroupID = groupId;
+                    this._shapeCollection._currentGroupOrder = 1;
+                }
+            }
+            else {
+                if (this._shapeCollection._groupMap[frame].hasOwnProperty(groupId)) {
+                    if (this._shapeCollection._groupMap[frame][groupId].length == 0) {
+                        this._shapeCollection._currentGroupID = groupId;
+                        this._shapeCollection._currentGroupOrder = 1;
+                    }
+                    else {
+                        this._shapeCollection._currentGroupID = groupId;
+                        this._shapeCollection._currentGroupOrder = this._shapeCollection._groupMap[frame][groupId][this._shapeCollection._groupMap[frame][groupId].length-1] + 1;
+                    }
+                }
+                else {
+                    this._shapeCollection._currentGroupID = groupId;
+                    this._shapeCollection._currentGroupOrder = 1;
+                }
+            }
+            if(flag) {
+                $('#group_current_label').text((this._shapeCollection._currentGroupID).toString());
+            }
+        }
+        else {
+            //設定當前shape值
+            if(this._shapeCollection._activeShape==null){return};
+            let groupingID = this._shapeCollection._activeShape._groupingID;
+            let groupingOrder = this._shapeCollection._activeShape._groupingOrder;
+            let groupMap = this._shapeCollection._groupMap[frame];
+            
+            if (PROJECT=='fcw_testing') {
+                if(groupMap.hasOwnProperty(groupId))
+                {
+                    //group [] >=2 will error
+                    if (groupMap[groupId].length >= 2) {
+                        alert("ERROR this key is has 2 order");
+                    }
+                    else if (groupMap[groupId].length == 0) {
+                        groupingID.push(groupId);
+                        groupingOrder.push(1);
+                        groupMap[groupId] = [1];
+                    }
+                    else {
+                        //自己已經有相同group
+                        if (groupingID.includes(groupId)){
+                            alert("ERROR 已經有相同group");
+                        }
+                        else {
+                            groupingID.push(groupId);
+                            let value = groupMap[groupId][groupMap[groupId].length-1]+1
+                            groupingOrder.push(value);
+                            groupMap[groupId].push(value);
+                        }
+                    }
+                }
+                else
+                {
+                    groupingID.push(groupId);
+                    groupingOrder.push(1);
+                    groupMap[groupId] = [1];
+                }
+            }
+            else {
+                if (groupingID.length == groupingOrder.length) {
+                    let id = (groupingID.length == 0)? 0: groupingID[0];
+                    let order = (groupingOrder.length == 0)? 0: groupingOrder[0];
+                    groupingID = [];
+                    groupingOrder = [];
+                    if(groupMap.hasOwnProperty(groupId))
+                    {
+                        if (groupMap[groupId].length == 0) {
+                            groupingID.push(groupId);
+                            groupingOrder.push(1);
+                            groupMap[groupId] = [1];
+                        }
+                        else {
+                            //自己已經有相同group
+                            if (id == groupId){
+                                groupingID.push(id);
+                                groupingOrder.push(order);
+                            }
+                            else {
+                                //先刪除map
+                                if(groupMap.hasOwnProperty(id)) {
+                                    let index = groupMap[id].indexOf(order);
+                                    if(index != -1)
+                                        groupMap[id].splice(index, 1);
+                                    if(groupMap[id].length == 0)
+                                        delete groupMap[id];
+                                }
+                                
+                                    
+                                groupingID.push(groupId);
+                                let value = groupMap[groupId][groupMap[groupId].length-1]+1
+                                groupingOrder.push(value);
+                                groupMap[groupId].push(value);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        groupingID.push(groupId);
+                        groupingOrder.push(1);
+                        groupMap[groupId] = [1];
+                    }
+                }
+                else {
+                    console.log("ERROR oupingID.length != groupingOrder.lengt");
+                }
+            }
+
+            this._shapeCollection._activeShape._groupingID = groupingID;
+            this._shapeCollection._activeShape._groupingOrder = groupingOrder;
+            
+            this._shapeCollection._activeShape._updateReason = 'grouping';
+            this._shapeCollection._activeShape.notify();
+        }
+
+        console.log(this._shapeCollection._groupMap,this._shapeCollection._currentGroupID,
+            this._shapeCollection._currentGroupOrder,this._shapeCollection._preShape);
+    }
+
     onCollectionUpdate() {
         if (this._active) {
             this._unselectObjects();
@@ -126,6 +348,61 @@ class ShapeGrouperController {
             Mousetrap.bind(shortkeys["switch_group_mode"].value, switchGrouperHandler.bind(this), 'keydown');
             Mousetrap.bind(shortkeys["cancel_group_mode"].value, cancelGrouperHandler.bind(this), 'keydown');
             Mousetrap.bind(shortkeys["reset_group"].value, resetGroupHandler.bind(this), 'keydown');
+
+            // add by jeff
+            let nextshapeGrouperHandler = Logger.shortkeyLogDecorator(function(e) {
+                e.preventDefault();
+                console.log(1,'keycode',e.keyCode);
+                console.log(1,'withalt',e.altKey);
+                let key = e.keyCode;
+                if (key >= 48 && key <= 57) {
+                    key -= 48;  // 0 and 9
+                }
+                else if (key >= 96 && key <= 105) {
+                    key -= 96; // num 0 and 9
+                }
+                else {
+                    return;
+                }
+                let groupId = (key == 0)? 10 : key;
+                
+                this.setNextGroup(true,groupId);
+            }.bind(this));
+
+            let currentshapeGrouperHandler = Logger.shortkeyLogDecorator(function(e) {
+                // this.switch();
+                e.preventDefault();
+                console.log(1,'keycode',e.keyCode);
+                console.log(1,'withalt',e.altKey);
+                let key = e.keyCode;
+                if (key >= 48 && key <= 57) {
+                    key -= 48;  // 0 and 9
+                }
+                else if (key >= 96 && key <= 105) {
+                    key -= 96; // num 0 and 9
+                }
+                else {
+                    return;
+                }
+                let groupId = (key == 0)? 10 : key;
+                
+                this.setNextGroup(false,groupId);
+            }.bind(this));
+
+            let cancelNextShapeGrouperHandler = Logger.shortkeyLogDecorator(function(e) {
+                e.preventDefault();
+                this.clearGrouping(true);
+            }.bind(this));
+
+            let cancelCurrentShapeGrouperHandler = Logger.shortkeyLogDecorator(function(e) {
+                e.preventDefault();
+                this.clearGrouping(false);
+            }.bind(this));
+
+            Mousetrap.bind(shortkeys["set_nextshape_groupID"].value, nextshapeGrouperHandler.bind(this), 'keydown');
+            Mousetrap.bind(shortkeys["set_currentshape_groupID"].value, currentshapeGrouperHandler.bind(this), 'keydown');
+            Mousetrap.bind(shortkeys["cancel_nextshape_groupID"].value, cancelNextShapeGrouperHandler.bind(this), 'keydown');
+            Mousetrap.bind(shortkeys["cancel_currentshape_groupID"].value, cancelCurrentShapeGrouperHandler.bind(this), 'keydown');
         }
     }
 
@@ -139,6 +416,14 @@ class ShapeGrouperController {
 
     click() {
         this._model.click();
+    }
+
+    // add by jeff
+    clearGrouping(withAlt) {
+        this._model.clearGrouping(withAlt);
+    }
+    setNextGroup(withAlt,groupId){
+        this._model.setNextGroup(withAlt,groupId);
     }
 }
 

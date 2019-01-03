@@ -6,7 +6,7 @@
 
 /* exported callAnnotationUI translateSVGPos blurAllElements drawBoxSize copyToClipboard */
 "use strict";
-
+var PROJECT = '';
 var trainigsaveFlag = false;
 var goNextRandom = false;
 var goNext = false;
@@ -210,7 +210,8 @@ function buildAnnotationUI(job, shapeData, loadJobEvent) {
         
     // });
 
-    if(window.location.pathname.split('/')[1]!='fcw_training'){
+    PROJECT = window.location.pathname.split('/')[1];
+    if(PROJECT != 'fcw_training'){
         $('#isKeyFrame').prop('disabled',true);
     }
     
@@ -303,7 +304,17 @@ function buildAnnotationUI(job, shapeData, loadJobEvent) {
             shapeCollectionModel.update();
         },
         clear: () => shapeCollectionModel.empty(),
+        getCurrnetShapes: () => {return shapeCollectionModel._currentShapes;}
     };
+    window.cvat.groupingData = {
+        get: () => {
+            
+            let frame = window.cvat.player.frames.current;
+            shapeCollectionModel._groupMap[frame] = shapeCollectionModel._groupMap[frame] || {};
+            return shapeCollectionModel._groupMap[frame];
+        },
+        cleanCurrent: () => shapeCollectionModel._cleanCurrentGroup(),
+    }
 
     let shapeBufferModel = new ShapeBufferModel(shapeCollectionModel);
     let shapeBufferController = new ShapeBufferController(shapeBufferModel);
@@ -423,37 +434,49 @@ function buildAnnotationUI(job, shapeData, loadJobEvent) {
         }
     });
 
-    // this._nextButtonTraining.unbind('click').on('click', () => {
+    $("#group_status").mouseenter(function() {
+        let str = '';
+        let groupInfo = []; //1-10
+        let nogrouplist = [];
+        let shapes = shapeCollectionModel._currentShapes;
+        let frame = window.cvat.player.frames.current;
+        let groupIDS = Object.keys(shapeCollectionModel._groupMap[frame]);
+        let groupInfoSize = parseInt(groupIDS[groupIDS.length-1]);
+        while(groupInfoSize--){
+            groupInfo.push({});
+        }
+
+        for (let shape of shapes) {
+            if (shape.model.removed) continue;
+            let gid_list =  shape.model._groupingID;
+            let gorder_list =  shape.model._groupingOrder;
+            if (gid_list.length) {
+                for (let [index, gid] of gid_list.entries()){
+                    groupInfo[gid-1][gorder_list[index]] = shape.model._obj_id;
+                }
+            }
+            else {
+                nogrouplist.push(shape.model._obj_id);
+            }
+
+        }
+        console.log('HI',groupInfo);
+        for (let [index, group] of groupInfo.entries()){
+            if(Object.values(group).length>0){
+                str += '群組' + (index+1).toString() + " : " + Object.values(group).toString() + '\n';
+            }
+        }
+        if (nogrouplist.length) {
+            str += '無群組 : ' + Object.values(nogrouplist).toString() + '\n';
+        }
         
-    // });
-
-    // add by jeff
-    // $('#nextButtonFlag').click(function(e){
-
-    //     if (shapeCollectionModel.hasUnsavedChanges())
-    //     {
-    //         // var r = confirm("Press a button!");
-    //         alert("Hello! Submit you made may not be saved !!!");
-    //         $('#nextButtonFlag').prop('checked',false);
-
-    //     } else {
-
-    //         // modify by Eric.
-    //         if (trainigsaveFlag){
-    //             var content_txt = 'Cannot be changed after sending. Saving confirmed.';
-    //         } else {
-    //             var content_txt = 'Cannot be changed after sending. You didn\'t do anything Change.';
-    //         }
-    //         trainigsaveFlag = false;
-    //         document.getElementById("nextButtonFlag_text").textContent=content_txt;
-
-    //         if($('#nextButtonFlag').is(':checked')) {
-    //             $('#nextButton_training')[0].setAttribute("class","playerButton_training");
-    //         } else {
-    //             $('#nextButton_training')[0].setAttribute("class","playerButton_training disabledPlayerButton");
-    //         }
-    //     }        
-    // });
+        console.log(str);
+        $("#group_status_description").text(str);
+        $("#group_status_description").show();
+    }).mouseleave(function() {
+        $("#group_status_description").hide();
+    });
+    
 }
 
 
@@ -597,10 +620,14 @@ function setupShortkeys(shortkeys, models) {
         case 'paste':
             models.shapeBuffer.switchPaste();
             break;
-        case 'poly_editing':
+        case 'poly_editing':f
             models.shapeEditor.finish();
             break;
         }
+
+        // add by jef
+        models.shapeGrouper.clearGrouping(true);
+
         return false;
     });
 
@@ -827,11 +854,19 @@ function setupMenu(job, shapeCollectionModel, annotationParser, aamModel, player
                 }
             }
             else {
-                console.log("to save");
-                saveAnnotation(shapeCollectionModel, job);
+                console.log("frame",saveFrame,"to save");
+                if(PROJECT=='fcw_testing'){
+                    if(!window.cvat.frameInfo['videoInfo'].video_current) {
+                        saveAnnotation(shapeCollectionModel, job);
+                    }
+                }
+                else {
+                    saveAnnotation(shapeCollectionModel, job);
+                }
             }
         }
         else {
+            console.log("frame",saveFrame,"to save");
             saveAnnotation(shapeCollectionModel, job);
         }
     });

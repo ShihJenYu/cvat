@@ -607,7 +607,7 @@
 #select_keyframes {
     position:absolute;
     text-align:center;
-    margin-left: 20px;
+    /* margin-left: 20px; */
     margin-top: 5px;
     z-index: 99;
 }
@@ -619,6 +619,24 @@
     margin-top: 5px;
     z-index: 99;
 }
+
+#group_status_label {
+    background:#ccc;
+    border: 1px #333 solid;
+    padding:5px;
+    width:100px;
+}
+#group_status_description {
+    background:#ccc;
+    display:none;
+    position:absolute;
+    border:1px solid #000;
+    width:400px;
+    height:400px;
+    z-index: 99;
+    white-space: pre-wrap;
+}
+
 
 @keyframes dash {
     0%   {stroke-dashoffset: 1; stroke: #09c;}

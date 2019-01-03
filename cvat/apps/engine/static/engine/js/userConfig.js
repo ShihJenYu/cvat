@@ -159,7 +159,7 @@ class Config {
             },
 
             focus_to_frame: {
-                value: 'alt+`,alt+~'.split(','),
+                value: 'shift+alt+`,shift+alt+~'.split(','),
                 view_value: '~ / `',
                 description: "focus to 'go to frame' element"
             },
@@ -213,7 +213,7 @@ class Config {
             },
 
             play_pause: {
-                value: "alt+space",
+                value: "shift+space",
                 view_value: "Space",
                 description: "switch play / pause of player"
             },
@@ -325,11 +325,33 @@ class Config {
                 view_value: "Right Arrow",
                 description: "shift right shape pos"
             },
-
-            select_i_attribute: {
+            
+            select_i_attribute: {// bind was comment out
                 value: "1,2,3,4,5,6,7,8,9,0".split(','),
                 view_value: "1,2,3,4,5,6,7,8,9,0",
                 description: "setup corresponding attribute value in attribute annotation mode"
+            },
+
+            // add  by jeff
+            set_nextshape_groupID: {
+                value: "alt+1,alt+2,alt+3,alt+4,alt+5,alt+6,alt+7,alt+8,alt+9,alt+0".split(','),
+                view_value: "1,2,3,4,5,6,7,8,9,0",
+                description: "setup corresponding attribute value in attribute annotation mode"
+            },
+            set_currentshape_groupID: {
+                value: "1,2,3,4,5,6,7,8,9,0".split(','),
+                view_value: "1,2,3,4,5,6,7,8,9,0",
+                description: "setup corresponding attribute value in attribute annotation mode"
+            },
+            cancel_nextshape_groupID: {
+                value: 'alt+space,alt+~space'.split(','),
+                view_value: '~ / `',
+                description: "focus to 'go to frame' element"
+            },
+            cancel_currentshape_groupID: {
+                value: '`,~'.split(','),
+                view_value: '~ / `',
+                description: "focus to 'go to frame' element"
             },
 
             change_grid_opacity: {

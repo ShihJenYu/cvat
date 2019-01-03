@@ -260,6 +260,7 @@ class PlayerModel extends Listener {
 
     play() {
         this._pauseFlag = false;
+        $('#saveButton').click();
         this._playInterval = setInterval(function() {
             if (this._pauseFlag) {      // pause method without notify (for frame downloading)
                 if (this._playInterval) {
@@ -323,6 +324,9 @@ class PlayerModel extends Listener {
         let changed = this._frame.previous != this._frame.current;
         if (changed){
             // add by jeff
+            window.cvat.groupingData.cleanCurrent();
+            $('#group_current_label').text('無');
+            
             $('.dontcare').remove();
             $('.detectpoint').remove();
             $('.detectpointAim').remove();
@@ -581,6 +585,7 @@ class PlayerController {
     }
 
     progressMouseDown(e) {
+        $('#saveButton').click();
         this._rewinding = true;
         this._model._rewinding = true;
         this._rewind(e);
@@ -1300,7 +1305,7 @@ function resetStatusColumn(tid,frame){
 
     let StatusInfo = window.cvat.frameInfo[frame];
     let annotator_name = (StatusInfo.user!='')? StatusInfo.user : "None";
-    let current_str = (StatusInfo.current!='')? "標記中" : "未檢查";
+    let current_str = (StatusInfo.current==true)? "標記中" : "未檢查";
     if (StatusInfo.checked)
         current_str = "已檢查"
 

@@ -60,9 +60,28 @@
 
 
 {% block content %}
-<div style="margin-bottom: 5px;text-align:center;">
-    <label id="task_name" class="regular h1" style="text-align:center;">Default</label>
+<div id="group_status" style="margin-bottom: 5px;text-align:left; display:inline-block;">
+    <label id="group_status_label" class="regular h1" style="text-align:left;">群組狀態</label>
+    <div id="group_status_description"></div>
 </div>
+
+<div style="margin-bottom: 5px;text-align:left; display:inline-block;">
+    <label>當前的預設群組：</label>
+    <label id="group_current_label">無</label>
+</div>
+
+<div style="margin-bottom: 5px;text-align:center; display:inline-block; width:70%;">
+    <div style="display:inline-block;">
+        <label id="task_name" class="regular h1" style="text-align:center;">Default</label>
+    </div>
+
+    <div style="display:inline-block;margin-right: 60px;">
+        <label class="regular h1" style="text-align:center;margin-right: 5px;">Frame :</label>
+        <select name="keyframes" id="select_keyframes" size="1" style="position:absolute; text-align:center;"></select>
+        <span style="display:inline-block; width: 5px;"></span>
+    </div>
+</div>
+
 <div id="taskAnnotationCenterPanel">
     <div id="player">
         <div id="playerFrame">

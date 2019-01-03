@@ -132,7 +132,7 @@ class AttributeVal(models.Model):
     # TODO: add a validator here to be sure that it corresponds to self.label
     id = models.BigAutoField(primary_key=True)
     spec = models.ForeignKey(AttributeSpec, on_delete=models.CASCADE)
-    value = models.CharField(max_length=64)
+    value = models.CharField(max_length=128)
     class Meta:
         abstract = True
 
@@ -166,24 +166,36 @@ class PolyShape(Shape):
         abstract = True
 
 class LabeledBox(Annotation, BoundingBox):
+    # add by eric
+    obj_id = models.PositiveIntegerField()
+    grouping = models.CharField(max_length=32, default='')
     pass
 
 class LabeledBoxAttributeVal(AttributeVal):
     box = models.ForeignKey(LabeledBox, on_delete=models.CASCADE)
 
 class LabeledPolygon(Annotation, PolyShape):
+    # add by jeff
+    obj_id = models.PositiveIntegerField()
+    grouping = models.CharField(max_length=32, default='')
     pass
 
 class LabeledPolygonAttributeVal(AttributeVal):
     polygon = models.ForeignKey(LabeledPolygon, on_delete=models.CASCADE)
 
 class LabeledPolyline(Annotation, PolyShape):
+    # add by jeff
+    obj_id = models.PositiveIntegerField()
+    grouping = models.CharField(max_length=32, default='')
     pass
 
 class LabeledPolylineAttributeVal(AttributeVal):
     polyline = models.ForeignKey(LabeledPolyline, on_delete=models.CASCADE)
 
 class LabeledPoints(Annotation, PolyShape):
+    # add by jeff
+    obj_id = models.PositiveIntegerField()
+    grouping = models.CharField(max_length=32, default='')
     pass
 
 class LabeledPointsAttributeVal(AttributeVal):

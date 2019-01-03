@@ -31,6 +31,44 @@ class ShapeCreatorModel extends Listener {
         data.outside = false;
         data.z_order = this._shapeCollection.zOrder(frame).max;
         data.attributes = [];
+        // modify by ericlou, obj_id
+        console.log("finish");
+
+        data.grouping = '';
+
+        if (Object.keys(this._shapeCollection._annotationShapes).length === 0){
+            data.obj_id = this._shapeCollection._idx + 1;
+        } else {
+            if (PROJECT=='fcw_testing') {
+                let obj_id_record = [];
+                for (let key in this._shapeCollection._annotationShapes){
+                    let Obj_number = this._shapeCollection._annotationShapes[key].length;
+                    let tmp_record=[];
+                    for (let i = 0; i < Obj_number; i++){
+                        let get_obj_id = this._shapeCollection._annotationShapes[key][i]._obj_id;
+                        tmp_record.push(get_obj_id);
+                    }
+                    let max_obj_number = Math.max(...tmp_record);  
+                    obj_id_record.push(max_obj_number);
+                }
+                let max_obj_number = Math.max(...obj_id_record);  
+                data.obj_id = max_obj_number + 1;
+            }
+            else {
+                if (this._shapeCollection._annotationShapes[frame] === undefined)
+                    data.obj_id = 1;
+                else {
+                    let obj_id_record = [];
+                    let Obj_number = this._shapeCollection._annotationShapes[frame].length;
+                    for (let i = 0; i < Obj_number; i++){
+                        let get_obj_id = this._shapeCollection._annotationShapes[frame][i]._obj_id;
+                        obj_id_record.push(get_obj_id);
+                        let max_obj_number = Math.max(...obj_id_record);  
+                        data.obj_id = max_obj_number + 1;
+                    }
+                }
+            }
+        }
 
         if (this._createEvent) {
             this._createEvent.addValues({

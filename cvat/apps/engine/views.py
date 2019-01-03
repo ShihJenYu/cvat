@@ -59,7 +59,8 @@ def dispatch_request(request):
     if request.user.groups.filter(name='admin').exists(): #and request.method == 'GET' and 'setKey' in request.GET and request.GET['setKey'].upper() == "TRUE":
         if request.method == 'GET' and 'id' in request.GET:
             return render(request, 'engine/annotation_keyframe.html', {
-                'js_3rdparty': JS_3RDPARTY.get('engine', [])
+                'js_3rdparty': JS_3RDPARTY.get('engine', []),
+                'project': project,
             })
         else:
             print ("url is",request.path)
@@ -427,20 +428,27 @@ def save_annotation_for_job(request, jid):
             if request.user.groups.filter(name='admin').exists():
                 annotation.save_job(jid, json.loads(data['annotation']),oneFrameFlag=True,frame=data['current_frame'])
             else:
-                annotation.save_job(jid, json.loads(data['annotation']),oneFrameFlag=True,frame=data['current_frame'])
                 
                 project = list(filter(None, request.path.split('/')))[0]
                 if project == 'fcw_training':
                     with transaction.atomic():
+                        print('save before select_for_update')
                         user_record = models.TaskFrameUserRecord.objects.select_for_update().get(user=request.user.username,current=True)
                         # print ("user: {} find current {}".format(request.user.username,user_record.frame))
                         if user_record.need_modify:
+                            print('save before need_modify')
                             user_record.userModifySave_date = timezone.now()
+                            print('save aa need_modify')
                         else:
+                            print('save before userSave_date')
                             user_record.userSave_date = timezone.now()
+                            print('save aa userSave_date')
                         user_record.save()
                 elif project == 'fcw_testing':
                     pass
+
+                print('save before save_job')
+                annotation.save_job(jid, json.loads(data['annotation']),oneFrameFlag=True,frame=data['current_frame'])
                   
         if 'logs' in data:
             for event in json.loads(data['logs']):

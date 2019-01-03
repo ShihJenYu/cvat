@@ -135,27 +135,40 @@ def get(jid,project=None,requestUser=None,frame=None):
 
         records = None
         video_user = None
+        video_submit = None
+        video_current = None
+        video_needModify = None
         if project == 'fcw_training':
             print('project is',project)
             records = models.TaskFrameUserRecord.objects.select_for_update().filter(task_id=new_jid).order_by('frame')
         elif project == 'fcw_testing':
             print('project is',project)
             records = models.FCWTest_FrameUserRecord.objects.select_for_update().filter(task_id=new_jid).order_by('frame')
-            video_user = models.FCWTest.objects.select_for_update().get(task_id=new_jid).user
+            video_record = models.FCWTest.objects.select_for_update().get(task_id=new_jid)
+            video_user = video_record.user
+            video_submit = video_record.user_submit
+            video_current = video_record.current
+            video_needModify = video_record.need_modify
             print('video_user is',video_user)
             
         print('records is',records)
         print('records len is',len(records))
         frameInfo = {}
         for record in records:
-            frameInfo[record.frame] = {'user':video_user if not video_user is None else record.user,
+            frameInfo[record.frame] = { 'user':video_user if not video_user is None else record.user,
                                         'current':record.current,
                                         'user_submit':record.user_submit,
                                         'need_modify':record.need_modify,
                                         'checked':record.checked,
                                         'comment':record.comment,
                                         'defaultCategory':record.defaultCategory,
-                                        'extraCategory':record.extraCategory}
+                                        'extraCategory':record.extraCategory,
+                                        }
+
+        frameInfo['videoInfo'] = { 'video_current':video_current,
+                                   'video_submit':video_submit,
+                                   'video_needModify':video_needModify
+                                 }
 
     print("frame info",frameInfo)
 
@@ -246,10 +259,13 @@ class _BoundingBox:
         self.attributes.append(attr)
 
 class _LabeledBox(_BoundingBox):
-    def __init__(self, label, x0, y0, x1, y1, frame, group_id, occluded, z_order, attributes=None):
+    def __init__(self, label, x0, y0, x1, y1, frame, group_id, occluded, z_order, obj_id, grouping, attributes=None):
         super().__init__(x0, y0, x1, y1, frame, occluded, z_order, attributes)
         self.label = label
         self.group_id = group_id
+        # add by eric
+        self.obj_id = obj_id
+        self.grouping = grouping
 
 class _TrackedBox(_BoundingBox):
     def __init__(self, x0, y0, x1, y1, frame, occluded, z_order, outside, attributes=None):
@@ -273,10 +289,13 @@ class _PolyShape:
         self.attributes.append(attr)
 
 class _LabeledPolyShape(_PolyShape):
-    def __init__(self, label, points, frame, group_id, occluded, z_order, attributes=None):
+    def __init__(self, label, points, frame, group_id, occluded, z_order, obj_id, grouping, attributes=None):
         super().__init__(points, frame, occluded, z_order, attributes)
         self.label = label
         self.group_id = group_id
+        # add by jeff
+        self.obj_id = obj_id
+        self.grouping = grouping
 
 class _TrackedPolyShape(_PolyShape):
     def __init__(self, points, frame, occluded, z_order, outside, attributes=None):
@@ -558,12 +577,12 @@ class _AnnotationForJob(_Annotation):
             ))
         return ' '.join(verified)
 
-  #add by jeff
+    #add by jeff
     def init_from_db(self,frame=None):
         def get_values(shape_type):
             if shape_type == 'polygons':
                 return [
-                    ('id', 'frame', 'points', 'label_id', 'group_id', 'occluded', 'z_order',
+                    ('id', 'frame', 'points', 'label_id', 'group_id', 'occluded', 'z_order', 'obj_id', 'grouping',
                     'labeledpolygonattributeval__value', 'labeledpolygonattributeval__spec_id',
                     'labeledpolygonattributeval__id'), {
                         'attributes': [
@@ -575,7 +594,7 @@ class _AnnotationForJob(_Annotation):
                 ]
             elif shape_type == 'polylines':
                 return [
-                    ('id', 'frame', 'points', 'label_id', 'group_id', 'occluded', 'z_order',
+                    ('id', 'frame', 'points', 'label_id', 'group_id', 'occluded', 'z_order', 'obj_id', 'grouping',
                     'labeledpolylineattributeval__value', 'labeledpolylineattributeval__spec_id',
                     'labeledpolylineattributeval__id'), {
                         'attributes': [
@@ -586,8 +605,9 @@ class _AnnotationForJob(_Annotation):
                     }, 'labeledpolylineattributeval_set'
                 ]
             elif shape_type == 'boxes':
+                ## modify by ericlou, obj_id
                 return [
-                    ('id', 'frame', 'xtl', 'ytl', 'xbr', 'ybr', 'label_id', 'group_id', 'occluded', 'z_order',
+                    ('id', 'frame', 'xtl', 'ytl', 'xbr', 'ybr', 'label_id', 'group_id', 'occluded', 'z_order', 'obj_id', 'grouping',
                     'labeledboxattributeval__value', 'labeledboxattributeval__spec_id',
                     'labeledboxattributeval__id'), {
                         'attributes': [
@@ -599,7 +619,7 @@ class _AnnotationForJob(_Annotation):
                 ]
             elif shape_type == 'points':
                 return [
-                    ('id', 'frame', 'points', 'label_id', 'group_id', 'occluded', 'z_order',
+                    ('id', 'frame', 'points', 'label_id', 'group_id', 'occluded', 'z_order', 'obj_id', 'grouping',
                     'labeledpointsattributeval__value', 'labeledpointsattributeval__spec_id',
                     'labeledpointsattributeval__id'), {
                         'attributes': [
@@ -617,14 +637,15 @@ class _AnnotationForJob(_Annotation):
                 values(*values).order_by('frame'))
             db_shapes = self._merge_table_rows(db_shapes, merge_keys, 'id')
             if frame is None:
-                for db_shape in db_shapes:                    
+                for db_shape in db_shapes:  
                     label = _Label(self.db_labels[db_shape.label_id])
+                    # modify by eric, obj_id
                     if shape_type == 'boxes':
                         shape = _LabeledBox(label, db_shape.xtl, db_shape.ytl, db_shape.xbr, db_shape.ybr,
-                            db_shape.frame, db_shape.group_id, db_shape.occluded, db_shape.z_order)
+                            db_shape.frame, db_shape.group_id, db_shape.occluded, db_shape.z_order, db_shape.obj_id, db_shape.grouping)
                     else:
                         shape = _LabeledPolyShape(label, db_shape.points, db_shape.frame,
-                            db_shape.group_id, db_shape.occluded, db_shape.z_order)
+                            db_shape.group_id, db_shape.occluded, db_shape.z_order, db_shape.obj_id, db_shape.grouping)
                     for db_attr in db_shape.attributes:
                         if db_attr.id != None:
                             spec = self.db_attributes[db_attr.spec_id]
@@ -635,12 +656,13 @@ class _AnnotationForJob(_Annotation):
                 for db_shape in db_shapes:
                     if db_shape.frame == frame :
                         label = _Label(self.db_labels[db_shape.label_id])
+                        # modify by eric, obj_id                      
                         if shape_type == 'boxes':
                             shape = _LabeledBox(label, db_shape.xtl, db_shape.ytl, db_shape.xbr, db_shape.ybr,
-                                db_shape.frame, db_shape.group_id, db_shape.occluded, db_shape.z_order)
+                                db_shape.frame, db_shape.group_id, db_shape.occluded, db_shape.z_order, db_shape.obj_id, db_shape.grouping)
                         else:
                             shape = _LabeledPolyShape(label, db_shape.points, db_shape.frame,
-                                db_shape.group_id, db_shape.occluded, db_shape.z_order)
+                                db_shape.group_id, db_shape.occluded, db_shape.z_order, db_shape.obj_id, db_shape.grouping)
                         for db_attr in db_shape.attributes:
                             if db_attr.id != None:
                                 spec = self.db_attributes[db_attr.spec_id]
@@ -838,8 +860,10 @@ class _AnnotationForJob(_Annotation):
                 xtl, ytl, xbr, ybr = self._clamp_box(float(box['xtl']), float(box['ytl']),
                     float(box['xbr']), float(box['ybr']),
                     image_meta['original_size'][frame_idx])
+
+                # modify by ericlou, obj_id
                 labeled_box = _LabeledBox(label, xtl, ytl, xbr, ybr, int(box['frame']),
-                    int(box['group_id']), strtobool(str(box['occluded'])), int(box['z_order']))
+                    int(box['group_id']), strtobool(str(box['occluded'])), int(box['z_order']), int(box['obj_id']), box['grouping'])
 
                 for attr in box['attributes']:
                     spec = self.db_attributes[int(attr['id'])]
@@ -856,7 +880,7 @@ class _AnnotationForJob(_Annotation):
                     frame_idx = int(poly_shape['frame']) if db_task.mode == 'annotation' else 0
                     points = self._clamp_poly(poly_shape['points'], image_meta['original_size'][frame_idx])
                     labeled_poly_shape = _LabeledPolyShape(label, points, int(poly_shape['frame']),
-                        int(poly_shape['group_id']), poly_shape['occluded'], int(poly_shape['z_order']))
+                        int(poly_shape['group_id']), poly_shape['occluded'], int(poly_shape['z_order']), int(box['obj_id']), box['grouping'])
 
                     for attr in poly_shape['attributes']:
                         spec = self.db_attributes[int(attr['id'])]
@@ -1149,6 +1173,9 @@ class _AnnotationForJob(_Annotation):
                 db_shape.job = self.db_job
                 db_shape.label = self.db_labels[shape.label.id]
                 db_shape.group_id = shape.group_id
+                # add by ericlou
+                db_shape.obj_id = shape.obj_id
+                db_shape.grouping = shape.grouping
                 if shape_type == 'boxes':
                     db_shape.xtl = shape.xtl
                     db_shape.ytl = shape.ytl
@@ -1215,11 +1242,14 @@ class _AnnotationForJob(_Annotation):
             "points": [],
             "points_paths": []
         }
-
+        
         for box in self.boxes:
+            # add by ericlou, obj_id
             data["boxes"].append({
                 "label_id": box.label.id,
                 "group_id": box.group_id,
+                "obj_id": box.obj_id,
+                "grouping": box.grouping,
                 "xtl": box.xtl,
                 "ytl": box.ytl,
                 "xbr": box.xbr,
@@ -1235,6 +1265,8 @@ class _AnnotationForJob(_Annotation):
                 data[poly_type].append({
                     "label_id": poly.label.id,
                     "group_id": poly.group_id,
+                    "obj_id": poly.obj_id,
+                    "grouping": poly.grouping,
                     "points": poly.points,
                     "occluded": poly.occluded,
                     "z_order": poly.z_order,

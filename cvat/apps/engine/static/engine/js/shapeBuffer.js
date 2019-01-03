@@ -65,10 +65,48 @@ class ShapeBufferModel extends Listener  {
             });
         }
 
+        let frame = window.cvat.player.frames.current;
         object.label_id = this._shape.label;
         object.group_id = 0;
-        object.frame = window.cvat.player.frames.current;
+        object.frame = frame;
         object.attributes = attributes;
+        // add by jeff, obj_id
+        console.log("finish");
+        object.grouping = '';
+
+        if (Object.keys(this._collection._annotationShapes).length === 0){
+            object.obj_id = this._collection._idx + 1;
+        } else {
+            if (PROJECT=='fcw_testing') {
+                let obj_id_record = [];
+                for (let key in this._collection._annotationShapes){
+                    let Obj_number = this._collection._annotationShapes[key].length;
+                    let tmp_record=[];
+                    for (let i = 0; i < Obj_number; i++){
+                        let get_obj_id = this._collection._annotationShapes[key][i]._obj_id;
+                        tmp_record.push(get_obj_id);
+                    }
+                    let max_obj_number = Math.max(...tmp_record);  
+                    obj_id_record.push(max_obj_number);
+                }
+                let max_obj_number = Math.max(...obj_id_record);  
+                object.obj_id = max_obj_number + 1;
+            }
+            else {
+                if (this._collection._annotationShapes[frame] === undefined)
+                    object.obj_id = 1;
+                else {
+                    let obj_id_record = [];
+                    let Obj_number = this._collection._annotationShapes[frame].length;
+                    for (let i = 0; i < Obj_number; i++){
+                        let get_obj_id = this._collection._annotationShapes[frame][i]._obj_id;
+                        obj_id_record.push(get_obj_id);
+                        let max_obj_number = Math.max(...obj_id_record);  
+                        object.obj_id = max_obj_number + 1;
+                    }
+                }
+            }
+        }
 
         if (this._shape.type === 'box') {
             let box = {};
