@@ -2117,13 +2117,21 @@ class ShapeView extends Listener {
             let attrInfo = window.cvat.labelsInfo.attrInfo(attrId);
             if (attrInfo.name == "Type"){
                 let value = this._uis.attributes[attrId].value.toLowerCase();
-                if (["pedestrian_行人(直立)","personsitting_行人(非直立)"].includes(value) || value.includes("群")) {
+                if(value.includes("動物") || value.includes("行人") || value.includes("群") || value.includes("background")) {
                     for (let tmpId in this._uis.attributes) {
                         let tmpInfo = window.cvat.labelsInfo.attrInfo(tmpId);
-                        if(tmpInfo.name=="Rotation") {
+                        if(!value.includes("動物") && tmpInfo.name=="Rotation") {
                             this._uis.attributes[tmpId].setAttribute('disabled', true);
                             this._uis.attributes[tmpId].value = "-90";
                             break;
+                        }
+                        if(tmpInfo.name=="有開燈") {
+                            this._uis.attributes[tmpId].setAttribute('disabled', true);
+                            this._uis.attributes[tmpId].checked = false;
+                        }
+                        if(tmpInfo.name=="障礙物") {
+                            this._uis.attributes[tmpId].setAttribute('disabled', true);
+                            this._uis.attributes[tmpId].checked = false;
                         }
                     }
                 }
