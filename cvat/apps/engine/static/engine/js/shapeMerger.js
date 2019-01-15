@@ -222,10 +222,12 @@ class ShapeMergerController {
             let shortkeys = window.cvat.config.shortkeys;
 
             let switchMergeHandler = Logger.shortkeyLogDecorator(function() {
+                if(document.activeElement.tagName=='INPUT'){return;}
                 this.switch();
             }.bind(this));
 
             let cancelMergeHandler = Logger.shortkeyLogDecorator(function() {
+                if(document.activeElement.tagName=='INPUT'){return;}
                 if (this._model.mergeMode) {
                     this._model.cancel();
                 }

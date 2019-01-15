@@ -13,6 +13,7 @@ from cvat.apps.authentication.decorators import login_required
 from cvat.apps.engine.models import Task as TaskModel
 from cvat.apps.engine.models import FCWTrain as FCWTrainModel
 from cvat.apps.engine.models import FCWTest as FCWTestModel
+from cvat.apps.engine.models import APACorner as APACornerModel
 from cvat.settings.base import JS_3RDPARTY
 
 import os
@@ -65,6 +66,7 @@ def MainTaskInfo(task, dst_dict):
     dst_dict["mode"] = task.mode.capitalize()
     dst_dict["name"] = task.name
     dst_dict["nickname"] = task.nickname
+    dst_dict["packagename"] = task.packagename
     dst_dict["task_id"] = task.id
     dst_dict["created_date"] = task.created_date
     dst_dict["updated_date"] = task.updated_date
@@ -111,6 +113,8 @@ def DetailTaskInfo(request, task, dst_dict):
         db_Project = FCWTrainModel.objects.get(task_id=task.id)
     elif project == 'fcw_testing':
         db_Project = FCWTestModel.objects.get(task_id=task.id)
+    elif project == 'apacorner':
+        db_Project = APACornerModel.objects.get(task_id=task.id)
 
     dst_dict['videostage'] = {
         'keyframe_count': db_Project.keyframe_count,
@@ -127,6 +131,7 @@ def DetailTaskInfo(request, task, dst_dict):
 def DashboardView(request):
     try:
         filter_name = request.GET['name'] if 'name' in request.GET else None
+        filter_packagename = request.GET['packagename'] if 'packagename' in request.GET else None
         filter_nickname = request.GET['nickname'] if 'nickname' in request.GET else None
         filter_createdate = request.GET['createdate'] if 'createdate' in request.GET else None
         
@@ -137,6 +142,8 @@ def DashboardView(request):
             qs = FCWTrainModel.objects.all()
         elif project == 'fcw_testing':
             qs = FCWTestModel.objects.all()
+        elif project == 'apacorner':
+            qs = APACornerModel.objects.all()
 
         id_list = list(qs.values_list('task_id', flat=True))
         print('task_id_list:',id_list)
@@ -144,6 +151,7 @@ def DashboardView(request):
         tasks_query_set = list(TaskModel.objects.prefetch_related('segment_set').filter(id__in=id_list).order_by('-created_date').all())
         if filter_name is not None:
             tasks_query_set = list(filter(lambda x: filter_name.lower() in x.name.lower() and \
+                                                    filter_packagename.lower() in x.packagename.lower() and \
                                                     filter_nickname.lower() in x.nickname.lower() and \
                                                     filter_createdate in datetime.strftime(x.created_date, '%Y/%m/%d'), tasks_query_set))
         data = []

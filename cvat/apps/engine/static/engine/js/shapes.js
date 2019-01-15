@@ -109,6 +109,9 @@ class ShapeModel extends Listener {
         else if(["pedestrian_行人(直立)","personsitting_行人(非直立)"].includes(value)){
             this._color = {shape: "#a01313",ui: "#a01313"};
         }
+        else if(value.includes("動物")){
+            this._color = {shape: "#efe1b3",ui: "#efe1b3"};
+        }
         else {
             console.log("error but set default with car");
             this._color = {shape: "#255f9d",ui: "#255f9d"};
@@ -140,8 +143,21 @@ class ShapeModel extends Listener {
 
     _importAttributes(attributes, positions) {
         let converted = {};
+        let labelsInfo = window.cvat.labelsInfo;
         for (let attr of attributes) {
-            converted[attr.id] = attr.value;
+            // modify by jeff
+            let attrInfo = labelsInfo.attrInfo(attr.id);
+            if(attrInfo.type=="multiselect"){
+                let value = attr.value;
+                if (!Array.isArray(value))
+                    if (value.match(/\'(.*?)\'/g))
+                        converted[attr.id] = value.match(/\'(.*?)\'/g).map(value => value.substr(1, value.length-2));
+                    else
+                        converted[attr.id] = [];
+                else
+                    converted[attr.id] = value;
+            }
+            else converted[attr.id] = attr.value;
         }
         attributes = converted;
 
@@ -150,14 +166,18 @@ class ShapeModel extends Listener {
             mutable: {},
         };
 
-        let labelsInfo = window.cvat.labelsInfo;
         let labelAttributes = labelsInfo.labelAttributes(this._label);
-        let Type_value = null;
+        let Type_value = '';
         for (let attrId in labelAttributes) {
             let attrInfo = labelsInfo.attrInfo(attrId);
             if (attrInfo.mutable) {
                 this._attributes.mutable[this._frame] = this._attributes.mutable[this._frame] || {};
                 this._attributes.mutable[this._frame][attrId] = attrInfo.values[0];
+                // add by jeff
+                if (attrInfo.type=="multiselect") {
+                    this._attributes.mutable[this._frame][attrId] = [];
+                }
+
                 // add by eric
                 if (attrInfo.name=="Type"){
                     if (previous_type===null){
@@ -210,11 +230,11 @@ class ShapeModel extends Listener {
         // add by eric
         if (Type_value.includes("car") || Type_value.includes("van") || Type_value.includes("truck") || Type_value.includes("bus") ||
             Type_value.includes("代步車") || Type_value.includes("工程車") || Type_value.includes("tram") || Type_value=="無殼三輪車" || Type_value=="有殼三輪車"){
-            this._attributes.mutable[this._frame][dectpoint_id] = "\"0.1,-1 0.9,-1\"";
+            this._attributes.mutable[this._frame][dectpoint_id] = "\"0.1,-1,0.9,-1\"";
         }
 
-        if (Type_value=="bike" || Type_value=="motorbike"){
-            this._attributes.mutable[this._frame][dectpoint_id] = "\"0,-1 0.5,-1\"";
+        if (Type_value=="bike" || Type_value=="motorbike" || Type_value=="動物"){
+            this._attributes.mutable[this._frame][dectpoint_id] = "\"0,-1,0.5,-1\"";
         }
 
         for (let attrId in attributes) {
@@ -225,7 +245,7 @@ class ShapeModel extends Listener {
             if (attrInfo.mutable) {
                 if(attrInfo.name == "DetectPoints"){
                     let detectpoints = attributes[attrId].replace(/"/g, "").split(/[\s,]+/);
-                    this._attributes.mutable[this._frame][attrId] = "\"" + detectpoints[0] + ",-1 " + detectpoints[2] + ",-1\"";
+                    this._attributes.mutable[this._frame][attrId] = "\"" + detectpoints[0] + ",-1," + detectpoints[2] + ",-1\"";
                 }
                 else this._attributes.mutable[this._frame][attrId] = labelsInfo.strToValues(attrInfo.type, attributes[attrId])[0];
             }
@@ -948,7 +968,7 @@ class BoxModel extends ShapeModel {
                     
                     let new_y = +parseFloat(pos.ytl + (pos.ybr - pos.ytl) * 2/3).toFixed(6);
 
-                    this.updateAttribute(frame, attrId, "\"" + xdl + "," + new_y + " " + xdr + "," + new_y + "\"");
+                    this.updateAttribute(frame, attrId, "\"" + xdl + "," + new_y + "," + xdr + "," + new_y + "\"");
                 }
 
                 break;
@@ -1499,7 +1519,7 @@ class ShapeController {
 
         // add by jeff woeking
         if (position.xtl>=0 && position.xbr<=window.cvat.player.geometry.frameWidth-1) {
-            let flag = false, detectPoints_id = null, type_value = null;
+            let flag = false, detectPoints_id = null, type_value = '';
             for (let attrId in this._model._attributes.mutable[frame]) {
                 let attrInfo = window.cvat.labelsInfo.attrInfo(attrId);
                 if(attrInfo.name == "看不見車頭車尾") {
@@ -1517,10 +1537,10 @@ class ShapeController {
             if(flag) {
                 if (type_value.includes("car") || type_value.includes("van") || type_value.includes("truck") || type_value.includes("bus") || type_value.includes("代步車")
                 || type_value.includes("工程車") || type_value.includes("tram") || type_value=="無殼三輪車" || type_value=="有殼三輪車"){
-                    this.updateAttribute(window.cvat.player.frames.current, detectPoints_id, "\"0.1,-1 0.9,-1\"");
-                } else if (type_value=="bike" || type_value=="motorbike"){
-                    this.updateAttribute(window.cvat.player.frames.current, detectPoints_id, "\"0,-1 0.5,-1\"");
-                } else this.updateAttribute(window.cvat.player.frames.current, detectPoints_id, "\"-1,-1 -1,-1\"");
+                    this.updateAttribute(window.cvat.player.frames.current, detectPoints_id, "\"0.1,-1,0.9,-1\"");
+                } else if (type_value=="bike" || type_value=="motorbike" || type_value=="動物"){
+                    this.updateAttribute(window.cvat.player.frames.current, detectPoints_id, "\"0,-1,0.5,-1\"");
+                } else this.updateAttribute(window.cvat.player.frames.current, detectPoints_id, "\"-1,-1,-1,-1\"");
             }
         }
     }
@@ -1856,10 +1876,14 @@ class ShapeView extends Listener {
                     dragPolyItem.addClass('hidden');
                 }
 
-                this._shapeContextMenu.finish().show(100).offset({
-                    top: e.pageY - 10,
-                    left: e.pageX - 10,
-                });
+                if(!passNoShow) {
+                    this._shapeContextMenu.finish().show(100).offset({
+                        top: e.pageY - 10,
+                        left: e.pageX - 10,
+                    });
+                }
+                else passNoShow = false;
+                
 
                 e.preventDefault();
                 e.stopPropagation();
@@ -1999,12 +2023,12 @@ class ShapeView extends Listener {
             let y = bbox.y;
 
             if (this._uis.shape.type=='polyline'){
-                x = this._uis.shape._array.value[0][0] + TEXT_MARGIN;
-                y = this._uis.shape._array.value[0][1];
+                x = this._uis.shape.node.points[0].x + TEXT_MARGIN;
+                y = this._uis.shape.node.points[0].y;
             }
 
             let gruopText = '';
-            if (PROJECT=='fcw_testing') {
+            if (PROJECT=='apacorner') {
                 for (let i = 0; i < groupingID.length; i++) {
                     if(i==0)
                         gruopText = groupingID[i];
@@ -2107,7 +2131,7 @@ class ShapeView extends Listener {
                     for (let tmpId in this._uis.attributes) {
                         let tmpInfo = window.cvat.labelsInfo.attrInfo(tmpId);
                         if(tmpInfo.name=="DetectPoints") {
-                            this._uis.attributes[tmpId].value = "\"-1,-1 -1,-1\"";
+                            this._uis.attributes[tmpId].value = "\"-1,-1,-1,-1\"";
                         }
                         if(tmpInfo.name=="看不見車頭車尾") {
                             this._uis.attributes[tmpId].setAttribute('disabled', true);
@@ -2122,7 +2146,7 @@ class ShapeView extends Listener {
                     for (let tmpId in this._uis.attributes) {
                         let tmpInfo = window.cvat.labelsInfo.attrInfo(tmpId);
                         if(tmpInfo.name=="DetectPoints") {
-                            this._uis.attributes[tmpId].value = "\"-1,-1 -1,-1\"";
+                            this._uis.attributes[tmpId].value = "\"-1,-1,-1,-1\"";
                         }
                         if(tmpInfo.name=="看不見車頭車尾") {
                             this._uis.attributes[tmpId].setAttribute('disabled', true);
@@ -2137,7 +2161,7 @@ class ShapeView extends Listener {
                     for (let tmpId in this._uis.attributes) {
                         let tmpInfo = window.cvat.labelsInfo.attrInfo(tmpId);
                         if(tmpInfo.name=="DetectPoints") {
-                            this._uis.attributes[tmpId].value = "\"-1,-1 -1,-1\"";
+                            this._uis.attributes[tmpId].value = "\"-1,-1,-1,-1\"";
                             break;
                         }
                     }
@@ -2207,7 +2231,7 @@ class ShapeView extends Listener {
                 UI.appendChild(attributesBlock);
             }
         }
-
+        UI.id = `menu_obj_${obj_id}`
         UI.classList.add('uiElement', 'regular');
         UI.style.backgroundColor = this._controller.color.ui;
 
@@ -2233,6 +2257,8 @@ class ShapeView extends Listener {
         //this._scenes.menus.empty();
 
         for (let member in this._scenes.menusObj) this._scenes.menus.append(this._scenes.menusObj[member].menu);
+
+        $(`#menu_obj_${obj_id} .selectpicker`).selectpicker('refresh');
         //this._scenes.menus.append(this._uis.menu);
 
         function makeTitleBlock(id, label, type, shortkeys) {
@@ -2399,7 +2425,9 @@ class ShapeView extends Listener {
                     let attrInfo = window.cvat.labelsInfo.attrInfo(attrId);
                     attrByType[attrInfo.type] = attrByType[attrInfo.type] || [];
                     attrByType[attrInfo.type].push(attrId);
-                    let attrIndexTmp = 9;
+                    let attrIndexTmp = 11;
+                    
+                    // sort, show att order  
                     if(attrInfo.name == "Type"){
                         attrTmp[0]=attrId;
                     }else if(attrInfo.name == "有開燈"){
@@ -2418,7 +2446,13 @@ class ShapeView extends Listener {
                         attrTmp[7]=attrId;
                     }else if(attrInfo.name == "DetectPoints"){
                         attrTmp[8]=attrId;
-                    }else{
+                    }// use labelme version
+                    else if(attrInfo.name == "大標"){
+                        attrTmp[9]=attrId;
+                    }else if(attrInfo.name == "小標"){
+                        attrTmp[10]=attrId;
+                    }
+                    else{
                         attrIndexTmp += 1;
                         attrTmp[attrIndexTmp]=attrId;
                     }
@@ -2429,6 +2463,7 @@ class ShapeView extends Listener {
                 let texts = attrByType['text'] || [];
                 let numbers = attrByType['number'] || [];
                 let checkboxes = attrByType['checkbox'] || [];
+                let multiselects = attrByType['multiselect'] || [];
 
                 selects.sort((attrId_1, attrId_2) =>
                     attributes[attrId_1].normalize().length - attributes[attrId_2].normalize().length
@@ -2470,6 +2505,8 @@ class ShapeView extends Listener {
                 return makeNumberAttr.call(this, attrInfo, attrId, objectId);
             case 'text':
                 return makeTextAttr.call(this, attrInfo, attrId, objectId);
+            case 'multiselect':
+                return makeMultiselectAttr.call(this, attrInfo, attrId, objectId);
             default:
                 throw Error(`Unknown attribute type found: ${attrInfo.type}`);
             }
@@ -2522,6 +2559,51 @@ class ShapeView extends Listener {
             this._uis.attributes[attrId] = select;
             return block;
         }
+
+        // add by jeff
+        function makeMultiselectAttr(attrInfo, attrId) {
+            let block = document.createElement('div');
+
+            let select = document.createElement('select');
+            select.setAttribute('multiple', '');
+            select.setAttribute('data-live-search', true);
+            select.setAttribute('attrId', attrId);
+            select.classList.add('selectpicker','regular', 'selectAttr');
+            let flag_for_disabled = false;
+            for (let values of attrInfo.values) {
+                let optgroup = document.createElement('optgroup');
+                // disable next group
+                if (flag_for_disabled) optgroup.setAttribute('disabled', true);
+
+                for (let value of values) {
+                    if (PROJECT == 'apacorner' && value == 'obstructed') { flag_for_disabled = true; }
+
+                    let option = document.createElement('option');
+                    option.setAttribute('value', value);
+                    if (value === AAMUndefinedKeyword) {
+                        option.innerText = '';
+                    }
+                    else {
+                        option.innerText = value.normalize();
+                    }
+                    optgroup.appendChild(option);
+                }
+                select.add(optgroup);
+            }
+
+            let label = document.createElement('label');
+            label.innerText = `${attrInfo.name.normalize()}: `;
+
+            block.appendChild(label);
+            block.appendChild(select);
+
+            this._uis.attributes[attrId] = select;
+
+            //$(`select[attrid=${attrId}]`).selectpicker('refresh');
+            
+            return block;
+        }
+
 
         function makeRadioAttr(attrInfo, attrId, objectId) {
             let block = document.createElement('fieldset');
@@ -2710,10 +2792,25 @@ class ShapeView extends Listener {
                 let attrInfo = window.cvat.labelsInfo.attrInfo(attrId);
                 if (attrInfo.type === 'radio') {
                     let idx = attrInfo.values.indexOf(attributes[attrId].value);
-                    this._uis.attributes[attrId][idx].click();
+                    this._uis.attributes[attrId][idx].checked = true;
                 }
                 else if (attrInfo.type === 'checkbox') {
                     this._uis.attributes[attrId].checked = attributes[attrId].value;
+                }
+                else if (attrInfo.type === 'multiselect') {
+
+                    if(attributes[attrId].value.includes('obstructed')) {
+                        $(this._uis.attributes[attrId]).children()[1].removeAttribute('disabled');
+                    }
+                    else {
+                        $(this._uis.attributes[attrId]).children()[1].setAttribute('disabled', true);
+                    }
+
+                    $(this._uis.attributes[attrId]).val(attributes[attrId].value);
+                    $(this._uis.attributes[attrId]).selectpicker('render');
+                    // this._uis.attributes[attrId].value = attributes[attrId].value;
+                    // $(this._uis.attributes[attrId]).selectpicker('refresh');
+                    console.log('_updateMenuContent multiselect',attributes[attrId].value);
                 }
                 else {
                     this._uis.attributes[attrId].value = attributes[attrId].value;
@@ -2770,7 +2867,7 @@ class ShapeView extends Listener {
                 let needDelgroupingID = [... activeShape._groupingID];
                 let needDelgroupingOrder = [... activeShape._groupingOrder];
                 let groupMap = window.cvat.groupingData.get();
-                if (PROJECT=='fcw_testing') {
+                if (PROJECT=='apacorner') {
                     //清除map中有關的group
                     for (let i = 0; i < needDelgroupingID.length; i++) {
                         if(!(groupMap[needDelgroupingID[i]] === undefined)) {
@@ -2852,6 +2949,46 @@ class ShapeView extends Listener {
         });
 
         // add by jeff
+        function setLightFix (attributes,controller) {
+            for (let tmpId in attributes) {
+                let tmpInfo = window.cvat.labelsInfo.attrInfo(tmpId);
+                if(tmpInfo.name=="有開燈"){
+                    attributes[tmpId].setAttribute('disabled', true);
+                    controller.updateAttribute(window.cvat.player.frames.current, tmpId, false);
+                    break;
+                }
+            }
+        }
+        function setLightRelease (attributes,controller) {
+            for (let tmpId in attributes) {
+                let tmpInfo = window.cvat.labelsInfo.attrInfo(tmpId);
+                if(tmpInfo.name=="有開燈"){
+                    attributes[tmpId].removeAttribute('disabled');
+                    break;
+                }
+            }
+        }
+
+        function setObstacleFix (attributes,controller) {
+            for (let tmpId in attributes) {
+                let tmpInfo = window.cvat.labelsInfo.attrInfo(tmpId);
+                if(tmpInfo.name=="障礙物"){
+                    attributes[tmpId].setAttribute('disabled', true);
+                    controller.updateAttribute(window.cvat.player.frames.current, tmpId, false);
+                    break;
+                }
+            }
+        }
+        function setObstacleRelease (attributes,controller) {
+            for (let tmpId in attributes) {
+                let tmpInfo = window.cvat.labelsInfo.attrInfo(tmpId);
+                if(tmpInfo.name=="障礙物"){
+                    attributes[tmpId].removeAttribute('disabled');
+                    break;
+                }
+            }
+        }
+
         function setRotationFix (attributes,controller) {
             for (let tmpId in attributes) {
                 let tmpInfo = window.cvat.labelsInfo.attrInfo(tmpId);
@@ -2921,7 +3058,7 @@ class ShapeView extends Listener {
                     let y = controller._model._positions[controller._model._frame].ybr;
                     
                     if (xtl==0 || xbr>=window.cvat.player.geometry.frameWidth-1) {
-                        controller.updateAttribute(window.cvat.player.frames.current, tmpId, "\"-1,-1 -1,-1\"");
+                        controller.updateAttribute(window.cvat.player.frames.current, tmpId, "\"-1,-1,-1,-1\"");
                         let rm_point = "detectpoint_";
                         $("#"+rm_point.concat(controller._model._id,"_L")).remove();
                         $("#"+rm_point.concat(controller._model._id,"_R")).remove();
@@ -2963,36 +3100,36 @@ class ShapeView extends Listener {
             if (value.includes("car") || value.includes("van") || value.includes("truck") || value.includes("bus") || value.includes("代步車")
                 || value.includes("工程車") || value.includes("tram") || value=="無殼三輪車" || value=="有殼三輪車"){
                 value = 2;
-            } else if (value=="bike" || value=="motorbike"){
+            } else if (value=="bike" || value=="motorbike" || value=="動物"){
                 value = 1;
             } else value = 0;
 
             if (preValue == null) {
                 switch(value) {
-                    case 0 : controller.updateAttribute(window.cvat.player.frames.current, att_id, "\"-1,-1 -1,-1\""); break;
-                    case 1 : controller.updateAttribute(window.cvat.player.frames.current, att_id, "\"0,-1 0.5,-1\""); break;
-                    case 2 : controller.updateAttribute(window.cvat.player.frames.current, att_id, "\"0.1,-1 0.9,-1\""); break;
+                    case 0 : controller.updateAttribute(window.cvat.player.frames.current, att_id, "\"-1,-1,-1,-1\""); break;
+                    case 1 : controller.updateAttribute(window.cvat.player.frames.current, att_id, "\"0,-1,0.5,-1\""); break;
+                    case 2 : controller.updateAttribute(window.cvat.player.frames.current, att_id, "\"0.1,-1,0.9,-1\""); break;
                 }
                 return;
             } else if (preValue.includes("car") || preValue.includes("van") || preValue.includes("truck") || preValue.includes("bus") || preValue.includes("代步車")
                 || preValue.includes("工程車") || preValue.includes("tram") || preValue=="無殼三輪車" || preValue=="有殼三輪車"){
                 preValue = 2;
-            } else if (preValue=="bike" || preValue=="motorbike"){
+            } else if (preValue=="bike" || preValue=="motorbike" || preValue=="動物"){
                 preValue = 1;
             } else preValue = 0;
 
             if (preValue != value) {
                 switch(value) {
-                    case 0 : controller.updateAttribute(window.cvat.player.frames.current, att_id, "\"-1,-1 -1,-1\""); break;
-                    case 1 : controller.updateAttribute(window.cvat.player.frames.current, att_id, "\"0,-1 0.5,-1\""); break;
-                    case 2 : controller.updateAttribute(window.cvat.player.frames.current, att_id, "\"0.1,-1 0.9,-1\""); break;
+                    case 0 : controller.updateAttribute(window.cvat.player.frames.current, att_id, "\"-1,-1,-1,-1\""); break;
+                    case 1 : controller.updateAttribute(window.cvat.player.frames.current, att_id, "\"0,-1,0.5,-1\""); break;
+                    case 2 : controller.updateAttribute(window.cvat.player.frames.current, att_id, "\"0.1,-1,0.9,-1\""); break;
                 }
             } else {
                 if (detectpoints.includes("-1")){
                     switch(value) {
-                        case 0 : controller.updateAttribute(window.cvat.player.frames.current, att_id, "\"-1,-1 -1,-1\""); break;
-                        case 1 : controller.updateAttribute(window.cvat.player.frames.current, att_id, "\"0,-1 0.5,-1\""); break;
-                        case 2 : controller.updateAttribute(window.cvat.player.frames.current, att_id, "\"0.1,-1 0.9,-1\""); break;
+                        case 0 : controller.updateAttribute(window.cvat.player.frames.current, att_id, "\"-1,-1,-1,-1\""); break;
+                        case 1 : controller.updateAttribute(window.cvat.player.frames.current, att_id, "\"0,-1,0.5,-1\""); break;
+                        case 2 : controller.updateAttribute(window.cvat.player.frames.current, att_id, "\"0.1,-1,0.9,-1\""); break;
                     }
                 }
             }
@@ -3002,7 +3139,7 @@ class ShapeView extends Listener {
             for (let tmpId in attributes) {
                 let tmpInfo = window.cvat.labelsInfo.attrInfo(tmpId);
                 if(tmpInfo.name=="DetectPoints"){
-                    controller.updateAttribute(window.cvat.player.frames.current, tmpId, "\"-1,-1 -1,-1\"");
+                    controller.updateAttribute(window.cvat.player.frames.current, tmpId, "\"-1,-1,-1,-1\"");
                     let rm_point = "detectpoint_";
                     $("#"+rm_point.concat(controller._model._id,"_L")).remove();
                     $("#"+rm_point.concat(controller._model._id,"_R")).remove();
@@ -3060,6 +3197,24 @@ class ShapeView extends Listener {
                     this._controller.updateAttribute(window.cvat.player.frames.current, attrId, value);
                 }.bind(this);
                 break;
+            case 'multiselect':
+                this._uis.attributes[attrId].onchange = function(e) {
+                    console.log('in onchange multiselect');
+                    let values = $(e.target).val();
+                    if(PROJECT == 'apacorner') {
+                        if($(e.target).val().includes('obstructed')) {
+                            $(e.target).children()[1].removeAttribute('disabled');
+                        }
+                        else {
+                            $(e.target).children()[1].setAttribute('disabled', true);
+                            values = values.filter(function(value, index, arr){ return ['stopper','unarmed_lock'].includes(value); });
+                            $(e.target).val(values);
+                        }
+                        $(e.target).selectpicker('refresh');
+                    }
+                    this._controller.updateAttribute(window.cvat.player.frames.current, attrId, values);
+                }.bind(this);
+                break;
             default:
                 this._uis.attributes[attrId].onchange = function(e) {
                     //add by jeff
@@ -3069,6 +3224,8 @@ class ShapeView extends Listener {
                         let value = e.target.value.toLowerCase();
                         setRotationRelease(this._uis.attributes,this._controller);
                         setHeadTailRelease(this._uis.attributes,this._controller);
+                        setLightRelease(this._uis.attributes,this._controller);
+                        setObstacleRelease(this._uis.attributes,this._controller);
                         
                         if(value.includes("car")){
                             this._controller.changeColor({shape: "#255f9d",ui: "#255f9d"});
@@ -3125,11 +3282,14 @@ class ShapeView extends Listener {
                             this._controller.changeColor({shape: "#a01313",ui: "#a01313"});
                             setRotationFix(this._uis.attributes,this._controller);
                         }
+                        else if(value.includes("動物")){
+                            this._controller.changeColor({shape: "#efe1b3",ui: "#efe1b3"});
+                        }
                         else {
                             console.log("error but set default with car");
                             this._controller.changeColor({shape: "#255f9d",ui: "#255f9d"});
                         }
-                        
+
                         // add by jeff
                         if (value.includes("無人") || value.includes("人") || value.includes("background")) {
                             rmDetectPointValue(this._uis.attributes,this._controller);
@@ -3139,6 +3299,10 @@ class ShapeView extends Listener {
                             setDetectPointDefault(this._uis.attributes,this._controller,preValue);
                         }
                         
+                        if(value.includes("動物") || value.includes("行人") || value.includes("群") || value.includes("background")) {
+                            setLightFix(this._uis.attributes,this._controller);
+                            setObstacleFix(this._uis.attributes,this._controller);
+                        }
                     }
                 }.bind(this);
             }
@@ -3211,23 +3375,30 @@ class ShapeView extends Listener {
                 let shapeBBox = this._uis.shape.node.getBBox();
                 let textBBox = this._uis.text.node.getBBox();
 
-                let x = shapeBBox.x + shapeBBox.width + TEXT_MARGIN;
-                let y = shapeBBox.y;
+                let x = 0;
+                let y = 0;
 
                 if (this._uis.shape.type=='polyline'){
-                    console.log(this._uis.shape._array.value[0][0]);
-
-                    x = this._uis.shape._array.value[0][0] + TEXT_MARGIN;
-                    y = this._uis.shape._array.value[0][1];
+                    x = this._uis.shape.node.points[0].x + TEXT_MARGIN;
+                    y = this._uis.shape.node.points[0].y;
+                    
+                    if (x + textBBox.width * revscale > window.cvat.player.geometry.frameWidth) {
+                        // x = shapeBBox.x - TEXT_MARGIN - textBBox.width * revscale;
+                        x = this._uis.shape.node.points[0].x - TEXT_MARGIN - textBBox.width * revscale;
+                        if (x < 0) {
+                            x = this._uis.shape.node.points[0].x + TEXT_MARGIN;
+                        }
+                    }
                 }
-                // let x = shapeBBox.x + shapeBBox.width + TEXT_MARGIN;
-                // let y = shapeBBox.y;
+                else {
+                    x = shapeBBox.x + shapeBBox.width + TEXT_MARGIN;
+                    y = shapeBBox.y;
 
-                if (x + textBBox.width * revscale > window.cvat.player.geometry.frameWidth) {
-                    // x = shapeBBox.x - TEXT_MARGIN - textBBox.width * revscale;
-                    x = this._uis.shape._array.value[0][0] - TEXT_MARGIN - textBBox.width * revscale;
-                    if (x < 0) {
-                        x = this._uis.shape._array.value[0][0] + TEXT_MARGIN;
+                    if (x + textBBox.width * revscale > window.cvat.player.geometry.frameWidth) {
+                        x = shapeBBox.x - TEXT_MARGIN - textBBox.width * revscale;
+                        if (x < 0) {
+                            x = shapeBBox.x + TEXT_MARGIN;
+                        }
                     }
                 }
 
@@ -3298,6 +3469,9 @@ class ShapeView extends Listener {
             break;
         case 'position':
         case 'changelabel': {
+            // add by jeff
+            menuScroll = true;
+
             let idx = this._uis.menu.index();
             this._controller.model().unsubscribe(this);
             this.erase();
@@ -3606,16 +3780,19 @@ class BoxView extends ShapeView {
         let width = position.xbr - position.xtl;
         let height = position.ybr - position.ytl;
 
+        let dont_care_value = null;
+        let type_value = '';
+
         for (let attrId in attributes) {
             var get_name = String(attributes[attrId]['name']) ;
             if (get_name === "DetectPoints"){
                 var dectectpoin_value = attributes[attrId]['value'];
             }
             if (get_name === "Dont_Care"){
-                var dont_care_value = attributes[attrId]['value'];
+                dont_care_value = attributes[attrId]['value'];
             }
             if (get_name === "Type"){
-                var type_value = attributes[attrId]['value'];
+                type_value = attributes[attrId]['value'];
             }
         }
 
@@ -3675,6 +3852,9 @@ class BoxView extends ShapeView {
         }
         else if(["pedestrian_行人(直立)","personsitting_行人(非直立)"].includes(value)){
             dont_care_color = "#a01313";
+        }
+        else if(value.includes("動物")){
+            dont_care_color = "#efe1b3";
         }
         else {
             console.log("error but set default with car");
@@ -3812,10 +3992,14 @@ class PolyShapeView extends ShapeView {
                     this._pointContextMenu.attr('point_idx', point.index());
                     this._pointContextMenu.attr('dom_point_id', point.attr('id'));
 
-                    this._pointContextMenu.finish().show(100).offset({
-                        top: e.pageY - 20,
-                        left: e.pageX - 20,
-                    });
+                    if(!passNoShow){
+                        this._pointContextMenu.finish().show(100).offset({
+                            top: e.pageY - 20,
+                            left: e.pageX - 20,
+                        });
+                    }
+                    else passNoShow = false;
+                    
 
                     e.preventDefault();
                 });

@@ -72,6 +72,8 @@ def dispatch_request(request):
             web = 'annotation_training'
         elif project == 'fcw_testing' and request.user.groups.filter(name='fcw_testing').exists():
             web = 'annotation_fcw_testing'
+        elif project == 'apacorner' and request.user.groups.filter(name='fcw_testing').exists():
+            web = 'annotation_apacorner'
         else:
             return redirect('/')
 
@@ -89,61 +91,76 @@ def dispatch_request(request):
 def update_keyframe(request):
     """Upload keyframe"""
     try:
-
         dictKeyframe = json.loads(request.body.decode('utf-8'))
-
-        print(dictKeyframe)
-        print(type(dictKeyframe))
+        packagename = dictKeyframe['packagename']
 
         for sVideoDate in dictKeyframe.keys():
-            if type(dictKeyframe[sVideoDate]) == int:
-                
-                db_task = models.Task.objects.select_for_update().get(name=sVideoDate)
-                tid = db_task.id
+            if sVideoDate == 'packagename':
+                continue
+
+            if type(dictKeyframe[sVideoDate]) == int: 
+                dictKeyframe[sVideoDate] = [dictKeyframe[sVideoDate]]
+
+            fcwTrain_ids = list(models.FCWTrain.objects.all().values_list('task_id', flat=True))
+            db_task = models.Task.objects.select_for_update().filter(pk__in=fcwTrain_ids, name=sVideoDate)[0]
+
+            history_packagenames = db_task.packagename
+            history_packagenames = list(filter(None, history_packagenames.split(',')))
+            if not packagename in history_packagenames: 
+                history_packagenames.append(packagename)
+
+            db_task.packagename = ','.join(history_packagenames)
+            db_task.save()
+
+            tid = db_task.id
+            start_time = time.time()
+            dictRealToFrame = {} # {realframe:linkframe}
+            root = db_task.get_data_dirname()
+
+            for subDir in sorted(os.listdir(root)):
+                subRoot = os.path.join(root,subDir)
+                for subDir_sec in sorted(os.listdir(subRoot)):
+                    subRoot_sec = os.path.join(subRoot,subDir_sec)
+                    for mfile in sorted(os.listdir(subRoot_sec)):
+                        mfile_path = os.path.join(subRoot_sec,mfile)
+                        frame = int(os.path.splitext(mfile)[0])
+                        realname = os.path.basename(os.path.realpath(mfile_path))
+                        realframe = int(os.path.splitext(realname)[0][-4:])
+                        dictRealToFrame[realframe] = frame
+            print("--- create dictRealToFrame cost %s seconds ---" % (time.time() - start_time))
+            print(dictRealToFrame)
+
+            for nFrameNumber in dictKeyframe[sVideoDate]:
+                if sVideoDate == 'packagename':
+                    continue
+
                 listTaskKeyframeExist = list(models.TaskFrameUserRecord.objects.filter(task_id=tid).values_list('frame', flat=True))
-
-                db_taskFrameUserRecord = models.TaskFrameUserRecord()
-                db_taskFrameUserRecord.task = db_task
-
-                nFrameNumber = dictKeyframe[sVideoDate]
-                nFrameNumber = int(nFrameNumber) - 1
-
+                nFrameNumber = dictRealToFrame[int(nFrameNumber)]
+                
                 if nFrameNumber in listTaskKeyframeExist:
                     print(nFrameNumber, 'Aleady is keyframe')
                     continue
+
+                db_taskFrameUserRecord = models.TaskFrameUserRecord()
+                db_taskFrameUserRecord.task = db_task
                 db_taskFrameUserRecord.frame = nFrameNumber
+                db_taskFrameUserRecord.packagename = packagename
+                db_taskFrameUserRecord.save()
 
                 db_fcwTrain = models.FCWTrain.objects.select_for_update().get(task_id=tid)
                 db_fcwTrain.keyframe_count += 1
                 db_fcwTrain.priority = 0
-
                 db_fcwTrain.save()
-                db_taskFrameUserRecord.save()
+
+                path = os.path.realpath(task.get_frame_path(tid, nFrameNumber))
+                realname = os.path.basename(path)
+                db_FrameName = models.FrameName()
+                db_FrameName.task = db_task
+                db_FrameName.frame = nFrameNumber
+                db_FrameName.name = realname
+                db_FrameName.save()
+
                 print("tid:{} frame:{} is add".format(tid,nFrameNumber))
-            else :
-                for nFrameNumber in dictKeyframe[sVideoDate]:
-
-                    db_task = models.Task.objects.select_for_update().get(name=sVideoDate)
-                    tid = db_task.id
-                    listTaskKeyframeExist = list(models.TaskFrameUserRecord.objects.filter(task_id=tid).values_list('frame', flat=True))
-
-                    db_taskFrameUserRecord = models.TaskFrameUserRecord()
-                    db_taskFrameUserRecord.task = db_task
-
-                    nFrameNumber = int(nFrameNumber) - 1
-
-                    if nFrameNumber in listTaskKeyframeExist:
-                        print(nFrameNumber, 'Aleady is keyframe')
-                        continue
-                    db_taskFrameUserRecord.frame = nFrameNumber
-
-                    db_fcwTrain = models.FCWTrain.objects.select_for_update().get(task_id=tid)
-                    db_fcwTrain.keyframe_count += 1
-                    db_fcwTrain.priority = 0
-
-                    db_fcwTrain.save()
-                    db_taskFrameUserRecord.save()
-                    print("tid:{} frame:{} is add".format(tid,nFrameNumber))
 
         response = {'data':"Success upload Keyframe"}
         return JsonResponse(response, safe=False)
@@ -662,24 +679,36 @@ def set_frame_isKeyFrame(request, tid, frame, flag):
         project = list(filter(None, request.path.split('/')))[0]
 
         if project == 'fcw_training':
-            print('fcw_training',project)
+            print('project is',project)
             db_fcwTrain = models.FCWTrain.objects.select_for_update().get(task_id=tid)
             if flag:
                 db_task = models.Task.objects.select_for_update().get(pk=tid)
                 db_taskFrameUserRecord = models.TaskFrameUserRecord()
                 db_taskFrameUserRecord.task = db_task
                 db_taskFrameUserRecord.frame = frame
+                db_taskFrameUserRecord.packagename = 'default'
+                db_taskFrameUserRecord.save()
                 
                 db_fcwTrain.keyframe_count += 1
                 db_fcwTrain.priority = 0
                 db_fcwTrain.save()
 
-                db_taskFrameUserRecord.save()
+                path = os.path.realpath(task.get_frame_path(tid, frame))
+                print('realpath is ', path)
+                realname = os.path.basename(path)
+                db_FrameName = models.FrameName()
+                db_FrameName.task = db_task
+                db_FrameName.frame = frame
+                db_FrameName.name = realname
+                db_FrameName.save()
+
                 print("tid:{} frame:{} is add".format(tid,frame))
             else:
                 try:
                     keyframe = models.TaskFrameUserRecord.objects.get(task_id=tid,frame=frame)
                     keyframe.delete()
+                    realname = models.FrameName.objects.get(task_id=tid,frame=frame)
+                    realname.delete()
 
                     db_fcwTrain.keyframe_count -= 1
                     db_fcwTrain.checked_count = models.TaskFrameUserRecord.objects.filter(task_id=tid,checked=True).count()
@@ -695,9 +724,13 @@ def set_frame_isKeyFrame(request, tid, frame, flag):
             print(list(frames))
             return JsonResponse({'frames': list(frames)}, safe=False)
 
-        elif project == 'fcw_testing':
-            print('fcw_testing',project)
-            qs = models.FCWTest_FrameUserRecord.objects.select_for_update().filter(task_id=tid)
+        elif project in ['fcw_testing', 'apacorner']:
+            print('project is',project)
+            qs = None
+            if project == 'fcw_testing':
+                qs = models.FCWTest_FrameUserRecord.objects.select_for_update().filter(task_id=tid)
+            elif project == 'apacorner':
+                qs = models.APACorner_FrameUserRecord.objects.select_for_update().filter(task_id=tid)
             frames = qs.values_list('frame', flat=True)
             print(list(frames),'but test not show ')
             return JsonResponse({'frames': []}, safe=False)
@@ -740,9 +773,15 @@ def get_keyFrame_stage(request, tid, frame):
                 'checked': keyframe.checked,
                 'comment': keyframe.comment
             }
-        elif project == 'fcw_testing':
-            keyframe = models.FCWTest_FrameUserRecord.objects.select_for_update().get(task_id=tid,frame=frame)
-            video_user = models.FCWTest.objects.select_for_update().get(task_id=tid).user
+        elif project in ['fcw_testing', 'apacorner']:
+            keyframe = None
+            video_user = None
+            if project == 'fcw_testing':
+                keyframe = models.FCWTest_FrameUserRecord.objects.select_for_update().get(task_id=tid,frame=frame)
+                video_user = models.FCWTest.objects.select_for_update().get(task_id=tid).user
+            elif project == 'apacorner':
+                keyframe = models.APACorner_FrameUserRecord.objects.select_for_update().get(task_id=tid,frame=frame)
+                video_user = models.APACorner.objects.select_for_update().get(task_id=tid).user
             response = {
                 'annotator': video_user,
                 'current': keyframe.current,
@@ -777,6 +816,10 @@ def set_frame_isComplete(request, tid, frame, flag):
             keyframe = models.FCWTest_FrameUserRecord.objects.select_for_update().get(task_id=tid,frame=frame)
             db_project = models.FCWTest.objects.select_for_update().get(task_id=tid)
             qs_project = models.FCWTest_FrameUserRecord.objects.all()
+        elif project == 'apacorner':
+            keyframe = models.APACorner_FrameUserRecord.objects.select_for_update().get(task_id=tid,frame=frame)
+            db_project = models.APACorner.objects.select_for_update().get(task_id=tid)
+            qs_project = models.APACorner_FrameUserRecord.objects.all()
 
         if flag:
             keyframe.checker = request.user.username
@@ -820,6 +863,10 @@ def set_frame_isRedo(request, tid, frame, flag):
             keyframe = models.FCWTest_FrameUserRecord.objects.select_for_update().get(task_id=tid,frame=frame)
             db_project = models.FCWTest.objects.select_for_update().get(task_id=tid)
             qs_project = models.FCWTest_FrameUserRecord.objects.all()
+        elif project == 'apacorner':
+            keyframe = models.APACorner_FrameUserRecord.objects.select_for_update().get(task_id=tid,frame=frame)
+            db_project = models.APACorner.objects.select_for_update().get(task_id=tid)
+            qs_project = models.APACorner_FrameUserRecord.objects.all()
 
         if flag:
             keyframe.checker = request.user.username
@@ -857,6 +904,8 @@ def set_frame_redoComment(request, tid, frame, comment):
             keyframe = models.TaskFrameUserRecord.objects.select_for_update().get(task_id=tid,frame=frame)
         elif project == 'fcw_testing':
             keyframe = models.FCWTest_FrameUserRecord.objects.select_for_update().get(task_id=tid,frame=frame)
+        elif project == 'apacorner':
+            keyframe = models.APACorner_FrameUserRecord.objects.select_for_update().get(task_id=tid,frame=frame)
         
         keyframe.checker = request.user.username
         keyframe.comment = comment
@@ -886,14 +935,19 @@ def set_tasks_priority(request):
             tasks = params['selectTasks'].split(',')
             if project == 'fcw_training':
                 for tid in tasks:
-                    db_fcwTrain = models.FCWTrain.objects.select_for_update().get(task_id=int(tid))
-                    db_fcwTrain.priority = priority
-                    db_fcwTrain.save()
+                    db_Project = models.FCWTrain.objects.select_for_update().get(task_id=int(tid))
+                    db_Project.priority = priority
+                    db_Project.save()
             elif project == 'fcw_testing':
                 for tid in tasks:
-                    db_fcwTest = models.FCWTest.objects.select_for_update().get(task_id=int(tid))
-                    db_fcwTest.priority = priority
-                    db_fcwTest.save()
+                    db_Project = models.FCWTest.objects.select_for_update().get(task_id=int(tid))
+                    db_Project.priority = priority
+                    db_Project.save()
+            elif project == 'apacorner':
+                for tid in tasks:
+                    db_Project = models.APACorner.objects.select_for_update().get(task_id=int(tid))
+                    db_Project.priority = priority
+                    db_Project.save()
 
     except Exception as e:
         print("error is !!!!",str(e))
@@ -997,10 +1051,13 @@ def save_currentJob(request):
             except ObjectDoesNotExist:
                 print ("user: {}'s not found current frame".format(request.user.username))
                 raise Exception('user_record is None')
-        elif project == 'fcw_testing':
+        elif project in ['fcw_testing', 'apacorner']:
             try:
                 with transaction.atomic():
-                    user_record = models.FCWTest.objects.select_for_update().get(user=request.user.username,current=True)
+                    if project == 'fcw_testing':
+                        user_record = models.FCWTest.objects.select_for_update().get(user=request.user.username,current=True)
+                    elif project == 'apacorner':
+                        user_record = models.APACorner.objects.select_for_update().get(user=request.user.username,current=True)
                     tid = user_record.task_id
                     print ("user: {} find current {}".format(request.user.username,tid))
                     user_record.current = False
@@ -1028,6 +1085,9 @@ def save_currentJob(request):
             elif project == 'fcw_testing':
                 db_project = models.FCWTest.objects.select_for_update().get(task_id=tid)
                 qs_project = models.FCWTest_FrameUserRecord.objects.all()
+            elif project == 'apacorner':
+                db_project = models.APACorner.objects.select_for_update().get(task_id=tid)
+                qs_project = models.APACorner_FrameUserRecord.objects.all()
 
             db_project.checked_count = qs_project.filter(task_id=tid,checked=True).count()
             db_project.unchecked_count = qs_project.filter(task_id=tid,user_submit=True).count()
@@ -1062,6 +1122,8 @@ def get_currentJob(request):
                 user_record = models.TaskFrameUserRecord.objects.select_for_update().get(user=request.user.username,current=True)
             elif project == 'fcw_testing':
                 user_record = models.FCWTest.objects.select_for_update().get(user=request.user.username,current=True)
+            elif project == 'apacorner':
+                user_record = models.APACorner.objects.select_for_update().get(user=request.user.username,current=True)
             jid = user_record.task_id
         except ObjectDoesNotExist:
             return JsonResponse("you need to get new work", safe=False)
@@ -1182,24 +1244,30 @@ def set_currentJob(request):
             if user_record:
                 print ("try get new is success job",new_jid,user_record.frame)
             else:
-                return JsonResponse({'status':"A01",'text':"找不到fcw_training的工作, 請聯絡管理員哦"})
+                return JsonResponse({'status':"A01",'text':"找不到{}的工作, 請聯絡管理員哦".format(project)})
 
-        elif project == 'fcw_testing':
+        elif project in ['fcw_testing', 'apacorner']:
             start_time = time.time()
-            db_fcwTests = models.FCWTest.objects.filter(~Q(priority=0) & Q(user=request.user.username) & Q(need_modify=True)).order_by('-priority', 'task__created_date')
-            print ("db_fcwTrains,",db_fcwTests)
-            print ("len  db_fcwTrains,",len(db_fcwTests))
-            user_record, new_jid = set_currentWithJob(request.user.username, db_fcwTests, time='modify')
+            if project == 'fcw_testing':
+                db_Project = models.FCWTest.objects.filter(~Q(priority=0) & Q(user=request.user.username) & Q(need_modify=True)).order_by('-priority', 'task__created_date')
+            elif project == 'apacorner':
+                db_Project = models.APACorner.objects.filter(~Q(priority=0) & Q(user=request.user.username) & Q(need_modify=True)).order_by('-priority', 'task__created_date')
+            print ("db_Project,",db_Project)
+            print ("len  db_Project,",len(db_Project))
+            user_record, new_jid = set_currentWithJob(request.user.username, db_Project, time='modify')
             end_time = time.time()
             print ("use random pk cost time : ",(end_time - start_time))
             
             if user_record is None:
                 print("need modify is none, try get new frame")
                 start_time = time.time()
-                db_fcwTests = models.FCWTest.objects.filter(~Q(priority=0),Q(user=request.user.username),Q(userGet_date=None)).order_by('-priority', 'task__created_date')
-                print ("db_fcwTests,",db_fcwTests)
-                print ("len  db_fcwTests,",len(db_fcwTests))
-                user_record, new_jid = set_currentWithJob(request.user.username, db_fcwTests, time='new')
+                if project == 'fcw_testing':
+                    db_Project = models.FCWTest.objects.filter(~Q(priority=0) & Q(user=request.user.username) & Q(userGet_date=None)).order_by('-priority', 'task__created_date')
+                elif project == 'apacorner':
+                    db_Project = models.APACorner.objects.filter(~Q(priority=0) & Q(user=request.user.username) & Q(userGet_date=None)).order_by('-priority', 'task__created_date')
+                print ("db_Project,",db_Project)
+                print ("len  db_Project,",len(db_Project))
+                user_record, new_jid = set_currentWithJob(request.user.username, db_Project, time='new')
                 end_time = time.time()
                 print ("use random pk cost time : ",(end_time - start_time))
                 
@@ -1208,17 +1276,20 @@ def set_currentJob(request):
             else:
                 print("need modify is none, try get new frame")
                 start_time = time.time()
-                db_fcwTests = models.FCWTest.objects.filter(~Q(priority=0),Q(user='')).order_by('-priority', 'task__created_date')
-                print ("db_fcwTests,",db_fcwTests)
-                print ("len  db_fcwTests,",len(db_fcwTests))
-                user_record, new_jid = set_currentWithJob(request.user.username, db_fcwTests, time='new')
+                if project == 'fcw_testing':
+                    db_Project = models.FCWTest.objects.filter(~Q(priority=0) & Q(user='')).order_by('-priority', 'task__created_date')
+                elif project == 'apacorner':
+                    db_Project = models.APACorner.objects.filter(~Q(priority=0) & Q(user='')).order_by('-priority', 'task__created_date')
+                print ("db_Project,",db_Project)
+                print ("len  db_Project,",len(db_Project))
+                user_record, new_jid = set_currentWithJob(request.user.username, db_Project, time='new')
                 end_time = time.time()
                 print ("use random pk cost time : ",(end_time - start_time))
             
             if user_record:
                 print ("try get new Empty is success job",new_jid)
             else:
-                return JsonResponse({'status':"A01",'text':"找不到fcw_testing的工作, 請聯絡管理員哦"})
+                return JsonResponse({'status':"A01",'text':"找不到{}的工作, 請聯絡管理員哦".format(project)})
 
     except Exception as e:
         user_record = None
@@ -1257,8 +1328,8 @@ def get_keyFrames(request, tid):
             frames = qs.values_list('frame', flat=True)
             print(list(frames))
             return JsonResponse({'frames': list(frames)}, safe=False)
-        elif project == 'fcw_testing':
-            print('fcw_testing no show keyframe')
+        elif project in ['fcw_testing', 'apacorner']:
+            print(project,'no show keyframe')
             return JsonResponse({'frames': []}, safe=False)
     except Exception as e:
         print("error is !!!!",str(e))

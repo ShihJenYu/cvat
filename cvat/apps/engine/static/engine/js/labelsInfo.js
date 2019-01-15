@@ -141,6 +141,13 @@ class LabelsInfo {
             return [string !== '0' && string !== 'false' && string !== false];
         case 'text':
             return [string];
+        case 'multiselect':
+            let values = [];
+            let optgroups = string.toString().split(';');
+            for (let index in optgroups) {
+                values.push(optgroups[index].split(','));
+            }
+            return values;
         default:
             return string.toString().split(',');
         }

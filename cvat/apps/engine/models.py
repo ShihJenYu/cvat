@@ -19,6 +19,7 @@ class Task(models.Model):
     name = models.CharField(max_length=256)
     nickname = models.CharField(max_length=256)
     category = models.CharField(max_length=256)
+    packagename = models.CharField(max_length=1024,default="")
     size = models.PositiveIntegerField()
     path = models.CharField(max_length=256)
     mode = models.CharField(max_length=32)
@@ -259,6 +260,7 @@ class TaskFrameUserRecord(models.Model):
     userModifySubmit_date = models.DateTimeField(null=True, blank=True)
     extraCategory = models.CharField(max_length=256)
     defaultCategory = models.CharField(max_length=256)
+    packagename = models.CharField(max_length=1024,default="")
 
 class FCWTrain(models.Model):
     task = models.ForeignKey(Task, on_delete=models.CASCADE)
@@ -280,6 +282,7 @@ class FCWTest_FrameUserRecord(models.Model):
     comment = models.CharField(max_length=2048)
     extraCategory = models.CharField(max_length=256)
     defaultCategory = models.CharField(max_length=256)
+    packagename = models.CharField(max_length=1024,default="")
     
 class FCWTest(models.Model):
     task = models.ForeignKey(Task, on_delete=models.CASCADE)
@@ -300,3 +303,43 @@ class FCWTest(models.Model):
     userModifyGet_date = models.DateTimeField(null=True, blank=True)
     userModifySave_date = models.DateTimeField(null=True, blank=True)
     userModifySubmit_date = models.DateTimeField(null=True, blank=True)
+
+
+class APACorner_FrameUserRecord(models.Model):
+    task = models.ForeignKey(Task, on_delete=models.CASCADE)
+    frame = models.PositiveIntegerField()
+    create_date = models.DateTimeField(auto_now_add=True)
+    checker = models.CharField(max_length=150)
+    current = models.BooleanField(default=False)
+    user_submit = models.BooleanField(default=False)
+    need_modify = models.BooleanField(default=False)
+    checked = models.BooleanField(default=False)
+    comment = models.CharField(max_length=2048)
+    extraCategory = models.CharField(max_length=256)
+    defaultCategory = models.CharField(max_length=256)
+    packagename = models.CharField(max_length=1024,default="")
+    
+class APACorner(models.Model):
+    task = models.ForeignKey(Task, on_delete=models.CASCADE)
+    keyframe_count = models.PositiveIntegerField()
+    unchecked_count = models.PositiveIntegerField()
+    checked_count = models.PositiveIntegerField()
+    need_modify_count = models.PositiveIntegerField()
+    priority = models.PositiveIntegerField()
+    user = models.CharField(max_length=150)
+    checker = models.CharField(max_length=150)
+    current = models.BooleanField(default=False)
+    user_submit = models.BooleanField(default=False)
+    need_modify = models.BooleanField(default=False)
+    checked = models.BooleanField(default=False)
+    userGet_date = models.DateTimeField(null=True, blank=True)
+    userSave_date = models.DateTimeField(null=True, blank=True)
+    userSubmit_date = models.DateTimeField(null=True, blank=True)
+    userModifyGet_date = models.DateTimeField(null=True, blank=True)
+    userModifySave_date = models.DateTimeField(null=True, blank=True)
+    userModifySubmit_date = models.DateTimeField(null=True, blank=True)
+
+class FrameName(models.Model):
+    task = models.ForeignKey(Task, on_delete=models.CASCADE)
+    frame = models.PositiveIntegerField()
+    name =  models.CharField(max_length=256, default="")

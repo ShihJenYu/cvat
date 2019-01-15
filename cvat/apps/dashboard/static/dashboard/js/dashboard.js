@@ -91,6 +91,7 @@ function setupTaskCreator() {
     //
     let createModal = $('#dashboardCreateModal');
     let nameInput = $('#dashboardNameInput');
+    let packageInput = $('#dashboardPackageInput');
     let labelsInput = $('#dashboardLabelsInput');
     let bugTrackerInput = $('#dashboardBugTrackerInput');
     let localSourceRadio = $('#dashboardLocalSource');
@@ -129,6 +130,7 @@ function setupTaskCreator() {
     let setVideoPriority = $('#setVideoPriority');
 
     let name = nameInput.prop('value');
+    let packagename = packageInput.prop('value');
     let labels = labelsInput.prop('value');
     let bugTrackerLink = bugTrackerInput.prop('value');
     let source = 'local';
@@ -203,6 +205,7 @@ function setupTaskCreator() {
     });
 
     nameInput.on('change', (e) => {name = e.target.value;});
+    packageInput.on('change', (e) => {packagename = e.target.value;});
     bugTrackerInput.on('change', (e) => {bugTrackerLink = e.target.value;});
     labelsInput.on('change', (e) => {labels = e.target.value;});
 
@@ -303,6 +306,12 @@ function setupTaskCreator() {
             return;
         }
 
+        if (!validateName(packagename)) {
+            taskMessage.css('color', 'red');
+            taskMessage.text('Invalid task packagename');
+            return;
+        }
+
         if (!validateLabels(labels)) {
             taskMessage.css('color', 'red');
             taskMessage.text('Invalid task labels');
@@ -345,6 +354,8 @@ function setupTaskCreator() {
 
         let taskData = new FormData();
         taskData.append('task_name', name);
+        // taskData.append('task_packagename', packagename);
+        taskData.append('task_packagename', '');
         taskData.append('project', window.location.pathname.split('/')[2]);
         taskData.append('bug_tracker_link', bugTrackerLink);
         taskData.append('labels', labels);
@@ -448,7 +459,7 @@ function setupTaskCreator() {
     SubmitKeyframe.on('click', function() {
 
         $.ajax({
-            url: '/update_keyframe',
+            url: 'update_keyframe',
             type: 'POST',
             data: keyframefiles[0],
             contentType: false,
@@ -503,12 +514,15 @@ function setupTaskUpdater() {
 
 function setupSearch() {
     let searchInput_name = $("#dashboardSearchInput");
+    let searchInput_packagename = $("#dashboardSearchInput_packagename");
     let searchInput_nickname = $("#dashboardSearchInput_nickname");
     let searchInput_createdate = $("#dashboardSearchInput_createdate");
     let searchSubmit = $("#dashboardSearchSubmit");
 
     let name = getUrlParameter('name') || "";
     searchInput_name.val(name);
+    let packagename = getUrlParameter('packagename') || "";
+    searchInput_packagename.val(packagename);
     let nickname = getUrlParameter('nickname') || "";
     searchInput_nickname.val(nickname);
     let createdate = getUrlParameter('createdate') || "";
@@ -523,10 +537,11 @@ function setupSearch() {
     $( "input[name*='search']" ).on('keypress', function(e) {
         if (e.keyCode != 13) return;
         let filter_name = searchInput_name.val();
+        let filter_packagename = searchInput_packagename.val();
         let filter_nickname = searchInput_nickname.val();
         let filter_createdate = searchInput_createdate.val();
-        if (!filter_name && !filter_nickname && !filter_createdate) window.location.search = "";
-        else window.location.search = `name=${filter_name}&nickname=${filter_nickname}&createdate=${filter_createdate}`;
+        if (!filter_name && !filter_packagename && !filter_nickname && !filter_createdate) window.location.search = "";
+        else window.location.search = `name=${filter_name}&packagename=${filter_packagename}&nickname=${filter_nickname}&createdate=${filter_createdate}`;
     });
 
     function getUrlParameter(name) {

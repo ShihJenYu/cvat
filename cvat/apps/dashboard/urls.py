@@ -30,7 +30,7 @@ urlpatterns = [
     path('otofcw_testing', views.DashboardView),
     path('fcw_training', views.DashboardView),
     path('otofcw_training', views.DashboardView),
-    path('apacorenr', views.DashboardView),
-    path('otoapacorenr', views.DashboardView),
+    path('apacorner', views.DashboardView),
+    path('otoapacorner', views.DashboardView),
 ]
 

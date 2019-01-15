@@ -90,7 +90,7 @@ cvat_groups_definition = {
         'ldap_groups': AUTH_LDAP_DATA_ANNOTATORS_GROUPS,
     },
     
-    'otoapacorenr': {
+    'otoapacorner': {
         'description': '',
         'permissions':  {
             'task': ['view'],
@@ -98,7 +98,7 @@ cvat_groups_definition = {
             },
         'ldap_groups': AUTH_LDAP_DATA_ANNOTATORS_GROUPS,
     },
-    'apacorenr': {
+    'apacorner': {
         'description': '',
         'permissions':  {
             'task': ['view'],

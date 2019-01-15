@@ -275,15 +275,18 @@ class ShapeBufferController {
 
         function setupBufferShortkeys() {
             let copyHandler = Logger.shortkeyLogDecorator(function() {
+                if(document.activeElement.tagName=='INPUT'){return;}
                 this._model.copyToBuffer();
             }.bind(this));
 
             let switchHandler = Logger.shortkeyLogDecorator(function() {
+                if(document.activeElement.tagName=='INPUT'){return;}
                 this._model.switchPaste();
             }.bind(this));
 
             let propagateDialogShowed = false;
             let propagateHandler = Logger.shortkeyLogDecorator(function() {
+                if(document.activeElement.tagName=='INPUT'){return;}
                 if (!propagateDialogShowed) {
                     if (this._model.copyToBuffer()) {
                         propagateDialogShowed = true;

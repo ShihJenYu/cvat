@@ -4,6 +4,10 @@
  * SPDX-License-Identifier: MIT
  */
 
+ *,::after,::before {
+    box-sizing: initial;
+}
+
 html {
     background-color: #FFFFFF;
     margin: 0px auto;
@@ -11,6 +15,11 @@ html {
     -moz-user-select: none;
     -ms-user-select: none;
     user-select: auto;
+}
+
+body {
+    display: block;
+    margin: 8px;
 }
 
 @font-face {
@@ -52,6 +61,44 @@ html {
     font-size: 1.1em;
 }
 
+label {
+    display: initial;
+    margin-bottom: .5rem
+}
+
+hr {
+    border-style: inset;
+    border-width: 1px;
+}
+
+fieldset {
+    display: block;
+    margin-inline-start: 2px;
+    margin-inline-end: 2px;
+    padding-block-start: 0.35em;
+    padding-inline-start: 0.75em;
+    padding-inline-end: 0.75em;
+    padding-block-end: 0.625em;
+    min-inline-size: min-content;
+    border-width: 2px;
+    border-style: groove;
+    border-color: threedface;
+    border-image: initial;
+}
+
+legend {
+    width: auto;
+    display: block;
+    padding-inline-start: 2px;
+    padding-inline-end: 2px;
+    border-width: initial;
+    border-style: none;
+    border-color: initial;
+    border-image: initial;
+    font-size: initial;
+    margin: 0;
+}
+
 .overlay {
     position: fixed;
     display: none;
@@ -76,6 +123,7 @@ html {
     background-color: rgb(0,0,0);
     background-color: rgba(0,0,0,0.4);
     overflow: hidden;
+    display: block;
 }
 
 .modal-content {

@@ -124,6 +124,7 @@ def update(tid, labels):
                         raise Exception("new_attr['prefix'] != old_attr['prefix']")
                     if new_attr['type'] != old_attr['type']:
                         raise Exception("new_attr['type'] != old_attr['type']")
+                    print('old - new ',old_attr['values'], new_attr['values'])
                     if set(old_attr['values']) - set(new_attr['values']):
                         raise Exception("set(old_attr['values']) - set(new_attr['values'])")
 
@@ -373,7 +374,7 @@ def _parse_labels(labels):
         else:
             attr = models.parse_attribute(token)
             attr['text'] = token
-            if not attr['type'] in ['checkbox', 'radio', 'number', 'text', 'select']:
+            if not attr['type'] in ['checkbox', 'radio', 'number', 'text', 'select', 'multiselect']:
                 raise ValueError("labels string is not corect. " +
                     "`{}` attribute has incorrect type {}.".format(
                     attr['name'], attr['type']))
@@ -549,7 +550,7 @@ def _find_and_compress_images(upload_dir, output_dir, db_task, compress_quality,
         for idx, name in enumerate(filenames):
             job.meta['status'] = 'Images are being compressed.. {}%'.format(idx * 100 // len(filenames))
             job.save_meta()
-            compressed_name = os.path.splitext(name)[0] + '.bmp'
+            compressed_name = os.path.splitext(name)[0] + '.png'
             # image = Image.open(name).convert('RGB')
             # if flip_flag:
             #     image = image.transpose(Image.ROTATE_180)
@@ -573,11 +574,19 @@ def _find_and_compress_images(upload_dir, output_dir, db_task, compress_quality,
     else:
         raise Exception("Image files were not found")
 
+def get_realname(db_task, frame):
+    try:
+        path = os.path.realpath(_get_frame_path(frame, db_task.get_data_dirname()))
+        return os.path.basename(path)
+    except Exception as e:
+        return 'not_found'
+
 def _save_task_to_db(db_task, task_params):
     db_task.overlap = min(db_task.size, task_params['overlap'])
     db_task.mode = task_params['mode']
     db_task.z_order = task_params['z_order']
     db_task.flipped = task_params['flip']
+    db_task.packagename = task_params['packagename']
 
     # modify by eric, frame number start from 1.
     segment_step = task_params['segment'] - db_task.overlap
@@ -602,27 +611,34 @@ def _save_task_to_db(db_task, task_params):
 
     # add by jeff
     project = task_params['project']
+    db_Project = None
     if project == 'fcw_training':
-        db_FCWTrain = models.FCWTrain()
-        db_FCWTrain.task = db_task
-        db_FCWTrain.keyframe_count = 0
-        db_FCWTrain.unchecked_count = 0
-        db_FCWTrain.checked_count = 0
-        db_FCWTrain.need_modify_count = 0
-        db_FCWTrain.priority = 0
-        db_FCWTrain.save()
-    elif project == 'fcw_testing':
-        db_FCWTest = models.FCWTest()
-        db_FCWTest.task = db_task
-        db_FCWTest.keyframe_count = db_task.size
-        db_FCWTest.unchecked_count = 0
-        db_FCWTest.checked_count = 0
-        db_FCWTest.need_modify_count = 0
-        db_FCWTest.priority = 0
-        db_FCWTest.save()
+        db_Project = models.FCWTrain()
+        db_Project.keyframe_count = 0
+    elif project in ['fcw_testing', 'apacorner']:
 
-        objs = [models.FCWTest_FrameUserRecord(task=db_task,frame=i) for i in range(db_task.size)]
-        models.FCWTest_FrameUserRecord.objects.bulk_create(objs)
+        if project == 'fcw_testing':
+            db_Project = models.FCWTest()
+            objs = [models.FCWTest_FrameUserRecord(task=db_task,frame=i) for i in range(db_task.size)]
+            models.FCWTest_FrameUserRecord.objects.bulk_create(objs)
+            objs = [models.FrameName(task=db_task,frame=i,name=get_realname(db_task,i)) for i in range(db_task.size)]
+            models.FrameName.objects.bulk_create(objs)
+        elif project == 'apacorner':
+            db_Project = models.APACorner()
+            objs = [models.APACorner_FrameUserRecord(task=db_task,frame=i) for i in range(db_task.size)]
+            models.APACorner_FrameUserRecord.objects.bulk_create(objs)
+            objs = [models.FrameName(task=db_task,frame=i,name=get_realname(db_task,i)) for i in range(db_task.size)]
+            models.FrameName.objects.bulk_create(objs)
+
+        db_Project.keyframe_count = db_task.size
+
+    db_Project.task = db_task
+    db_Project.unchecked_count = 0
+    db_Project.checked_count = 0
+    db_Project.need_modify_count = 0
+    db_Project.priority = 0
+    db_Project.save()
+
 
     parsed_labels = _parse_labels(task_params['labels'])
     for label in parsed_labels:
@@ -689,6 +705,7 @@ def _create_thread(tid, params):
         'labels': params['labels'],
         # add by jeff
         'project': params['project'],
+        'packagename': params['task_packagename'],
     }
     task_params['overlap'] = int(params.get('overlap_size', 5 if task_params['mode'] == 'interpolation' else 0))
     task_params['overlap'] = min(task_params['overlap'], task_params['segment'] - 1)

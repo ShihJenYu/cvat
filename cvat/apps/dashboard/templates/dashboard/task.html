@@ -5,8 +5,15 @@
 -->
 <div class="dashboardTaskUI" id="dashboardTask_{{item.task_id}}">
     <center class="dashboardTitleWrapper">
-        <label class="semiBold h1 dashboardTaskNameLabel selectable"> {{ item.name }} </label>
-        <input type="checkbox" id="selectTask_{{item.task_id}}" class="selectTask" style="margin-left: 10px;"/>
+        <table>
+            <tr>
+                <td> <input type="checkbox" id="selectTask_{{item.task_id}}" class="selectTask" style="margin-left: 10px;"/> </td>
+                <td> Package: </td>
+                <td style="width: 33%"> <label class="semiBold h1 dashboardTaskNameLabel selectable"> {{ item.packagename }} </label> </td>
+                <td> Video: </td>
+                <td style="width: 33%"> <label class="semiBold h1 dashboardTaskNameLabel selectable"> {{ item.name }} </label> </td>
+            </tr>
+        </table>
     </center>
     <center class="dashboardTitleWrapper">
         <!-- <label class="semiBold h2 dashboardNickNameLabel"> {{ item.nickName }} </label> -->
@@ -68,3 +75,4 @@
         </table>
     </div>
 </div>
+<br><br>

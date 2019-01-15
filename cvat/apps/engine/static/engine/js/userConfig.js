@@ -42,6 +42,12 @@ class Config {
                 description: "close draw mode without create"
             },
 
+            undo_draw: {
+                value: "backspace",
+                view_value: "backspace",
+                description: "close draw mode without create"
+            },
+
             switch_merge_mode: {
                 value: "alt+m",
                 view_value: "alt+M",

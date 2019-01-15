@@ -294,15 +294,18 @@ class AAMController {
 
         function setupAAMShortkeys() {
             let switchAAMHandler = Logger.shortkeyLogDecorator(function() {
+                if(document.activeElement.tagName=='INPUT'){return;}
                 this._model.switchAAMMode();
             }.bind(this));
 
             let nextAttributeHandler = Logger.shortkeyLogDecorator(function(e) {
+                if(document.activeElement.tagName=='INPUT'){return;}
                 this._model.moveAttr(1);
                 e.preventDefault();
             }.bind(this));
 
             let prevAttributeHandler = Logger.shortkeyLogDecorator(function(e) {
+                if(document.activeElement.tagName=='INPUT'){return;}
                 this._model.moveAttr(-1);
                 e.preventDefault();
             }.bind(this));

@@ -84,6 +84,16 @@ def get(jid,project=None,requestUser=None,frame=None):
                 frame = user_record.frame
                 new_jid  = user_record.task_id
 
+                full_name = None
+                qs = models.FrameName.objects.filter(task_id=new_jid,frame=frame)
+                qs_count = qs.count()
+                if qs_count <= 0:
+                    print ('full_name is not found !!!')
+                elif qs_count == 1:
+                    full_name = qs[0].name
+                else:
+                    print ('full_name is Find a lot of ...')
+
                 frameInfo = {}
                 frameInfo[frame] = {'current':user_record.current,
                                     'user_submit':user_record.user_submit,
@@ -91,20 +101,30 @@ def get(jid,project=None,requestUser=None,frame=None):
                                     'checked':user_record.checked,
                                     'comment':user_record.comment,
                                     'defaultCategory':user_record.defaultCategory,
-                                    'extraCategory':user_record.extraCategory}
+                                    'extraCategory':user_record.extraCategory,
+                                    'full_name': full_name}
 
                 print ("user: {}, get frame: {} in job: {}".format(requestUser.username,frame,jid))
             except ObjectDoesNotExist:
                 user_record = None
 
-        elif project == 'fcw_testing':
+        elif project in ['fcw_testing', 'apacorner']:
             try:
-                user_record = models.FCWTest.objects.select_for_update().get(user=requestUser.username,current=True)
                 frame = None
-                new_jid  = user_record.task_id
-
+                user_record = None
+                new_jid = None
+                records = None
                 frameInfo = {}
-                records = models.FCWTest_FrameUserRecord.objects.select_for_update().filter(task_id=new_jid).order_by('frame')
+
+                if project == 'fcw_testing':
+                    user_record = models.FCWTest.objects.select_for_update().get(user=requestUser.username,current=True)
+                    new_jid  = user_record.task_id
+                    records = models.FCWTest_FrameUserRecord.objects.select_for_update().filter(task_id=new_jid).order_by('frame')
+                elif project == 'apacorner':
+                    user_record = models.APACorner.objects.select_for_update().get(user=requestUser.username,current=True)
+                    new_jid  = user_record.task_id
+                    records = models.APACorner_FrameUserRecord.objects.select_for_update().filter(task_id=new_jid).order_by('frame')
+
                 for record in records:
                     frameInfo[record.frame] = {'current':record.current,
                                                 'user_submit':record.user_submit,
@@ -141,10 +161,14 @@ def get(jid,project=None,requestUser=None,frame=None):
         if project == 'fcw_training':
             print('project is',project)
             records = models.TaskFrameUserRecord.objects.select_for_update().filter(task_id=new_jid).order_by('frame')
-        elif project == 'fcw_testing':
+        elif project in ['fcw_testing', 'apacorner']:
             print('project is',project)
-            records = models.FCWTest_FrameUserRecord.objects.select_for_update().filter(task_id=new_jid).order_by('frame')
-            video_record = models.FCWTest.objects.select_for_update().get(task_id=new_jid)
+            if project == 'fcw_testing':
+                records = models.FCWTest_FrameUserRecord.objects.select_for_update().filter(task_id=new_jid).order_by('frame')
+                video_record = models.FCWTest.objects.select_for_update().get(task_id=new_jid)
+            elif project == 'apacorner':
+                records = models.APACorner_FrameUserRecord.objects.select_for_update().filter(task_id=new_jid).order_by('frame')
+                video_record = models.APACorner.objects.select_for_update().get(task_id=new_jid)
             video_user = video_record.user
             video_submit = video_record.user_submit
             video_current = video_record.current
@@ -155,6 +179,15 @@ def get(jid,project=None,requestUser=None,frame=None):
         print('records len is',len(records))
         frameInfo = {}
         for record in records:
+            full_name = None
+            qs = models.FrameName.objects.filter(task_id=new_jid,frame=record.frame)
+            qs_count = qs.count()
+            if qs_count <= 0:
+                print ('full_name is not found !!!')
+            elif qs_count == 1:
+                full_name = qs[0].name
+            else:
+                print ('full_name is Find a lot of ...')
             frameInfo[record.frame] = { 'user':video_user if not video_user is None else record.user,
                                         'current':record.current,
                                         'user_submit':record.user_submit,
@@ -163,7 +196,7 @@ def get(jid,project=None,requestUser=None,frame=None):
                                         'comment':record.comment,
                                         'defaultCategory':record.defaultCategory,
                                         'extraCategory':record.extraCategory,
-                                        }
+                                        'full_name': full_name}
 
         frameInfo['videoInfo'] = { 'video_current':video_current,
                                    'video_submit':video_submit,
@@ -880,7 +913,7 @@ class _AnnotationForJob(_Annotation):
                     frame_idx = int(poly_shape['frame']) if db_task.mode == 'annotation' else 0
                     points = self._clamp_poly(poly_shape['points'], image_meta['original_size'][frame_idx])
                     labeled_poly_shape = _LabeledPolyShape(label, points, int(poly_shape['frame']),
-                        int(poly_shape['group_id']), poly_shape['occluded'], int(poly_shape['z_order']), int(box['obj_id']), box['grouping'])
+                        int(poly_shape['group_id']), poly_shape['occluded'], int(poly_shape['z_order']), int(poly_shape['obj_id']), poly_shape['grouping'])
 
                     for attr in poly_shape['attributes']:
                         spec = self.db_attributes[int(attr['id'])]

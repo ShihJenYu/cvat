@@ -281,8 +281,14 @@ function buildAnnotationUI(job, shapeData, loadJobEvent) {
     }
     else{
         window.history.replaceState(null, null, `${window.location.origin}${window.location.pathname}`);
-        $('#task_name').text(job.slug + " , F" + String(+shapeData.frame+1).padStart(4, '0'));
-        console.log(job.slug + " , F" + String(+shapeData.frame+1).padStart(4, '0'));
+        if(PROJECT=='fcw_training') {
+            let full_name = shapeData.frameInfo[shapeData.frame].full_name;
+            txt = (full_name)? ', ' + full_name : ', F' + String(+shapeData.frame+1).padStart(4, '0');
+            $('#task_name').text(job.slug + txt)
+        }
+        else {
+            $('#task_name').text(job.slug);
+        }
     }
 
     
@@ -508,16 +514,19 @@ function setupFrameFilters() {
         ${shortkeys['change_player_saturation'].view_value} - ${shortkeys['change_player_saturation'].description}`);
 
     let changeBrightnessHandler = Logger.shortkeyLogDecorator(function(e) {
+        if(document.activeElement.tagName=='INPUT'){return;}
         if (e.shiftKey) brightnessRange.prop('value', brightness + 10).trigger('input');
         else brightnessRange.prop('value', brightness - 10).trigger('input');
     });
 
     let changeContrastHandler = Logger.shortkeyLogDecorator(function(e) {
+        if(document.activeElement.tagName=='INPUT'){return;}
         if (e.shiftKey) contrastRange.prop('value', contrast + 10).trigger('input');
         else contrastRange.prop('value', contrast - 10).trigger('input');
     });
 
     let changeSaturationHandler = Logger.shortkeyLogDecorator(function(e) {
+        if(document.activeElement.tagName=='INPUT'){return;}
         if (e.shiftKey) saturationRange.prop('value', saturation + 10).trigger('input');
         else saturationRange.prop('value', saturation - 10).trigger('input');
     });
@@ -855,8 +864,8 @@ function setupMenu(job, shapeCollectionModel, annotationParser, aamModel, player
             }
             else {
                 console.log("frame",saveFrame,"to save");
-                if(PROJECT=='fcw_testing'){
-                    if(!window.cvat.frameInfo['videoInfo'].video_current) {
+                if(['fcw_testing','apacorner'].includes(PROJECT)){
+                    if(window.cvat.frameInfo['videoInfo'].video_submit) {
                         saveAnnotation(shapeCollectionModel, job);
                     }
                 }
@@ -866,6 +875,7 @@ function setupMenu(job, shapeCollectionModel, annotationParser, aamModel, player
             }
         }
         else {
+            if(StatusInfo==null || StatusInfo.checked ) {console.log('not keyframe or is checked'); return; }
             console.log("frame",saveFrame,"to save");
             saveAnnotation(shapeCollectionModel, job);
         }
@@ -982,6 +992,7 @@ function uploadAnnotation(shapeCollectionModel, historyModel, annotationParser, 
 
 function saveAnnotation(shapeCollectionModel, job) {
     let saveButton = $('#saveButton');
+    if (wasSend){console.log("was send, will not save"); return;}
 
     Logger.addEvent(Logger.EventType.saveJob);
     let totalStat = shapeCollectionModel.collectStatistic()[1];

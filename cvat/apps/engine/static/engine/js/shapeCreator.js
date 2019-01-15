@@ -172,11 +172,13 @@ class ShapeCreatorController {
             let shortkeys = window.cvat.config.shortkeys;
 
             let switchDrawHandler = Logger.shortkeyLogDecorator(function() {
+                if(document.activeElement.tagName=='INPUT'){return;}
                 if(!LOCKALL)
                     this.switchCreateMode(false);
             }.bind(this));
 
             let closeDrawHandler = Logger.shortkeyLogDecorator(function(e) {
+                if(document.activeElement.tagName=='INPUT'){return;}
                 e.preventDefault();
                 if (this._model.createMode) {
                     this.switchCreateMode(true);
@@ -257,6 +259,11 @@ class ShapeCreatorView {
             this._controller.setDefaultShapeType(type);
         }).trigger('change');
 
+        // add by jeff , set default type
+        if(PROJECT=='apacorner'){
+            this._typeSelector.val('polyline').trigger('change');
+        }
+
         this._labelSelector.on('change', (e) => {
             this._controller.setDefaultShapeLabel($(e.target).prop('value'));
         }).trigger('change');
@@ -299,6 +306,20 @@ class ShapeCreatorView {
                 });
             }
         }.bind(this));
+
+        let undoDrawHandler = Logger.shortkeyLogDecorator(function(e) {
+            if(document.activeElement.tagName=='INPUT'){return;}
+            if (PROJECT=='apacorner') {
+                e.preventDefault();
+                this._drawInstance.draw('undo');
+
+                let points = PolyShapeModel.convertStringToNumberArray($('polyline.shapeCreation')[0].getAttribute('points'));
+                if(points.length <= 1) {
+                    Mousetrap.trigger('q','keydown');
+                }
+            }
+        }.bind(this));
+        Mousetrap.bind(shortkeys["undo_draw"].value, undoDrawHandler.bind(this), 'keydown');
     }
 
 
@@ -346,6 +367,13 @@ class ShapeCreatorView {
             };
         });
 
+        // add by jeff
+        // this._drawInstance.addEventListener('keydown', function(e) { 
+        //     if(e.keyCode == 8){
+        //         this._drawInstance.draw('undo');
+        //     }
+        // });
+
         this._frameContent.on('mousedown.shapeCreator', (e) => {
             if (e.which === 3) {
                 this._drawInstance.draw('undo');
@@ -387,10 +415,12 @@ class ShapeCreatorView {
             // Min 2 points for polyline and 3 points for polygon
             if (points.length) {
                 if (this._type === 'polyline' && points.length < 2) {
-                    showMessage("Min 2 points must be for polyline drawing.");
+                    //showMessage("Min 2 points must be for polyline drawing.");
+                    console.log("Min 2 points must be for polyline drawing.");
                 }
                 else if (this._type === 'polygon' && points.length < 3) {
-                    showMessage("Min 3 points must be for polygon drawing.");
+                    //showMessage("Min 3 points must be for polygon drawing.");
+                    console.log("Min 2 points must be for polygon drawing.");
                 }
                 else {
                     points = PolyShapeModel.convertNumberArrayToString(points);

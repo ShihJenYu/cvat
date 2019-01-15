@@ -12,6 +12,8 @@ var is_one_frame_mode = false;
 var one_frame_data = null;
 var mousedown_in_shape = false;
 var move_background = false;
+
+var passNoShow = false;
 class ShapeCollectionModel extends Listener {
     constructor() {
         super('onCollectionUpdate', () => this);
@@ -416,14 +418,13 @@ class ShapeCollectionModel extends Listener {
                 this._currentGroupOrder = 1;
             }
 
-            if (PROJECT=='fcw_testing') {
+            if (PROJECT=='apacorner') {
                 this.addGrouping(0,this._preShape, this._currentGroupID, this._currentGroupOrder);
-                
             }
             this.addGrouping(1,model, this._currentGroupID, this._currentGroupOrder);
             this._preShape = model;
 
-            if (PROJECT=='fcw_testing' && this._groupMap[model.frame].hasOwnProperty(this._currentGroupID) && this._groupMap[model.frame][this._currentGroupID].length>=2) {
+            if (PROJECT=='apacorner' && this._groupMap[model.frame].hasOwnProperty(this._currentGroupID) && this._groupMap[model.frame][this._currentGroupID].length>=2) {
                 this._currentGroupID += 1;
                 this._currentGroupOrder = 1;
                 if(!(this._groupMap[model.frame][this._currentGroupID] === undefined) && this._groupMap[model.frame][this._currentGroupID].length >= 2){
@@ -442,7 +443,7 @@ class ShapeCollectionModel extends Listener {
     addGrouping(flag,model, currentGroupID, currentGroupOrder) {
         if(model==null){return;}
         
-        if (PROJECT=='fcw_testing'){
+        if (PROJECT=='apacorner'){
             if(!(this._groupMap[model.frame][this._currentGroupID] === undefined) && this._groupMap[model.frame][this._currentGroupID].length >= 2){
                 flag = 0;
                 this._currentGroupID = 0;
@@ -1052,42 +1053,52 @@ class ShapeCollectionController {
 
         function setupCollectionShortcuts() {
             let switchLockHandler = Logger.shortkeyLogDecorator(function() {
+                if(document.activeElement.tagName=='INPUT'){return;}
                 this.switchActiveLock();
             }.bind(this));
 
             let switchAllLockHandler = Logger.shortkeyLogDecorator(function() {
+                if(document.activeElement.tagName=='INPUT'){return;}
                 this.switchAllLock();
             }.bind(this));
 
             let switchOccludedHandler = Logger.shortkeyLogDecorator(function() {
+                if(document.activeElement.tagName=='INPUT'){return;}
                 this.switchActiveOccluded();
             }.bind(this));
 
             let switchActiveKeyframeHandler = Logger.shortkeyLogDecorator(function() {
+                if(document.activeElement.tagName=='INPUT'){return;}
                 this.switchActiveKeyframe();
             }.bind(this));
 
             let switchActiveOutsideHandler = Logger.shortkeyLogDecorator(function() {
+                if(document.activeElement.tagName=='INPUT'){return;}
                 this.switchActiveOutside();
             }.bind(this));
 
             let switchHideHandler = Logger.shortkeyLogDecorator(function() {
+                if(document.activeElement.tagName=='INPUT'){return;}
                 this.switchActiveHide();
             }.bind(this));
 
             let switchAllHideHandler = Logger.shortkeyLogDecorator(function() {
+                if(document.activeElement.tagName=='INPUT'){return;}
                 this.switchAllHide();
             }.bind(this));
             // add by jef
             let switchOthersHideHandler = Logger.shortkeyLogDecorator(function() {
+                if(document.activeElement.tagName=='INPUT'){return;}
                 this.switchOthersHide();
             }.bind(this));
 
             let removeActiveHandler = Logger.shortkeyLogDecorator(function(e) {
+                if (document.activeElement.tagName == 'INPUT') {return;}
                 this.removeActiveShape(e);
             }.bind(this));
 
             let switchLabelHandler = Logger.shortkeyLogDecorator(function(e) {
+                if(document.activeElement.tagName=='INPUT'){return;}
                 let activeShape = this._model.activeShape;
                 if (activeShape) {
                     let labels = Object.keys(window.cvat.labelsInfo.labels());
@@ -1101,6 +1112,7 @@ class ShapeCollectionController {
             }.bind(this));
 
             let switchDefaultLabelHandler = Logger.shortkeyLogDecorator(function(e) {
+                if(document.activeElement.tagName=='INPUT'){return;}
                 $('#shapeLabelSelector option').eq(e.keyCode - '1'.charCodeAt(0)).prop('selected', true);
                 $('#shapeLabelSelector').trigger('change');
             });
@@ -1112,6 +1124,7 @@ class ShapeCollectionController {
 
             //add by jeff
             let detectPointHandler = Logger.shortkeyLogDecorator(function() {
+                if(document.activeElement.tagName=='INPUT'){return;}
                 let flag = true;
                 for (let attrId in this._model.activeShape._attributes.mutable[this._model.activeShape._frame]) {
                     let attrInfo = window.cvat.labelsInfo.attrInfo(attrId);
@@ -1140,6 +1153,7 @@ class ShapeCollectionController {
             }.bind(this));
 
             let incZHandler = Logger.shortkeyLogDecorator(function() {
+                if(document.activeElement.tagName=='INPUT'){return;}
                 if (window.cvat.mode === null) {
                     let activeShape = this._model.activeShape;
                     if (activeShape) {
@@ -1149,6 +1163,7 @@ class ShapeCollectionController {
             }.bind(this));
 
             let decZHandler = Logger.shortkeyLogDecorator(function() {
+                if(document.activeElement.tagName=='INPUT'){return;}
                 if (window.cvat.mode === null) {
                     let activeShape = this._model.activeShape;
                     if (activeShape) {
@@ -1160,12 +1175,14 @@ class ShapeCollectionController {
             let shortkeys = window.cvat.config.shortkeys;
 
             let enableMovingKeyHandler = Logger.shortkeyLogDecorator(function() {
+                if(document.activeElement.tagName=='INPUT'){return;}
                 if (!mousedown_in_shape) {
                     this.resetActive();
                     move_background = true;
                 }
             }.bind(this));
             let disableMovingKeyHandler = Logger.shortkeyLogDecorator(function() {
+                if(document.activeElement.tagName=='INPUT'){return;}
                 console.log("ssssss");
                 move_background = false;
             }.bind(this));
@@ -1226,6 +1243,7 @@ class ShapeCollectionController {
             }
 
             let shiftShapeUp = Logger.shortkeyLogDecorator(function(e) {
+                if(document.activeElement.tagName=='INPUT'){return;}
                 if(this._model.activeShape){
                     let frame = window.cvat.player.frames.current;
                     this._model.activeShape.updatePosition(frame,shiftShape(8));
@@ -1233,6 +1251,7 @@ class ShapeCollectionController {
                 e.preventDefault();
             }.bind(this));
             let shiftShapeDown = Logger.shortkeyLogDecorator(function(e) {
+                if(document.activeElement.tagName=='INPUT'){return;}
                 if(this._model.activeShape){
                     let frame = window.cvat.player.frames.current;
                     this._model.activeShape.updatePosition(frame,shiftShape(2));
@@ -1240,6 +1259,7 @@ class ShapeCollectionController {
                 e.preventDefault();
             }.bind(this));
             let shiftShapeLeft = Logger.shortkeyLogDecorator(function(e) {
+                if(document.activeElement.tagName=='INPUT'){return;}
                 if(this._model.activeShape){
                     let frame = window.cvat.player.frames.current;
                     this._model.activeShape.updatePosition(frame,shiftShape(4));
@@ -1247,6 +1267,7 @@ class ShapeCollectionController {
                 e.preventDefault();
             }.bind(this));
             let shiftSapeRight = Logger.shortkeyLogDecorator(function(e) {
+                if(document.activeElement.tagName=='INPUT'){return;}
                 if(this._model.activeShape){
                     let frame = window.cvat.player.frames.current;
                     this._model.activeShape.updatePosition(frame,shiftShape(6));
@@ -1372,7 +1393,7 @@ class ShapeCollectionController {
             for (let attrId in activeShape._attributes.mutable[frame]) {
                 let attrInfo = window.cvat.labelsInfo.attrInfo(attrId);
                 if(attrInfo.name == "DetectPoints") {
-                    activeShape.updateAttribute(frame, attrId, "\"-1,-1 -1,-1\"");
+                    activeShape.updateAttribute(frame, attrId, "\"-1,-1,-1,-1\"");
                     break;
                 }
             }
@@ -1395,7 +1416,7 @@ class ShapeCollectionController {
                 //清除當前shape值
                 let needDelgroupingID = [... activeShape._groupingID];
                 let needDelgroupingOrder = [... activeShape._groupingOrder];
-                if (PROJECT=='fcw_testing') {
+                if (PROJECT=='apacorner') {
                     //清除map中有關的group
                     for (let i = 0; i < needDelgroupingID.length; i++) {
                         if(!(this._model._groupMap[activeShape.frame][needDelgroupingID[i]] === undefined)) {
@@ -1591,6 +1612,12 @@ class ShapeCollectionView {
             if (e.target === this._frameContent.node) {
                 this._controller.resetActive();
             }
+            if(window.cvat.mode=='creation' && PROJECT=='apacorner' && e.which === 3){
+                Mousetrap.trigger('q','keydown');
+                // let new_event = new MouseEvent(e.type, e)
+                // $('#frameContent')[0].dispatchEvent(new_event);
+                passNoShow = true;
+            }
         });
 
         // $('#playerFrame').on('mouseleave', () => {
@@ -1600,6 +1627,7 @@ class ShapeCollectionView {
         // });
 
         this._frameContent.on('mousemove', function(e) {
+            passNoShow = false;
             if (e.ctrlKey || e.which === 2 || e.target.classList.contains('svg_select_points')) {
                 return;
             }
@@ -1626,6 +1654,13 @@ class ShapeCollectionView {
             }
 
             this._controller.setLastPosition(pos);
+
+            if(!this._controller._model._activeShape && !window.cvat.mode && PROJECT=='apacorner' && e.which === 1) {
+                Mousetrap.trigger('q','keydown');
+                let new_event = new MouseEvent(e.type, e)
+                $('#frameContent')[0].dispatchEvent(new_event);
+            }
+
         }.bind(this));
 
         $('#shapeContextMenu li').click((e) => {
@@ -2052,6 +2087,7 @@ class ShapeCollectionView {
 
 // add by jeff
 function setDetectPoint(activeShape){
+    if(!['fcw_training', 'fcw_testing'].includes(PROJECT)){return;}
     $(".detectpoint").remove();
 
     if(activeShape._type !== "annotation_box"){return;}
@@ -2073,7 +2109,7 @@ function setDetectPoint(activeShape){
         let ybr = activeShape._positions[frame]['ybr'];
         
         let attrId = null;
-        let attrId_detectpoint = null;
+        let attrId_detectpoint = null;'1,2  ,3,4'['','',3,4]
         let xdl, ydl, xdr, ydr;
 
         let isdontcare = false, withoutcarside = false, middlecarside = false;
@@ -2100,7 +2136,7 @@ function setDetectPoint(activeShape){
                     withoutcarside = true;
                     return;
                 }
-                if(value.includes("bike")) {
+                if(value.includes("bike") || value.includes("動物")) {
                     middlecarside = true;
                 }
             }
@@ -2137,7 +2173,7 @@ function setDetectPoint(activeShape){
                 let out_xl = +parseFloat((x - xtl) / (xbr - xtl)).toFixed(6);
                 let out_xr = +parseFloat((xdr_draw - xtl) / (xbr - xtl)).toFixed(6);
                 
-                activeShape.updateAttribute(frame, attrId_detectpoint, "\"" + out_xl + "," + ydl + " " + out_xr + "," + ydl + "\"");
+                activeShape.updateAttribute(frame, attrId_detectpoint, "\"" + out_xl + "," + ydl + "," + out_xr + "," + ydl + "\"");
 
                 xdl_draw = +parseFloat(xtl + out_xl * (xbr-xtl)).toFixed(6);
                 xdr_draw = +parseFloat(xtl + out_xr * (xbr-xtl)).toFixed(6);
@@ -2171,7 +2207,7 @@ function setDetectPoint(activeShape){
                 let out_xl = +parseFloat((xdl_draw - xtl) / (xbr - xtl)).toFixed(6);
                 let out_xr = +parseFloat((x - xtl) / (xbr - xtl)).toFixed(6);
                 
-                activeShape.updateAttribute(frame, attrId_detectpoint, "\"" + out_xl + "," + ydr + " " + out_xr + "," + ydr + "\"");
+                activeShape.updateAttribute(frame, attrId_detectpoint, "\"" + out_xl + "," + ydr + "," + out_xr + "," + ydr + "\"");
 
                 xdl_draw = +parseFloat(xtl + out_xl * (xbr-xtl)).toFixed(6);
                 xdr_draw = +parseFloat(xtl + out_xr * (xbr-xtl)).toFixed(6);

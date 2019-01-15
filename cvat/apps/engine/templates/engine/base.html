@@ -15,6 +15,10 @@
             {% endblock %}
         </title>
 
+        <link rel="stylesheet" type="text/css" href="../../static/engine/jquery-confirm.min.css">
+        <link rel="stylesheet" type="text/css" href="../../static/engine/bootstrap.min.css">
+        <link rel="stylesheet" type="text/css" href="../../static/engine/bootstrap-select.min.css">
+
         {% compress css %}
             {% block head_css %}
                 <link rel="stylesheet" type="text/css" href="{% static 'engine/base.css' %}">
@@ -34,8 +38,9 @@
             {% endblock %}
         {% endcompress %}
 
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-confirm/3.3.1/jquery-confirm.min.css">
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-confirm/3.3.1/jquery-confirm.min.js"></script>
+        <script type="text/javascript" src="../../static/engine/js/3rdparty/jquery-confirm.min.js"></script>
+        <script type="text/javascript" src="../../static/engine/js/3rdparty/bootstrap.bundle.min.js"></script>
+        <script type="text/javascript" src="../../static/engine/js/3rdparty/bootstrap-select.min.js"></script>
 
         {% compress js file cvat %}
             {% block head_js_cvat %}

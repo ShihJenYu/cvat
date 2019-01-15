@@ -61,7 +61,7 @@
     overflow: hidden;
 }
 
-#dashboardSearchInput, #dashboardSearchInput_nickname, #dashboardSearchInput_createdate {
+#dashboardSearchInput, #dashboardSearchInput_packagename, #dashboardSearchInput_nickname, #dashboardSearchInput_createdate {
     padding: 10px;
     border: 1px solid grey;
     float: left;

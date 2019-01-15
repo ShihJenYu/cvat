@@ -112,7 +112,7 @@ class ShapeGrouperModel extends Listener {
 
             let frame = window.cvat.player.frames.current;
             this._shapeCollection._groupMap[frame] = this._shapeCollection._groupMap[frame] || {};
-            if (PROJECT=='fcw_testing') {
+            if (PROJECT=='apacorner') {
                 //清除map中有關的group
                 for (let i = 0; i < needDelgroupingID.length; i++) {
                     if(!(this._shapeCollection._groupMap[activeShape.frame][needDelgroupingID[i]] === undefined)) {
@@ -167,7 +167,7 @@ class ShapeGrouperModel extends Listener {
             
         if (withAlt) {
             //設定預設值
-            if (PROJECT=='fcw_testing') {
+            if (PROJECT=='apacorner') {
                 if (this._shapeCollection._groupMap[frame].hasOwnProperty(groupId)) {
                     //group [] >=2 will error
                     if (this._shapeCollection._groupMap[frame][groupId].length >= 2) {
@@ -215,7 +215,7 @@ class ShapeGrouperModel extends Listener {
             let groupingOrder = this._shapeCollection._activeShape._groupingOrder;
             let groupMap = this._shapeCollection._groupMap[frame];
             
-            if (PROJECT=='fcw_testing') {
+            if (PROJECT=='apacorner') {
                 if(groupMap.hasOwnProperty(groupId))
                 {
                     //group [] >=2 will error
@@ -328,16 +328,19 @@ class ShapeGrouperController {
             let shortkeys = window.cvat.config.shortkeys;
 
             let switchGrouperHandler = Logger.shortkeyLogDecorator(function() {
+                if(document.activeElement.tagName=='INPUT'){return;}
                 this.switch();
             }.bind(this));
 
             let cancelGrouperHandler = Logger.shortkeyLogDecorator(function() {
+                if(document.activeElement.tagName=='INPUT'){return;}
                 if (this._model.active) {
                     this._model.cancel();
                 }
             }.bind(this));
 
             let resetGroupHandler = Logger.shortkeyLogDecorator(function() {
+                if(document.activeElement.tagName=='INPUT'){return;}
                 if (this._model.active) {
                     this._model.reset();
                     this._model.cancel();
@@ -351,6 +354,7 @@ class ShapeGrouperController {
 
             // add by jeff
             let nextshapeGrouperHandler = Logger.shortkeyLogDecorator(function(e) {
+                if(document.activeElement.tagName=='INPUT'){return;}
                 e.preventDefault();
                 console.log(1,'keycode',e.keyCode);
                 console.log(1,'withalt',e.altKey);
@@ -370,6 +374,7 @@ class ShapeGrouperController {
             }.bind(this));
 
             let currentshapeGrouperHandler = Logger.shortkeyLogDecorator(function(e) {
+                if(document.activeElement.tagName=='INPUT'){return;}
                 // this.switch();
                 e.preventDefault();
                 console.log(1,'keycode',e.keyCode);
@@ -390,11 +395,13 @@ class ShapeGrouperController {
             }.bind(this));
 
             let cancelNextShapeGrouperHandler = Logger.shortkeyLogDecorator(function(e) {
+                if(document.activeElement.tagName=='INPUT'){return;}
                 e.preventDefault();
                 this.clearGrouping(true);
             }.bind(this));
 
             let cancelCurrentShapeGrouperHandler = Logger.shortkeyLogDecorator(function(e) {
+                if(document.activeElement.tagName=='INPUT'){return;}
                 e.preventDefault();
                 this.clearGrouping(false);
             }.bind(this));

@@ -293,7 +293,9 @@ class PlayerModel extends Listener {
         // Modify by ericlou.
         //console.log(delta);
         if(LOCKALL)return;
-
+        if(window.cvat.frameInfo[window.cvat.player.frames.current] !== undefined){
+            console.log('full_name',window.cvat.frameInfo[window.cvat.player.frames.current].full_name);
+        }
         if (['resize', 'drag'].indexOf(window.cvat.mode) != -1) {
             return false;
         }
@@ -441,16 +443,19 @@ class PlayerController {
 
         function setupPlayerShortcuts(playerModel) {
             let nextHandler = Logger.shortkeyLogDecorator(function(e) {
+                if(document.activeElement.tagName=='INPUT'){return;}
                 this.next();
                 e.preventDefault();
             }.bind(this));
 
             let prevHandler = Logger.shortkeyLogDecorator(function(e) {
+                if(document.activeElement.tagName=='INPUT'){return;}
                 this.previous();
                 e.preventDefault();
             }.bind(this));
 
             let nextKeyFrameHandler = Logger.shortkeyLogDecorator(function() {
+                if(document.activeElement.tagName=='INPUT'){return;}
                 let active = activeTrack();
                 if (active && active.type.split('_')[0] === 'interpolation') {
                     let nextKeyFrame = active.nextKeyFrame();
@@ -461,6 +466,7 @@ class PlayerController {
             }.bind(this));
 
             let prevKeyFrameHandler = Logger.shortkeyLogDecorator(function() {
+                if(document.activeElement.tagName=='INPUT'){return;}
                 let active = activeTrack();
                 if (active && active.type.split('_')[0] === 'interpolation') {
                     let prevKeyFrame = active.prevKeyFrame();
@@ -472,6 +478,7 @@ class PlayerController {
 
 
             let nextFilterFrameHandler = Logger.shortkeyLogDecorator(function(e) {
+                if(document.activeElement.tagName=='INPUT'){return;}
                 if(isAdminFlag){
                     let frame = this._find(1);
                     if (frame != null) {
@@ -482,6 +489,7 @@ class PlayerController {
             }.bind(this));
 
             let prevFilterFrameHandler = Logger.shortkeyLogDecorator(function(e) {
+                if(document.activeElement.tagName=='INPUT'){return;}
                 if(isAdminFlag){
                     let frame = this._find(-1);
                     if (frame != null) {
@@ -493,14 +501,17 @@ class PlayerController {
 
 
             let forwardHandler = Logger.shortkeyLogDecorator(function() {
+                if(document.activeElement.tagName=='INPUT'){return;}
                 this.forward();
             }.bind(this));
 
             let backwardHandler = Logger.shortkeyLogDecorator(function() {
+                if(document.activeElement.tagName=='INPUT'){return;}
                 this.backward();
             }.bind(this));
 
             let playPauseHandler = Logger.shortkeyLogDecorator(function() {
+                if(document.activeElement.tagName=='INPUT'){return;}
                 if (playerModel.playing) {
                     this.pause();
                 }
@@ -660,6 +671,8 @@ class PlayerController {
     next_random_frame() {
         // console.log("in next_random_frame");
 
+        wasSend = true;
+
         // modify by eric
         var all_dectect_points = window.document.querySelectorAll("*[class^=\"detect\"]");
 
@@ -677,11 +690,13 @@ class PlayerController {
             success: function(respone) {
                 console.log("done save/currentJob", respone);
                 data = respone;
-                wasSend = true;
                 $('#sendButton').prop('disabled',true);
                 $('#sendButton').unbind('click');
             },
-            error: serverError
+            error: function(respone) {
+                wasSend = false;
+                serverError();
+            }
         });
         window.cvat.data.clear();
         $('#frameContent').addClass('hidden');
