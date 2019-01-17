@@ -139,7 +139,7 @@ function initLogger(jobID) {
 }
 
 function buildAnnotationUI(job, shapeData, loadJobEvent) {
-    // data = {'shapeData':annotation.to_client(),'frame':frame,'jid':new_jid,'frameInfo':frameInfo}
+    // data = {'shapeData':annotation.to_client(),'frame':frame,'jid':new_jid,'frameInfo':frameInfo,'videoInfo':videoInfo}
     current_lang = 1;
     $.each(_LANG, function(index, value) {
         $(`#${index}`).text(value[current_lang]);
@@ -149,6 +149,7 @@ function buildAnnotationUI(job, shapeData, loadJobEvent) {
     console.log(job.start,job.stop);
     window.cvat = {
         frameInfo: shapeData.frameInfo,
+        videoInfo: shapeData.videoInfo,
         labelsInfo: new LabelsInfo(job),
         player: {
             geometry: {
@@ -218,68 +219,74 @@ function buildAnnotationUI(job, shapeData, loadJobEvent) {
     if(isAdminFlag){
         window.history.replaceState(null, null, `${window.location.origin}${window.location.pathname}?id=${job.jobid}&setKey=${setKeyFlag}`);
         $('#task_name').text(job.slug);
-        serverRequest(`get/task/${job.jobid}/keyframes`, function(response) {
-            let keyframes = response.frames.sort((a, b) => a - b)
-            console.log("frames",keyframes);
-            $("#select_keyframes").empty();
-            $('#select_keyframes').append($("<option></option>").attr("value","null").text("null"));
-            keyframes.forEach(function(value) {
-                let txt = window.cvat.frameInfo[value].full_name;
-                txt = txt.split('.')[0].slice(-4);
-                $('#select_keyframes').append($("<option></option>").attr("value",value).text(txt));
-            });
-           
-            document.getElementById('select_keyframes').addEventListener('click', onClickHandler);
-            document.getElementById('select_keyframes').addEventListener('mousedown', onMouseDownHandler);
-            document.getElementById('select_keyframes').addEventListener("focusout", onFocusOutHandler);
-            document.getElementById('select_keyframes').addEventListener("change", onChangeHandler);
 
-            function onChangeHandler(e){
-                $('#select_keyframes').trigger('focusout');
-                window.setTimeout(function() {
-                    let value = $('#select_keyframes').prop('value');
-                    let realframe = $('#select_keyframes option:selected').text();
-                    if (value != 'null') {
-                        $('#realFrame').text(+realframe);
-                        $('#frameNumber_show').val(+value+1);
-                        $('#frameNumber_show').trigger('change');
-                    }
-                    else {
-                        $('#select_keyframes').prop('value',$('#frameNumber').prop('value'));
-                    }
-                }, 0);
-                
-                
-            }
-            function onFocusOutHandler(e){
-                var el = e.currentTarget;
-                el.className = '';
-                el.setAttribute('size', '1');
-            }
-            function onMouseDownHandler(e){
-                var el = e.currentTarget;
-                el.focus();
-                
-                if(el.hasAttribute('size') && el.getAttribute('size') == '1'){
-                    e.preventDefault();    
-                }
-            }
-            function onClickHandler(e) {
-                var el = e.currentTarget;
-                el.focus();
+        console.log(window.cvat.videoInfo);
+        let framePackage = window.cvat.videoInfo.framePackage;
+        let packages = Object.keys(window.cvat.videoInfo.framePackage);
+        let allKeyframes = [];
 
-                if (el.getAttribute('size') == '1') {
-                    el.className += " selectOpen";
-                    el.setAttribute('size', '10');
+        $("#select_keyframes").empty();
+        $("#select_package").empty();
+
+        $('#select_package').append($("<option></option>").attr("value",'all').text('all'));
+
+        for(let key in framePackage){
+            console.log('framePackage', key, framePackage[key]);
+            allKeyframes.push(...framePackage[key]);
+            $('#select_package').append($("<option></option>").attr("value",key).text(key));
+        }
+        allKeyframes.sort((a, b) => a - b);
+
+        allKeyframes.forEach(function(value) {
+            let txt = window.cvat.frameInfo[value].full_name;
+            txt = txt.split('.')[0].slice(-4);
+            $('#select_keyframes').append($("<option></option>").attr("value",value).text(txt));
+        });
+
+        $('#select_keyframes').on('change', (e) => {
+            $('#select_keyframes').trigger('focusout');
+            window.setTimeout(function() {
+                let value = $('#select_keyframes').prop('value');
+                let realframe = $('#select_keyframes option:selected').text();
+                if (value != 'null') {
+                    $('#realFrame').text(+realframe);
+                    $('#frameNumber_show').val(+value+1);
+                    $('#frameNumber_show').trigger('change');
                 }
                 else {
-                    el.className = '';
-                    el.setAttribute('size', '1');
+                    $('#select_keyframes').prop('value',$('#frameNumber').prop('value'));
                 }
-            }
-
+            }, 0);
         });
-        
+
+        $('#select_package').on('change', (e) => {
+            console.log(e.target.value);
+
+            $("#select_keyframes").empty();
+            $('#select_keyframes').append($("<option></option>").attr("value","null").text("null"));
+
+            if (e.target.value == 'all') {
+                console.log('window.cvat.videoInfo.framePackage',framePackage);
+                let keyframes = [];
+                for(let key in framePackage){
+                    console.log('framePackage', key, framePackage[key]);
+                    keyframes.push(...framePackage[key]);
+                }
+                keyframes.sort((a, b) => a - b);
+                keyframes.forEach(function(value) {
+                    let txt = window.cvat.frameInfo[value].full_name;
+                    txt = txt.split('.')[0].slice(-4);
+                    $('#select_keyframes').append($("<option></option>").attr("value",value).text(txt));
+                });
+            }
+            else {
+                framePackage[e.target.value].forEach(function(value) {
+                    let txt = window.cvat.frameInfo[value].full_name;
+                    txt = txt.split('.')[0].slice(-4);
+                    $('#select_keyframes').append($("<option></option>").attr("value",value).text(txt));
+                });
+            }
+        });
     }
     else{
         window.history.replaceState(null, null, `${window.location.origin}${window.location.pathname}`);
@@ -477,11 +484,15 @@ function buildAnnotationUI(job, shapeData, loadJobEvent) {
     });
 
     $("#group_status").mouseenter(function() {
+        let frame = window.cvat.player.frames.current;
+        if (shapeCollectionModel._groupMap[frame] == undefined){
+            return;
+        }
+
         let str = '';
         let groupInfo = []; //1-10
         let nogrouplist = [];
         let shapes = shapeCollectionModel._currentShapes;
-        let frame = window.cvat.player.frames.current;
         let groupIDS = Object.keys(shapeCollectionModel._groupMap[frame]);
         let groupInfoSize = parseInt(groupIDS[groupIDS.length-1]);
         while(groupInfoSize--){
@@ -901,7 +912,7 @@ function setupMenu(job, shapeCollectionModel, annotationParser, aamModel, player
             else {
                 console.log("frame",saveFrame,"to save");
                 if(['fcw_testing','apacorner'].includes(PROJECT)){
-                    if(window.cvat.frameInfo['videoInfo'].video_submit) {
+                    if(window.cvat.videoInfo.video_submit) {
                         saveAnnotation(shapeCollectionModel, job);
                     }
                 }

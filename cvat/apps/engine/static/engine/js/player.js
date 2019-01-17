@@ -896,11 +896,8 @@ class PlayerView {
                 $('#realFrame').text(+$(`#select_keyframes option[value=${frame}]`).text());
             else
                 $('#realFrame').text(e.target.value);
-            //this._controller.seek(parseInt(+frame));
+
             blurAllElements();
-            console.log("asdasdasddasdsad");
-            console.log( $("#frameNumber").prop("value"));
-            console.log("dsadsadsadsa");
         });
 
         // add by jeff
@@ -916,8 +913,6 @@ class PlayerView {
             if(flag) {
                 serverRequest(`set/task/${playerModel.tid}/frame/${playerModel.frames.current}/isKeyFrame/${+flag}`, function(response){
                     console.log(response);
-                    let keyframes = response.frames.sort((a, b) => a - b)
-                    console.log("frames",keyframes);
                     let frame = playerModel.frames.current;
                     window.cvat.frameInfo[frame] = {'user':'',
                                                     'current':false,
@@ -928,7 +923,13 @@ class PlayerView {
                                                     'defaultCategory':'',
                                                     'extraCategory':'',
                                                     'full_name':response.full_name};
-                    console.log(window.cvat.frameInfo);
+                    if(window.cvat.videoInfo.framePackage['default'] == undefined){
+                        window.cvat.videoInfo.framePackage['default'] = [];
+                        $('#select_package').append($("<option></option>").attr("value","default").text("default"));
+                    }
+                    window.cvat.videoInfo.framePackage['default'].push(frame);
+                    let keyframes = window.cvat.videoInfo.framePackage['default'].sort((a, b) => a - b)
+
                     $("#select_keyframes").empty();
                     $('#select_keyframes').append($("<option></option>").attr("value","null").text("null"));
                     keyframes.forEach(function(value) {
@@ -937,6 +938,7 @@ class PlayerView {
                         $('#select_keyframes').append($("<option></option>").attr("value",value).text(txt));
                     });
                     $("#select_keyframes").prop("value",playerModel.frames.current);
+                    $("#select_package").prop("value","default");
                     let txt = response.full_name.split('.')[0].slice(-4);
                     $('#realFrame').text(+txt);
                     
@@ -946,7 +948,6 @@ class PlayerView {
             }
             else {
                 serverRequest(`get/task/${playerModel.tid}/frame/${playerModel.frames.current}/keyframeStage`, function(response) {
-                    // console.log("in get keyframe stage",response);
                     if(response.current||response.need_modify||response.annotator!='')
                     {
                         $('#isKeyFrame').prop('checked',true);
@@ -963,11 +964,22 @@ class PlayerView {
                     {
                         serverRequest(`set/task/${playerModel.tid}/frame/${playerModel.frames.current}/isKeyFrame/${+flag}`, function(response) {
                             console.log(response);
-                            let keyframes = response.frames.sort((a, b) => a - b)
-                            console.log("frames",keyframes);
                             let frame = playerModel.frames.current;
                             delete window.cvat.frameInfo[frame];
                             console.log(window.cvat.frameInfo);
+                            let pack = null;
+                            let index = -1;
+                            for(let key in window.cvat.videoInfo.framePackage){
+                                index = window.cvat.videoInfo.framePackage[key].indexOf(frame);
+                                if(index!=-1) {
+                                    pack = key;
+                                    break;
+                                }
+                            }
+                            if(index==-1){console.log("not found need delete keyframe");return;}
+                            window.cvat.videoInfo.framePackage[pack].splice(index,1);
+                            let keyframes = window.cvat.videoInfo.framePackage[pack];
+
                             $("#select_keyframes").empty();
                             $('#select_keyframes').append($("<option></option>").attr("value","null").text("null"));
                             keyframes.forEach(function(value) {
@@ -975,16 +987,16 @@ class PlayerView {
                                 txt = txt.split('.')[0].slice(-4);
                                 $('#select_keyframes').append($("<option></option>").attr("value",value).text(txt));
                             });
-                            $('#realFrame').text(playerModel.frames.current+1);
                             $("#select_keyframes").prop("value","null");
-
+                            $("#select_package").prop("value","default");
+                            $('#realFrame').text(playerModel.frames.current+1);
+                            
                             $('#isComplete').prop('disabled',false);
                             $('#isComplete_text').prop('disabled',false);
                             $('#isRedo').prop('disabled',false);
                             $('#isRedo_text').prop('disabled',false);
                             $('#redoComment').prop('disabled',false);
                             $('#saveRedoComment').prop('disabled',false);
-
                             $('#isKeyFrame').prop('disabled',false);
                         });
                     }
@@ -1122,15 +1134,6 @@ class PlayerView {
                     }
                 }
             });
-            // if($('#nextButtonFlag').is(':checked')) {
-            //     $('#nextButtonFlag').prop('checked',false);
-            //     $('#nextButton_training')[0].setAttribute("class","playerButton_training disabledPlayerButton");
-            //     this._controller.next_random_frame();
-            //     trainigsaveFlag = false;
-            // } else {
-            //     assert("you can't do it before checkbox uncheck");
-            // }
-            
         });
 
         let shortkeys = window.cvat.config.shortkeys;
@@ -1326,6 +1329,20 @@ class PlayerView {
         let isKeyFrame = window.cvat.frameInfo.hasOwnProperty(frames.current);
         $('#isKeyFrame').prop('checked',isKeyFrame);
         if(isKeyFrame) {
+            let pack = null;
+            let index = -1;
+            for(let key in window.cvat.videoInfo.framePackage){
+                index = window.cvat.videoInfo.framePackage[key].indexOf(frames.current);
+                if(index!=-1) {
+                    pack = key;
+                    break;
+                }
+            }
+            let current_pack = $('#select_package').val();
+            if(current_pack!='all' && current_pack!=pack) {
+                $('#select_package').prop("value", (pack));
+                $('#select_package').trigger('change');
+            }
             $('#select_keyframes').prop("value", (frames.current));
             let txt = window.cvat.frameInfo[frames.current].full_name;
             txt = txt.split('.')[0].slice(-4);
@@ -1346,17 +1363,12 @@ class PlayerView {
                     let comment_str = comment_list.slice(1).join();
                     $('#redoComment_readonly').text(comment_str);
                     $('#commentImgButton').removeClass('hidden');
-                    // let comment_str = comment_list.slice(1).join();
-                    // console.log(' commentImgButton remove hidden');
-
                 }
-                
-                
-                
             }
         }
         else {
             $("#realFrame").text((frames.current+1))
+            $('#select_package').prop("value", "default");
             $('#select_keyframes').prop("value", "null");
             $('#isKeyFrame').prop('disabled',false);
             $('#isComplete').prop('disabled',true);

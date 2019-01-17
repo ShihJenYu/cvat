@@ -324,7 +324,7 @@ class ShapeCollectionModel extends Listener {
             if(index <= 1) index = max+1;
             $('#select_keyframes option').eq(index-1).prop('selected', true);
         }
-        return $('#select_keyframes').prop('value')-1;
+        return $('#select_keyframes').prop('value');
     }
 
     zOrder(frame) {
