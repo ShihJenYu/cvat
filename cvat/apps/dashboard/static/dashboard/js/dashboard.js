@@ -128,6 +128,7 @@ function setupTaskCreator() {
     let seletcAllTask = $('#seletcAllTask');
     let cancelAllTask = $('#cancelAllTask');
     let setVideoPriority = $('#setVideoPriority');
+    let setVideoPriority_OUT = $('#setVideoPriority_OUT');
 
     let name = nameInput.prop('value');
     let packagename = packageInput.prop('value');
@@ -196,10 +197,26 @@ function setupTaskCreator() {
         var IDs = $(".selectTask[id]")         // find spans with ID attribute
                     .map(function() { if($(this).prop("checked")) return this.id.split('_')[1]; }) // convert to set of IDs
                     .get(); // convert to instance of Array (optional)
-        setPriorityRequest(IDs, priority, function(response) {
+        setPriorityRequest(IDs, true, priority, function(response) {
             $('#setVideoPriority').prop('disabled',false);
             IDs.forEach(element => {
                 $(`#detailPriority_${element}`).html(parseInt(priority));
+            });
+        });
+    });
+
+    setVideoPriority_OUT.on('click', function() {
+        let priority = $('#priority_out').val();
+        if (priority == '' || priority < 0) priority = 0;
+        if (priority > 50) priority = 50;
+        
+        var IDs = $(".selectTask[id]")         // find spans with ID attribute
+                    .map(function() { if($(this).prop("checked")) return this.id.split('_')[1]; }) // convert to set of IDs
+                    .get(); // convert to instance of Array (optional)
+        setPriorityRequest(IDs, false, priority, function(response) {
+            $('#setVideoPriority').prop('disabled',false);
+            IDs.forEach(element => {
+                $(`#detailPriorityOUT_${element}`).html(parseInt(priority));
             });
         });
     });
@@ -354,8 +371,7 @@ function setupTaskCreator() {
 
         let taskData = new FormData();
         taskData.append('task_name', name);
-        // taskData.append('task_packagename', packagename);
-        taskData.append('task_packagename', '');
+        taskData.append('task_packagename', packagename);
         taskData.append('project', window.location.pathname.split('/')[2]);
         taskData.append('bug_tracker_link', bugTrackerLink);
         taskData.append('labels', labels);
@@ -554,10 +570,11 @@ function setupSearch() {
 
 /* Server requests */
 
-function setPriorityRequest(selectTasks, priority, successCallback)
+function setPriorityRequest(selectTasks, inCompany , priority, successCallback)
 {
     let priorityData = new FormData();
     priorityData.append('selectTasks', selectTasks);
+    priorityData.append('inCompany', inCompany);
     priorityData.append('priority', priority);
     priorityData.append('project', window.location.pathname.split('/')[2]);
     $.ajax({

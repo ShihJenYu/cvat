@@ -10,6 +10,7 @@ from django.conf import settings
 from django.contrib.auth.decorators import permission_required
 from cvat.apps.authentication.decorators import login_required
 
+from cvat.apps.engine import models, task
 from cvat.apps.engine.models import Task as TaskModel
 from cvat.apps.engine.models import FCWTrain as FCWTrainModel
 from cvat.apps.engine.models import FCWTest as FCWTestModel
@@ -76,6 +77,12 @@ def MainTaskInfo(task, dst_dict):
     dst_dict["id"] = task.id
     dst_dict["segments"] = []
 
+def get_realframe(tid, frame):
+    path = os.path.realpath(task.get_frame_path(tid, frame))
+    realname = os.path.basename(path)
+    realframe = os.path.splitext(realname)[0][-4:]
+    return realframe
+
 def DetailTaskInfo(request, task, dst_dict):
     scheme = request.scheme
     host = request.get_host()
@@ -109,12 +116,40 @@ def DetailTaskInfo(request, task, dst_dict):
     dst_dict['labels'] = attributes
 
     db_Project = None
+    db_keyFrame = None
     if project == 'fcw_training':
         db_Project = FCWTrainModel.objects.get(task_id=task.id)
+        db_keyFrame = models.TaskFrameUserRecord.objects.filter(task_id=task.id)
     elif project == 'fcw_testing':
         db_Project = FCWTestModel.objects.get(task_id=task.id)
+        db_keyFrame = models.FCWTest_FrameUserRecord.objects.filter(task_id=task.id)
     elif project == 'apacorner':
         db_Project = APACornerModel.objects.get(task_id=task.id)
+        db_keyFrame = models.APACorner_FrameUserRecord.objects.filter(task_id=task.id)
+    
+    packagenames = task.packagename
+    print('packagenames',packagenames)
+    packagenames = list(filter(None, packagenames.split(',')))
+    if not 'default' in packagenames:
+        packagenames.append('default')
+
+    print('packagenames',packagenames)
+    packstage = []
+    for packagename in packagenames:
+        pack_keyFrame = db_keyFrame.filter(packagename=packagename)
+        keyframe_count = pack_keyFrame.count()
+        checked_count = pack_keyFrame.filter(checked=True).count()
+        need_modify_count = pack_keyFrame.filter(need_modify=True).count()
+        unchecked_frames = list(pack_keyFrame.filter(user_submit=True).values_list('frame', flat=True))
+        unchecked_count = len(unchecked_frames)
+        unchecked_realframes = [ get_realframe(task.id, frame) for frame in unchecked_frames ]
+        packstage.append({'packagename': packagename,
+                        'keyframe_count': keyframe_count,
+                        'unchecked_count':unchecked_count,
+                        'checked_count': checked_count,
+                        'need_modify_count': need_modify_count,
+                        'undo_count': keyframe_count - unchecked_count - checked_count - need_modify_count,
+                        'unchecked_realframes': unchecked_realframes})
 
     dst_dict['videostage'] = {
         'keyframe_count': db_Project.keyframe_count,
@@ -122,7 +157,9 @@ def DetailTaskInfo(request, task, dst_dict):
         'unchecked_count': db_Project.unchecked_count,
         'checked_count': db_Project.checked_count,
         'need_modify_count': db_Project.need_modify_count,
+        'packstage': packstage,
         'priority': db_Project.priority,
+        'priority_out': db_Project.priority_out,
     }
 
 

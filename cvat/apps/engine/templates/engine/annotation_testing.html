@@ -136,8 +136,10 @@
             </select>
             <button class="regular h1 hidden" id="redoButton" disabled> &#10227; </button>
             <div style="float: right;">
-                <label class="regular h1"> Frame </label>
-                <input class="regular h2" style="width: 3.5em;" type="number" id="frameNumber">
+                <label class="regular h1"> Frame : </label>
+                <label class="regular h1" id="realFrame"> none </label>
+                <input class="regular h2" style="width: 3.5em;" type="number" id="frameNumber_show", value="1">
+                <input class="regular h2" style="display: none; width: 3.5em;" type="number" id="frameNumber">
             </div>
             <hr>
             <table class="regular" cellpadding="20">

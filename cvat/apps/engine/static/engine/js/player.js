@@ -828,7 +828,16 @@ class PlayerView {
             if (Number.isInteger(+e.target.value)) {
                 this._controller.seek(+e.target.value);
                 blurAllElements();
-                $("#frameNumber_show").prop("value", parseInt($("#frameNumber").prop("value"))+1);
+                let txt = '';
+                if (window.cvat.frameInfo[+$("#frameNumber").prop("value")] != undefined){
+                    txt = window.cvat.frameInfo[+$("#frameNumber").prop("value")].full_name;
+                    txt = txt.split('.')[0].slice(-4);
+                }
+                else {
+                    txt = +e.target.value+1;
+                }
+                $('#realFrame').text(+txt);
+                $("#frameNumber_show").prop("value", +e.target.value+1);
                 console.log( $("#frameNumber_show").prop("value"));
             }
         });
@@ -870,12 +879,27 @@ class PlayerView {
         });
 
         $("#frameNumber_show").on('change', (e) => {
-            $("#frameNumber").prop("value", +e.target.value - 1);
+            let frame = +e.target.value - 1;
+            $("#frameNumber").prop("value", frame);
             this._controller.seek(parseInt($("#frameNumber").prop("value")));
+
+            let index = -1;
+            for(let key of Object.keys(window.cvat.frameInfo)){
+                if(window.cvat.frameInfo[key].full_name != undefined){
+                    if (window.cvat.frameInfo[key].full_name.split('.')[0].slice(-4) ===  $(`#select_keyframes option[value=${frame}]`).text()){
+                        index = key; break;
+                    }
+                }
+            }
+
+            if(index!=-1)
+                $('#realFrame').text(+$(`#select_keyframes option[value=${frame}]`).text());
+            else
+                $('#realFrame').text(e.target.value);
+            //this._controller.seek(parseInt(+frame));
             blurAllElements();
             console.log("asdasdasddasdsad");
             console.log( $("#frameNumber").prop("value"));
-            //$('#select_keyframes').trigger('focusout');
             console.log("dsadsadsadsa");
         });
 
@@ -894,12 +918,6 @@ class PlayerView {
                     console.log(response);
                     let keyframes = response.frames.sort((a, b) => a - b)
                     console.log("frames",keyframes);
-                    $("#select_keyframes").empty();
-                    $('#select_keyframes').append($("<option></option>").attr("value","null").text("null"));
-                    keyframes.forEach(function(value) {
-                        $('#select_keyframes').append($("<option></option>").attr("value",value+1).text(value+1));
-                    });
-                    $("#select_keyframes").prop("value",playerModel.frames.current+1);
                     let frame = playerModel.frames.current;
                     window.cvat.frameInfo[frame] = {'user':'',
                                                     'current':false,
@@ -908,8 +926,20 @@ class PlayerView {
                                                     'checked':false,
                                                     'comment':'',
                                                     'defaultCategory':'',
-                                                    'extraCategory':''};
+                                                    'extraCategory':'',
+                                                    'full_name':response.full_name};
                     console.log(window.cvat.frameInfo);
+                    $("#select_keyframes").empty();
+                    $('#select_keyframes').append($("<option></option>").attr("value","null").text("null"));
+                    keyframes.forEach(function(value) {
+                        let txt = window.cvat.frameInfo[value].full_name;
+                        txt = txt.split('.')[0].slice(-4);
+                        $('#select_keyframes').append($("<option></option>").attr("value",value).text(txt));
+                    });
+                    $("#select_keyframes").prop("value",playerModel.frames.current);
+                    let txt = response.full_name.split('.')[0].slice(-4);
+                    $('#realFrame').text(+txt);
+                    
                     resetStatusColumn(playerModel.tid, frame);
                     $('#isKeyFrame').prop('disabled',false);
                 });
@@ -935,16 +965,18 @@ class PlayerView {
                             console.log(response);
                             let keyframes = response.frames.sort((a, b) => a - b)
                             console.log("frames",keyframes);
-                            $("#select_keyframes").empty();
-                            $('#select_keyframes').append($("<option></option>").attr("value","null").text("null"));
-                            keyframes.forEach(function(value) {
-                                $('#select_keyframes').append($("<option></option>").attr("value",value+1).text(value+1));
-                            });
-                            $("#select_keyframes").prop("value","null");
-
                             let frame = playerModel.frames.current;
                             delete window.cvat.frameInfo[frame];
                             console.log(window.cvat.frameInfo);
+                            $("#select_keyframes").empty();
+                            $('#select_keyframes').append($("<option></option>").attr("value","null").text("null"));
+                            keyframes.forEach(function(value) {
+                                let txt = window.cvat.frameInfo[value].full_name;
+                                txt = txt.split('.')[0].slice(-4);
+                                $('#select_keyframes').append($("<option></option>").attr("value",value).text(txt));
+                            });
+                            $('#realFrame').text(playerModel.frames.current+1);
+                            $("#select_keyframes").prop("value","null");
 
                             $('#isComplete').prop('disabled',false);
                             $('#isComplete_text').prop('disabled',false);
@@ -1288,20 +1320,43 @@ class PlayerView {
         // Modify by jeff/ericlou.
         this._playerGridPath.attr('stroke-width', 2 / geometry.scale);
         this._frameNumber.prop('value', frames.current);
+        
         $("#frameNumber_show").prop("value", (frames.current+1));
 
         let isKeyFrame = window.cvat.frameInfo.hasOwnProperty(frames.current);
         $('#isKeyFrame').prop('checked',isKeyFrame);
         if(isKeyFrame) {
-            $('#select_keyframes').prop("value", (frames.current+1));
+            $('#select_keyframes').prop("value", (frames.current));
+            let txt = window.cvat.frameInfo[frames.current].full_name;
+            txt = txt.split('.')[0].slice(-4);
+            $("#realFrame").text(+txt)
             if(isAdminFlag) {
                 resetStatusColumn(model.tid, frames.current);
             }
             else {
-                $('#redoComment_readonly').text(window.cvat.frameInfo[frames.current].comment);
+                let comment_list = window.cvat.frameInfo[frames.current].comment.split(',');
+                let comment_href = comment_list[0];
+                if(!comment_href.includes('file:')){
+                    $('#redoComment_readonly').text(window.cvat.frameInfo[frames.current].comment);
+
+                    $('#commentImgButton').addClass('hidden');
+                    console.log(' commentImgButton add hidden');
+                }
+                else {
+                    let comment_str = comment_list.slice(1).join();
+                    $('#redoComment_readonly').text(comment_str);
+                    $('#commentImgButton').removeClass('hidden');
+                    // let comment_str = comment_list.slice(1).join();
+                    // console.log(' commentImgButton remove hidden');
+
+                }
+                
+                
+                
             }
         }
         else {
+            $("#realFrame").text((frames.current+1))
             $('#select_keyframes').prop("value", "null");
             $('#isKeyFrame').prop('disabled',false);
             $('#isComplete').prop('disabled',true);

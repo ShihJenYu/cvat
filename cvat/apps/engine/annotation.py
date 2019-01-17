@@ -126,13 +126,23 @@ def get(jid,project=None,requestUser=None,frame=None):
                     records = models.APACorner_FrameUserRecord.objects.select_for_update().filter(task_id=new_jid).order_by('frame')
 
                 for record in records:
+                    full_name = None
+                    qs = models.FrameName.objects.filter(task_id=new_jid,frame=record.frame)
+                    qs_count = qs.count()
+                    if qs_count <= 0:
+                        print ('full_name is not found !!!')
+                    elif qs_count == 1:
+                        full_name = qs[0].name
+                    else:
+                        print ('full_name is Find a lot of ...')
                     frameInfo[record.frame] = {'current':record.current,
                                                 'user_submit':record.user_submit,
                                                 'need_modify':record.need_modify,
                                                 'checked':record.checked,
                                                 'comment':record.comment,
                                                 'defaultCategory':record.defaultCategory,
-                                                'extraCategory':record.extraCategory}
+                                                'extraCategory':record.extraCategory,
+                                                'full_name': full_name}
                 print ("user: {}, in job: {}".format(requestUser.username,new_jid))
             except ObjectDoesNotExist:
                 user_record = None
@@ -146,7 +156,11 @@ def get(jid,project=None,requestUser=None,frame=None):
             #raise Exception('user_record is None')
         print('u are get anntation with training on frame:',frame,'!')
         annotation.init_from_db(frame=frame)
-        
+    
+        print("frame info",frameInfo)
+
+        return {'shapeData':annotation.to_client(),'frame':frame,'jid':new_jid,'frameInfo':frameInfo}
+
     elif requestUser.groups.filter(name='admin').exists():
         if frame:
             annotation.init_from_db(frame=frame)
@@ -178,6 +192,7 @@ def get(jid,project=None,requestUser=None,frame=None):
         print('records is',records)
         print('records len is',len(records))
         frameInfo = {}
+        framePackage = {}
         for record in records:
             full_name = None
             qs = models.FrameName.objects.filter(task_id=new_jid,frame=record.frame)
@@ -197,15 +212,21 @@ def get(jid,project=None,requestUser=None,frame=None):
                                         'defaultCategory':record.defaultCategory,
                                         'extraCategory':record.extraCategory,
                                         'full_name': full_name}
+            if not record.packagename in framePackage.keys():
+                framePackage[record.packagename] = []
+            framePackage[record.packagename].append(record.frame)
 
-        frameInfo['videoInfo'] = { 'video_current':video_current,
-                                   'video_submit':video_submit,
-                                   'video_needModify':video_needModify
-                                 }
+        videoInfo = { 'video_current':video_current,
+                    'video_submit':video_submit,
+                    'video_needModify':video_needModify,
+                    'framePackage':framePackage
+                    }
 
-    print("frame info",frameInfo)
+        
 
-    return {'shapeData':annotation.to_client(),'frame':frame,'jid':new_jid,'frameInfo':frameInfo}
+        print("frame info",frameInfo)
+
+        return {'shapeData':annotation.to_client(),'frame':frame,'jid':new_jid,'frameInfo':frameInfo, 'videoInfo':videoInfo}
 
 @transaction.atomic
 def save_job(jid, data, oneFrameFlag=False,frame=None):

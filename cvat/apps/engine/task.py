@@ -587,7 +587,7 @@ def _save_task_to_db(db_task, task_params):
     db_task.z_order = task_params['z_order']
     db_task.flipped = task_params['flip']
     db_task.packagename = task_params['packagename']
-
+    print('db_task.packagename ',db_task.packagename )
     # modify by eric, frame number start from 1.
     segment_step = task_params['segment'] - db_task.overlap
     for x in range(0, db_task.size, segment_step):
@@ -637,6 +637,7 @@ def _save_task_to_db(db_task, task_params):
     db_Project.checked_count = 0
     db_Project.need_modify_count = 0
     db_Project.priority = 0
+    db_Project.priority_out = 0
     db_Project.save()
 
 

@@ -150,6 +150,7 @@ def update_keyframe(request):
                 db_fcwTrain = models.FCWTrain.objects.select_for_update().get(task_id=tid)
                 db_fcwTrain.keyframe_count += 1
                 db_fcwTrain.priority = 0
+                db_fcwTrain.priority_out = 0
                 db_fcwTrain.save()
 
                 path = os.path.realpath(task.get_frame_path(tid, nFrameNumber))
@@ -680,6 +681,7 @@ def set_frame_isKeyFrame(request, tid, frame, flag):
 
         if project == 'fcw_training':
             print('project is',project)
+            keyframe_full_name = ''
             db_fcwTrain = models.FCWTrain.objects.select_for_update().get(task_id=tid)
             if flag:
                 db_task = models.Task.objects.select_for_update().get(pk=tid)
@@ -691,11 +693,13 @@ def set_frame_isKeyFrame(request, tid, frame, flag):
                 
                 db_fcwTrain.keyframe_count += 1
                 db_fcwTrain.priority = 0
+                db_fcwTrain.priority_out = 0
                 db_fcwTrain.save()
 
                 path = os.path.realpath(task.get_frame_path(tid, frame))
                 print('realpath is ', path)
                 realname = os.path.basename(path)
+                keyframe_full_name = realname
                 db_FrameName = models.FrameName()
                 db_FrameName.task = db_task
                 db_FrameName.frame = frame
@@ -722,7 +726,7 @@ def set_frame_isKeyFrame(request, tid, frame, flag):
             qs = models.TaskFrameUserRecord.objects.select_for_update().filter(task_id=tid)
             frames = qs.values_list('frame', flat=True)
             print(list(frames))
-            return JsonResponse({'frames': list(frames)}, safe=False)
+            return JsonResponse({'frames': list(frames), 'full_name': keyframe_full_name}, safe=False)
 
         elif project in ['fcw_testing', 'apacorner']:
             print('project is',project)
@@ -927,26 +931,41 @@ def set_tasks_priority(request):
         db_task = None
         params = request.POST.dict()
         priority = params['priority']
-
+        inCompany = params['inCompany']
         project = params['project']
         print('project', project)
+
+        inCompany = True if inCompany == 'true' else False
+
+        print('inCompany',inCompany,'priority',priority)
 
         if(params['selectTasks'] != ''):
             tasks = params['selectTasks'].split(',')
             if project == 'fcw_training':
                 for tid in tasks:
                     db_Project = models.FCWTrain.objects.select_for_update().get(task_id=int(tid))
-                    db_Project.priority = priority
+                    if inCompany:
+                        print('db_Project.priority = priority')
+                        db_Project.priority = priority
+                    else:
+                        print('db_Project.priority_out = priority')
+                        db_Project.priority_out = priority
                     db_Project.save()
             elif project == 'fcw_testing':
                 for tid in tasks:
                     db_Project = models.FCWTest.objects.select_for_update().get(task_id=int(tid))
-                    db_Project.priority = priority
+                    if inCompany:
+                        db_Project.priority = priority
+                    else:
+                        db_Project.priority_out = priority
                     db_Project.save()
             elif project == 'apacorner':
                 for tid in tasks:
                     db_Project = models.APACorner.objects.select_for_update().get(task_id=int(tid))
-                    db_Project.priority = priority
+                    if inCompany:
+                        db_Project.priority = priority
+                    else:
+                        db_Project.priority_out = priority
                     db_Project.save()
 
     except Exception as e:

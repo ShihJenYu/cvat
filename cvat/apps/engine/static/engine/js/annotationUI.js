@@ -224,7 +224,9 @@ function buildAnnotationUI(job, shapeData, loadJobEvent) {
             $("#select_keyframes").empty();
             $('#select_keyframes').append($("<option></option>").attr("value","null").text("null"));
             keyframes.forEach(function(value) {
-                $('#select_keyframes').append($("<option></option>").attr("value",value+1).text(value+1));
+                let txt = window.cvat.frameInfo[value].full_name;
+                txt = txt.split('.')[0].slice(-4);
+                $('#select_keyframes').append($("<option></option>").attr("value",value).text(txt));
             });
            
             document.getElementById('select_keyframes').addEventListener('click', onClickHandler);
@@ -233,17 +235,17 @@ function buildAnnotationUI(job, shapeData, loadJobEvent) {
             document.getElementById('select_keyframes').addEventListener("change", onChangeHandler);
 
             function onChangeHandler(e){
-                var el = e.currentTarget;
-                
                 $('#select_keyframes').trigger('focusout');
                 window.setTimeout(function() {
-                    var value = $('#select_keyframes').prop('value');
+                    let value = $('#select_keyframes').prop('value');
+                    let realframe = $('#select_keyframes option:selected').text();
                     if (value != 'null') {
-                        $('#frameNumber_show').val(value);
+                        $('#realFrame').text(+realframe);
+                        $('#frameNumber_show').val(+value+1);
                         $('#frameNumber_show').trigger('change');
                     }
                     else {
-                        $('#select_keyframes').prop('value',$('#frameNumber_show').prop('value'));
+                        $('#select_keyframes').prop('value',$('#frameNumber').prop('value'));
                     }
                 }, 0);
                 
@@ -283,12 +285,46 @@ function buildAnnotationUI(job, shapeData, loadJobEvent) {
         window.history.replaceState(null, null, `${window.location.origin}${window.location.pathname}`);
         if(PROJECT=='fcw_training') {
             let full_name = shapeData.frameInfo[shapeData.frame].full_name;
-            txt = (full_name)? ', ' + full_name : ', F' + String(+shapeData.frame+1).padStart(4, '0');
-            $('#task_name').text(job.slug + txt)
+            txt = (full_name)? full_name : job.slug + ', F' + String(+shapeData.frame+1).padStart(4, '0');
+            $('#task_name').text(txt)
         }
         else {
             $('#task_name').text(job.slug);
         }
+
+        let comment_list = window.cvat.frameInfo[shapeData.frame].comment.split(',');
+        let comment_href = comment_list[0];
+        if(!comment_href.includes('file:')){
+            $('#redoComment_readonly').text(window.cvat.frameInfo[shapeData.frame].comment);
+
+            $('#commentImgButton').addClass('hidden');
+            console.log(' commentImgButton add hidden');
+        }
+        else {
+            $('#commentImgButton').removeClass('hidden');
+            let comment_str = comment_list.slice(1).join();
+            $('#redoComment_readonly').text(comment_str);
+            console.log(' commentImgButton remove hidden');
+            $.alert({
+                title: '特別需要注意！ 用下列網址開啟新分頁',
+                content: '<label>' + comment_href + '<label>',
+                boxWidth: '60%',
+                useBootstrap: false,
+                draggable: false,
+                dragWindowBorder: false,
+            });
+            
+        }
+        $('#commentImgButton').click(function() {
+            $.alert({
+                title: '特別需要注意！ 用下列網址開啟新分頁',
+                content: '<label>' + comment_href + '<label>',
+                boxWidth: '60%',
+                useBootstrap: false,
+                draggable: false,
+                dragWindowBorder: false,
+            });
+        });
     }
 
     

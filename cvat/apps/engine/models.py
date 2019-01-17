@@ -269,6 +269,7 @@ class FCWTrain(models.Model):
     checked_count = models.PositiveIntegerField()
     need_modify_count = models.PositiveIntegerField()
     priority = models.PositiveIntegerField()
+    priority_out = models.PositiveIntegerField()
 
 class FCWTest_FrameUserRecord(models.Model):
     task = models.ForeignKey(Task, on_delete=models.CASCADE)
@@ -291,6 +292,7 @@ class FCWTest(models.Model):
     checked_count = models.PositiveIntegerField()
     need_modify_count = models.PositiveIntegerField()
     priority = models.PositiveIntegerField()
+    priority_out = models.PositiveIntegerField()
     user = models.CharField(max_length=150)
     checker = models.CharField(max_length=150)
     current = models.BooleanField(default=False)
@@ -326,6 +328,7 @@ class APACorner(models.Model):
     checked_count = models.PositiveIntegerField()
     need_modify_count = models.PositiveIntegerField()
     priority = models.PositiveIntegerField()
+    priority_out = models.PositiveIntegerField()
     user = models.CharField(max_length=150)
     checker = models.CharField(max_length=150)
     current = models.BooleanField(default=False)

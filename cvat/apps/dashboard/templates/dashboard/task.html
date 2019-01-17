@@ -53,25 +53,45 @@
                 </tr>
             {% endfor %}
         </table>
-        <br><br>
+        <br>
+        <table>
+            <tr>
+                <td> 內優先權: </td>
+                <td> 外優先權: </td>
+            </tr>
+            <tr>
+                <td id="detailPriority_{{item.task_id}}" > {{item.videostage.priority}} </td>
+                <td id="detailPriorityOUT_{{item.task_id}}" > {{item.videostage.priority_out}} </td>
+            </tr>
+        </table>
+        
         <table class="dashboardJobList regular">
             <tr>
-                <td> 優先權: </td>
+                <td> 批次: </td>
                 <td> KeyFrame: </td>
                 <td> 未標記: </td>
-                <td> 未檢查: </td>
                 <td> 已檢查: </td>
                 <td> 退件中: </td>
+                <td> 未檢查: </td>
+                <td> 未檢查Frames: </td>
             </tr>
+            {% for pack in item.videostage.packstage %}
             <tr>
-                <!-- <td> <input type="number" name="priority" min="0" max="50" value="{{item.videostage.priority}}"> </td> -->
-                <td id="detailPriority_{{item.task_id}}" > {{item.videostage.priority}} </td>
-                <td> {{item.videostage.keyframe_count}} </td>
-                <td> {{item.videostage.undo_count}} </td>
-                <td> {{item.videostage.unchecked_count}} </td>
-                <td> {{item.videostage.checked_count}} </td>
-                <td> {{item.videostage.need_modify_count}} </td>
+                <td> {{pack.packagename}} </td>
+                <td> {{pack.keyframe_count}} </td>
+                <td> {{pack.undo_count}} </td>
+                <td> {{pack.checked_count}} </td>
+                <td> {{pack.need_modify_count}} </td>
+                <td> {{pack.unchecked_count}} </td>
+                <td>
+                    <select>
+                        {% for realframe in pack.unchecked_realframes %}
+                        <option> {{realframe}} </option>
+                        {% endfor %}
+                    </select>
+                </td>
             </tr>
+            {% endfor %}
         </table>
     </div>
 </div>
