@@ -902,7 +902,7 @@ class PlayerView {
 
         // add by jeff
         this._isKeyFrame.unbind('click').on('click', () => {
-            if(window.location.pathname.split('/')[1] != 'otofcw_training'){
+            if(window.location.pathname.split('/')[1] != 'fcw_training'){
                 $('#isKeyFrame').prop('checked',true);
                 return;
             }

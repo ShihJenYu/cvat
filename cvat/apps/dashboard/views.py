@@ -117,7 +117,7 @@ def DetailTaskInfo(request, task, dst_dict):
 
     db_Project = None
     db_keyFrame = None
-    if project == 'otofcw_training':
+    if project == 'fcw_training':
         db_Project = FCWTrainModel.objects.get(task_id=task.id)
         db_keyFrame = models.TaskFrameUserRecord.objects.filter(task_id=task.id)
     elif project == 'fcw_testing':
@@ -175,7 +175,7 @@ def DashboardView(request):
         project = list(filter(None, request.path.split('/')))[1]
         
         qs = None
-        if project == 'otofcw_training':
+        if project == 'fcw_training':
             qs = FCWTrainModel.objects.all()
         elif project == 'fcw_testing':
             qs = FCWTestModel.objects.all()

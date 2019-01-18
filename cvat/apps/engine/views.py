@@ -68,11 +68,11 @@ def dispatch_request(request):
             return redirect('/dashboard/' + project)
     else:
         web = ''
-        if project == 'otofcw_training' and request.user.groups.filter(name='otofcw_training').exists():
+        if project == 'fcw_training':# and request.user.groups.filter(name='fcw_training').exists():
             web = 'annotation_training'
-        elif project == 'fcw_testing' and request.user.groups.filter(name='fcw_testing').exists():
+        elif project == 'fcw_testing':# and request.user.groups.filter(name='fcw_testing').exists():
             web = 'annotation_fcw_testing'
-        elif project == 'apacorner' and request.user.groups.filter(name='fcw_testing').exists():
+        elif project == 'apacorner':# and request.user.groups.filter(name='fcw_testing').exists():
             web = 'annotation_apacorner'
         else:
             return redirect('/')
@@ -448,7 +448,7 @@ def save_annotation_for_job(request, jid):
             else:
                 
                 project = list(filter(None, request.path.split('/')))[0]
-                if project == 'otofcw_training':
+                if project == 'fcw_training':
                     with transaction.atomic():
                         print('save before select_for_update')
                         user_record = models.TaskFrameUserRecord.objects.select_for_update().get(user=request.user.username,current=True)
@@ -516,7 +516,7 @@ def rq_handler(job, exc_type, exc_value, tb):
 
     return True
 
-# add by jeff
+# add by jeff, not used
 @login_required
 @permission_required(perm=['engine.view_task', 'engine.change_annotation'], raise_exception=True)
 def set_user_currnet(request, jid):
@@ -559,7 +559,7 @@ def set_user_currnet(request, jid):
         print("error is !!!!",str(e))
         job_logger[jid].error("cannot set {} currnet for {} job".format(request.user.username,jid), exc_info=True)
         return HttpResponseBadRequest(str(e))
-
+# add by jeff, not used
 @login_required
 @permission_required(perm=['engine.view_task', 'engine.change_annotation'], raise_exception=True)
 def get_user_currnet(request, jid):
@@ -679,7 +679,7 @@ def set_frame_isKeyFrame(request, tid, frame, flag):
     try:
         project = list(filter(None, request.path.split('/')))[0]
 
-        if project == 'otofcw_training':
+        if project == 'fcw_training':
             print('project is',project)
             keyframe_full_name = ''
             db_fcwTrain = models.FCWTrain.objects.select_for_update().get(task_id=tid)
@@ -767,7 +767,7 @@ def get_keyFrame_stage(request, tid, frame):
     try:
         project = list(filter(None, request.path.split('/')))[0]
         response = None
-        if project == 'otofcw_training':
+        if project == 'fcw_training':
             keyframe = models.TaskFrameUserRecord.objects.select_for_update().get(task_id=tid,frame=frame)
             response = {
                 'annotator': keyframe.user,
@@ -812,7 +812,7 @@ def set_frame_isComplete(request, tid, frame, flag):
         db_project = None
         qs_project = None
 
-        if project == 'otofcw_training':
+        if project == 'fcw_training':
             keyframe = models.TaskFrameUserRecord.objects.select_for_update().get(task_id=tid,frame=frame)
             db_project = models.FCWTrain.objects.select_for_update().get(task_id=tid)
             qs_project = models.TaskFrameUserRecord.objects.all()
@@ -859,7 +859,7 @@ def set_frame_isRedo(request, tid, frame, flag):
         db_project = None
         qs_project = None
 
-        if project == 'otofcw_training':
+        if project == 'fcw_training':
             keyframe = models.TaskFrameUserRecord.objects.select_for_update().get(task_id=tid,frame=frame)
             db_project = models.FCWTrain.objects.select_for_update().get(task_id=tid)
             qs_project = models.TaskFrameUserRecord.objects.all()
@@ -904,7 +904,7 @@ def set_frame_redoComment(request, tid, frame, comment):
             comment = ''
         project = list(filter(None, request.path.split('/')))[0]
         keyframe = None
-        if project == 'otofcw_training':
+        if project == 'fcw_training':
             keyframe = models.TaskFrameUserRecord.objects.select_for_update().get(task_id=tid,frame=frame)
         elif project == 'fcw_testing':
             keyframe = models.FCWTest_FrameUserRecord.objects.select_for_update().get(task_id=tid,frame=frame)
@@ -941,7 +941,7 @@ def set_tasks_priority(request):
 
         if(params['selectTasks'] != ''):
             tasks = params['selectTasks'].split(',')
-            if project == 'otofcw_training':
+            if project == 'fcw_training':
                 for tid in tasks:
                     db_Project = models.FCWTrain.objects.select_for_update().get(task_id=int(tid))
                     if inCompany:
@@ -1006,6 +1006,7 @@ def set_task_nickname(request, tid, nickname):
 
     return JsonResponse({'nickname':nickname}, safe=False)
 
+# add by jeff, but not use
 @login_required
 def get_FCW_Job(request):
     try: 
@@ -1049,7 +1050,7 @@ def save_currentJob(request):
 
         project = list(filter(None, request.path.split('/')))[0]
         
-        if project == 'otofcw_training':
+        if project == 'fcw_training':
             try:
                 with transaction.atomic():
                     user_record = models.TaskFrameUserRecord.objects.select_for_update().get(user=request.user.username,current=True)
@@ -1098,7 +1099,7 @@ def save_currentJob(request):
         db_project = None
         qs_project = None
         with transaction.atomic():
-            if project == 'otofcw_training':
+            if project == 'fcw_training':
                 db_project = models.FCWTrain.objects.select_for_update().get(task_id=tid)
                 qs_project = models.TaskFrameUserRecord.objects.all()
             elif project == 'fcw_testing':
@@ -1137,7 +1138,7 @@ def get_currentJob(request):
 
         user_record = None
         try:
-            if project == 'otofcw_training':
+            if project == 'fcw_training':
                 user_record = models.TaskFrameUserRecord.objects.select_for_update().get(user=request.user.username,current=True)
             elif project == 'fcw_testing':
                 user_record = models.FCWTest.objects.select_for_update().get(user=request.user.username,current=True)
@@ -1197,13 +1198,20 @@ def set_currentWithJob(username,qs=None,time=None):
 def set_currentJob(request):
     try:
         project = list(filter(None, request.path.split('/')))[0]
-
+        username = request.user.username.lower()
         user_record = None
         new_jid = None
 
-        if project == 'otofcw_training':
+        user_priority = None
+
+        if username.startswith('oto',0,3):
+            user_priority = {'priority':0,}
+        else:
+            user_priority = {'priority_out':0,}
+
+        if project == 'fcw_training':
             start_time = time.time()
-            db_fcwTrains = models.FCWTrain.objects.filter(~Q(priority=0)).order_by('-priority', 'task__created_date')
+            db_fcwTrains = models.FCWTrain.objects.filter(~Q(**user_priority)).order_by('-{}'.format(list(user_priority.keys())[0]), 'task__created_date')
             print ("db_fcwTrains,",db_fcwTrains)
             print ("len  db_fcwTrains,",len(db_fcwTrains))
             if db_fcwTrains and len(db_fcwTrains):
@@ -1268,9 +1276,9 @@ def set_currentJob(request):
         elif project in ['fcw_testing', 'apacorner']:
             start_time = time.time()
             if project == 'fcw_testing':
-                db_Project = models.FCWTest.objects.filter(~Q(priority=0) & Q(user=request.user.username) & Q(need_modify=True)).order_by('-priority', 'task__created_date')
+                db_Project = models.FCWTest.objects.filter(~Q(**user_priority) & Q(user=request.user.username) & Q(need_modify=True)).order_by('-{}'.format(list(user_priority.keys())[0]), 'task__created_date')
             elif project == 'apacorner':
-                db_Project = models.APACorner.objects.filter(~Q(priority=0) & Q(user=request.user.username) & Q(need_modify=True)).order_by('-priority', 'task__created_date')
+                db_Project = models.APACorner.objects.filter(~Q(**user_priority) & Q(user=request.user.username) & Q(need_modify=True)).order_by('-{}'.format(list(user_priority.keys())[0]), 'task__created_date')
             print ("db_Project,",db_Project)
             print ("len  db_Project,",len(db_Project))
             user_record, new_jid = set_currentWithJob(request.user.username, db_Project, time='modify')
@@ -1281,9 +1289,9 @@ def set_currentJob(request):
                 print("need modify is none, try get new frame")
                 start_time = time.time()
                 if project == 'fcw_testing':
-                    db_Project = models.FCWTest.objects.filter(~Q(priority=0) & Q(user=request.user.username) & Q(userGet_date=None)).order_by('-priority', 'task__created_date')
+                    db_Project = models.FCWTest.objects.filter(~Q(**user_priority) & Q(user=request.user.username) & Q(userGet_date=None)).order_by('-{}'.format(list(user_priority.keys())[0]), 'task__created_date')
                 elif project == 'apacorner':
-                    db_Project = models.APACorner.objects.filter(~Q(priority=0) & Q(user=request.user.username) & Q(userGet_date=None)).order_by('-priority', 'task__created_date')
+                    db_Project = models.APACorner.objects.filter(~Q(**user_priority) & Q(user=request.user.username) & Q(userGet_date=None)).order_by('-{}'.format(list(user_priority.keys())[0]), 'task__created_date')
                 print ("db_Project,",db_Project)
                 print ("len  db_Project,",len(db_Project))
                 user_record, new_jid = set_currentWithJob(request.user.username, db_Project, time='new')
@@ -1296,9 +1304,9 @@ def set_currentJob(request):
                 print("need modify is none, try get new frame")
                 start_time = time.time()
                 if project == 'fcw_testing':
-                    db_Project = models.FCWTest.objects.filter(~Q(priority=0) & Q(user='')).order_by('-priority', 'task__created_date')
+                    db_Project = models.FCWTest.objects.filter(~Q(**user_priority) & Q(user='')).order_by('-{}'.format(list(user_priority.keys())[0]), 'task__created_date')
                 elif project == 'apacorner':
-                    db_Project = models.APACorner.objects.filter(~Q(priority=0) & Q(user='')).order_by('-priority', 'task__created_date')
+                    db_Project = models.APACorner.objects.filter(~Q(**user_priority) & Q(user='')).order_by('-{}'.format(list(user_priority.keys())[0]), 'task__created_date')
                 print ("db_Project,",db_Project)
                 print ("len  db_Project,",len(db_Project))
                 user_record, new_jid = set_currentWithJob(request.user.username, db_Project, time='new')
@@ -1325,6 +1333,7 @@ def set_currentJob(request):
         return JsonResponse({'status':"A01",'text':"找不到任何的工作, 請聯絡管理員哦"})
 
 
+# add by jeff, but not use
 @login_required
 def get_FCW_Job_Name(request, tid):
     try: 
@@ -1342,7 +1351,7 @@ def get_keyFrames(request, tid):
     try:
         project = list(filter(None, request.path.split('/')))[0]
         
-        if project == 'otofcw_training':
+        if project == 'fcw_training':
             qs = models.TaskFrameUserRecord.objects.select_for_update().filter(task_id=tid)
             frames = qs.values_list('frame', flat=True)
             print(list(frames))

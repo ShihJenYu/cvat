@@ -78,7 +78,7 @@ def get(jid,project=None,requestUser=None,frame=None):
     if requestUser.groups.filter(name='annotator').exists():
         user_record = None
 
-        if project == 'otofcw_training':
+        if project == 'fcw_training':
             try:
                 user_record = models.TaskFrameUserRecord.objects.select_for_update().get(user=requestUser.username,current=True)
                 frame = user_record.frame
@@ -172,7 +172,7 @@ def get(jid,project=None,requestUser=None,frame=None):
         video_submit = None
         video_current = None
         video_needModify = None
-        if project == 'otofcw_training':
+        if project == 'fcw_training':
             print('project is',project)
             records = models.TaskFrameUserRecord.objects.select_for_update().filter(task_id=new_jid).order_by('frame')
         elif project in ['fcw_testing', 'apacorner']:
