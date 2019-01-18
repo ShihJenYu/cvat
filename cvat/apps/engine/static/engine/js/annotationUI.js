@@ -212,7 +212,7 @@ function buildAnnotationUI(job, shapeData, loadJobEvent) {
     // });
 
     PROJECT = window.location.pathname.split('/')[1];
-    if(PROJECT != 'fcw_training'){
+    if(PROJECT != 'otofcw_training'){
         $('#isKeyFrame').prop('disabled',true);
     }
     
@@ -290,7 +290,7 @@ function buildAnnotationUI(job, shapeData, loadJobEvent) {
     }
     else{
         window.history.replaceState(null, null, `${window.location.origin}${window.location.pathname}`);
-        if(PROJECT=='fcw_training') {
+        if(PROJECT=='otofcw_training') {
             let full_name = shapeData.frameInfo[shapeData.frame].full_name;
             txt = (full_name)? full_name : job.slug + ', F' + String(+shapeData.frame+1).padStart(4, '0');
             $('#task_name').text(txt)

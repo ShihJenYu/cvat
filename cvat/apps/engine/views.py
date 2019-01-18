@@ -68,7 +68,7 @@ def dispatch_request(request):
             return redirect('/dashboard/' + project)
     else:
         web = ''
-        if project == 'fcw_training' and request.user.groups.filter(name='fcw_training').exists():
+        if project == 'otofcw_training' and request.user.groups.filter(name='otofcw_training').exists():
             web = 'annotation_training'
         elif project == 'fcw_testing' and request.user.groups.filter(name='fcw_testing').exists():
             web = 'annotation_fcw_testing'
@@ -448,7 +448,7 @@ def save_annotation_for_job(request, jid):
             else:
                 
                 project = list(filter(None, request.path.split('/')))[0]
-                if project == 'fcw_training':
+                if project == 'otofcw_training':
                     with transaction.atomic():
                         print('save before select_for_update')
                         user_record = models.TaskFrameUserRecord.objects.select_for_update().get(user=request.user.username,current=True)
@@ -679,7 +679,7 @@ def set_frame_isKeyFrame(request, tid, frame, flag):
     try:
         project = list(filter(None, request.path.split('/')))[0]
 
-        if project == 'fcw_training':
+        if project == 'otofcw_training':
             print('project is',project)
             keyframe_full_name = ''
             db_fcwTrain = models.FCWTrain.objects.select_for_update().get(task_id=tid)
@@ -767,7 +767,7 @@ def get_keyFrame_stage(request, tid, frame):
     try:
         project = list(filter(None, request.path.split('/')))[0]
         response = None
-        if project == 'fcw_training':
+        if project == 'otofcw_training':
             keyframe = models.TaskFrameUserRecord.objects.select_for_update().get(task_id=tid,frame=frame)
             response = {
                 'annotator': keyframe.user,
@@ -812,7 +812,7 @@ def set_frame_isComplete(request, tid, frame, flag):
         db_project = None
         qs_project = None
 
-        if project == 'fcw_training':
+        if project == 'otofcw_training':
             keyframe = models.TaskFrameUserRecord.objects.select_for_update().get(task_id=tid,frame=frame)
             db_project = models.FCWTrain.objects.select_for_update().get(task_id=tid)
             qs_project = models.TaskFrameUserRecord.objects.all()
@@ -859,7 +859,7 @@ def set_frame_isRedo(request, tid, frame, flag):
         db_project = None
         qs_project = None
 
-        if project == 'fcw_training':
+        if project == 'otofcw_training':
             keyframe = models.TaskFrameUserRecord.objects.select_for_update().get(task_id=tid,frame=frame)
             db_project = models.FCWTrain.objects.select_for_update().get(task_id=tid)
             qs_project = models.TaskFrameUserRecord.objects.all()
@@ -904,7 +904,7 @@ def set_frame_redoComment(request, tid, frame, comment):
             comment = ''
         project = list(filter(None, request.path.split('/')))[0]
         keyframe = None
-        if project == 'fcw_training':
+        if project == 'otofcw_training':
             keyframe = models.TaskFrameUserRecord.objects.select_for_update().get(task_id=tid,frame=frame)
         elif project == 'fcw_testing':
             keyframe = models.FCWTest_FrameUserRecord.objects.select_for_update().get(task_id=tid,frame=frame)
@@ -941,7 +941,7 @@ def set_tasks_priority(request):
 
         if(params['selectTasks'] != ''):
             tasks = params['selectTasks'].split(',')
-            if project == 'fcw_training':
+            if project == 'otofcw_training':
                 for tid in tasks:
                     db_Project = models.FCWTrain.objects.select_for_update().get(task_id=int(tid))
                     if inCompany:
@@ -1049,7 +1049,7 @@ def save_currentJob(request):
 
         project = list(filter(None, request.path.split('/')))[0]
         
-        if project == 'fcw_training':
+        if project == 'otofcw_training':
             try:
                 with transaction.atomic():
                     user_record = models.TaskFrameUserRecord.objects.select_for_update().get(user=request.user.username,current=True)
@@ -1098,7 +1098,7 @@ def save_currentJob(request):
         db_project = None
         qs_project = None
         with transaction.atomic():
-            if project == 'fcw_training':
+            if project == 'otofcw_training':
                 db_project = models.FCWTrain.objects.select_for_update().get(task_id=tid)
                 qs_project = models.TaskFrameUserRecord.objects.all()
             elif project == 'fcw_testing':
@@ -1137,7 +1137,7 @@ def get_currentJob(request):
 
         user_record = None
         try:
-            if project == 'fcw_training':
+            if project == 'otofcw_training':
                 user_record = models.TaskFrameUserRecord.objects.select_for_update().get(user=request.user.username,current=True)
             elif project == 'fcw_testing':
                 user_record = models.FCWTest.objects.select_for_update().get(user=request.user.username,current=True)
@@ -1201,7 +1201,7 @@ def set_currentJob(request):
         user_record = None
         new_jid = None
 
-        if project == 'fcw_training':
+        if project == 'otofcw_training':
             start_time = time.time()
             db_fcwTrains = models.FCWTrain.objects.filter(~Q(priority=0)).order_by('-priority', 'task__created_date')
             print ("db_fcwTrains,",db_fcwTrains)
@@ -1342,7 +1342,7 @@ def get_keyFrames(request, tid):
     try:
         project = list(filter(None, request.path.split('/')))[0]
         
-        if project == 'fcw_training':
+        if project == 'otofcw_training':
             qs = models.TaskFrameUserRecord.objects.select_for_update().filter(task_id=tid)
             frames = qs.values_list('frame', flat=True)
             print(list(frames))

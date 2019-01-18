@@ -902,7 +902,7 @@ class PlayerView {
 
         // add by jeff
         this._isKeyFrame.unbind('click').on('click', () => {
-            if(window.location.pathname.split('/')[1] != 'fcw_training'){
+            if(window.location.pathname.split('/')[1] != 'otofcw_training'){
                 $('#isKeyFrame').prop('checked',true);
                 return;
             }
@@ -1329,21 +1329,23 @@ class PlayerView {
         let isKeyFrame = window.cvat.frameInfo.hasOwnProperty(frames.current);
         $('#isKeyFrame').prop('checked',isKeyFrame);
         if(isKeyFrame) {
-            let pack = null;
-            let index = -1;
-            for(let key in window.cvat.videoInfo.framePackage){
-                index = window.cvat.videoInfo.framePackage[key].indexOf(frames.current);
-                if(index!=-1) {
-                    pack = key;
-                    break;
+            if(isAdminFlag) {
+                let pack = null;
+                let index = -1;
+                for(let key in window.cvat.videoInfo.framePackage){
+                    index = window.cvat.videoInfo.framePackage[key].indexOf(frames.current);
+                    if(index!=-1) {
+                        pack = key;
+                        break;
+                    }
                 }
+                let current_pack = $('#select_package').val();
+                if(current_pack!='all' && current_pack!=pack) {
+                    $('#select_package').prop("value", (pack));
+                    $('#select_package').trigger('change');
+                }
+                $('#select_keyframes').prop("value", (frames.current));
             }
-            let current_pack = $('#select_package').val();
-            if(current_pack!='all' && current_pack!=pack) {
-                $('#select_package').prop("value", (pack));
-                $('#select_package').trigger('change');
-            }
-            $('#select_keyframes').prop("value", (frames.current));
             let txt = window.cvat.frameInfo[frames.current].full_name;
             txt = txt.split('.')[0].slice(-4);
             $("#realFrame").text(+txt)

@@ -612,7 +612,7 @@ def _save_task_to_db(db_task, task_params):
     # add by jeff
     project = task_params['project']
     db_Project = None
-    if project == 'fcw_training':
+    if project == 'otofcw_training':
         db_Project = models.FCWTrain()
         db_Project.keyframe_count = 0
     elif project in ['fcw_testing', 'apacorner']:

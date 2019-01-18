@@ -2087,7 +2087,7 @@ class ShapeCollectionView {
 
 // add by jeff
 function setDetectPoint(activeShape){
-    if(!['fcw_training', 'fcw_testing'].includes(PROJECT)){return;}
+    if(!['otofcw_training', 'fcw_testing'].includes(PROJECT)){return;}
     $(".detectpoint").remove();
 
     if(activeShape._type !== "annotation_box"){return;}
