@@ -8,4 +8,5 @@ from . import views
 
 urlpatterns = [
     path('', views.show_project_list),
+    path('efficiencyTable', views.efficiencyTable),
 ]

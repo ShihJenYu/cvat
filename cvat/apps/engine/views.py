@@ -828,6 +828,7 @@ def set_frame_isComplete(request, tid, frame, flag):
         if flag:
             keyframe.checker = request.user.username
             keyframe.checked = True
+            keyframe.checked_date = timezone.now()
             keyframe.user_submit = False
             keyframe.save()
             print("tid:{} frame:{} is Complete".format(tid,frame))
@@ -875,6 +876,7 @@ def set_frame_isRedo(request, tid, frame, flag):
         if flag:
             keyframe.checker = request.user.username
             keyframe.need_modify = True
+            keyframe.need_modify_date = timezone.now()
             keyframe.user_submit = False
             keyframe.save()
             print("tid:{} frame:{} is Redo".format(tid,frame))

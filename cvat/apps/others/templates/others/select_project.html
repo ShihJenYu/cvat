@@ -1,11 +1,44 @@
 
 <!DOCTYPE html>
+
+{% load static compress %}
+
 <html>
     <head>
         <title>Computer Vision Annotation Tool (CVAT)</title>
+        
+        {% compress css %}
+            {% block head_css %}
+                <link rel="stylesheet" type="text/css" href="{% static 'engine/base.css' %}">
+            {% endblock %}
+        {% endcompress %}
+
+        {% compress js file platformchecker %}
+            <script type="text/javascript" src="{% static 'engine/js/3rdparty/platform.js' %}"></script>
+            <script type="text/javascript" src="{% static 'engine/js/checkPlatform.js' %}"></script>
+        {% endcompress %}
+
+        {% compress js file thirdparty %}
+            {% block head_js_3rdparty %}
+                <script type="text/javascript" src="{% static 'engine/js/3rdparty/jquery-3.3.1.js' %}"></script>
+                <script type="text/javascript" src="{% static 'engine/js/3rdparty/js.cookie.js' %}"></script>
+                <script type="text/javascript" src="{% static 'engine/js/3rdparty/mousetrap.js' %}"></script>
+            {% endblock %}
+        {% endcompress %}
+
+        {% compress js file cvat %}
+            {% block head_js_cvat %}
+                <script type="text/javascript" src="{% static 'engine/js/base.js' %}"></script>
+                <script type="text/javascript" src="{% static 'others/js/tool.js' %}"></script>
+                <script type="text/javascript" src="{% static 'engine/js/userConfig.js' %}"></script>
+                <script type="text/javascript" src="{% static 'engine/js/translate.js' %}"></script>
+            {% endblock %}
+        {% endcompress %}
         <style>
             body {
-               background-color: lightyellow;
+                background-color: lightyellow;
+                width: auto;
+                height: auto;
             }
             em {
                 color: LightSeaGreen;
@@ -16,6 +49,11 @@
         <h1>用 戶 ： {{ username }}</h1>
         <h2>狀 態 ： {{ permission }}</h2>
         <br>
+        <button onclick="window.location.href='/auth/logout'"> 登出 </button>
+        <br>
+        
+        <br><hr><br>
+
         <em>I P : {{ ip }}</em>
         <em>{{ is_routable }}</em>
         <br>
@@ -27,7 +65,55 @@
                 </tr>
             {% endfor %}
         </table>
-        <br>
-        <button onclick="window.location.href='/auth/logout'"> 登出 </button>
+
+        <br><hr><br>
+
+        <table style="text-align: center;">
+            <tr>
+                <td>
+                    <select id="search_project">
+                        {% for project in projects %}
+                        <option value="{{project}}">{{project}}</option>
+                        {% endfor %}
+                    </select>
+                </td>
+                {% if permission == "管理員" %}
+                <td>
+                    <select id="office">
+                        <option value="Company">Company</option>
+                        <option value="SOHO">SOHO</option>
+                    </select>
+                </td>
+                {% endif %}
+                <td> <label for="startDate">開始日期:</label> </td>
+                <td> <input type="date" id="startDate" name="startDate"> </td>
+                <td> <label for="endDate">結束日期:</label> </td>
+                <td> <input type="date" id="endDate" name="endDate"> </td>
+                <td> <button id='search_efficiencyTable'> 搜尋 </button> </td>
+            </tr>
+        </table>
+        <!-- 
+        #時間內標記多少張（修改的送出時間先看 沒有的話看第一次送出時間）
+        #時間內檢查好的有幾張 與上個相同 但是多了檢查好  >>>
+        #時間內待修改還有幾張 與上個相同 但是多了待修改  >>>
+        #時間內沒檢查還有幾張 與上個相同 但是多了以送出  >>>
+
+        #用退件時間看 這時間內退了幾張
+        #用完成時間看 這時間內完成幾張 ~~~ 這個算錢
+        -->
+        <table id="efficiencyTable" style="text-align: center; border-spacing: 20px;">
+            <tr>
+                <td> 用戶 </td>
+                <td> 標記圖片量 </td>
+                <td> 已正確圖片量 </td>
+                <td> 待修改圖片量 </td>
+                <td> 未檢查圖片量 </td>
+                <td> 錯誤圖片量 </td>
+                <td> 正確圖片量 </td>
+                <td> 正確物件量 </td>
+                <td> 查詢時間 </td>
+            </tr>
+        </table>
+
     </body>
 </html>

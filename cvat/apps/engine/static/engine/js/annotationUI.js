@@ -229,6 +229,7 @@ function buildAnnotationUI(job, shapeData, loadJobEvent) {
         $("#select_package").empty();
 
         $('#select_package').append($("<option></option>").attr("value",'all').text('all'));
+        $('#select_keyframes').append($("<option></option>").attr("value",'null').text('null'));
 
         for(let key in framePackage){
             console.log('framePackage', key, framePackage[key]);
@@ -903,7 +904,7 @@ function setupMenu(job, shapeCollectionModel, annotationParser, aamModel, player
                 if(saveByShift) {saveByShift = false;}
                 else {
                     let annotator = '';
-                    if (StatusInfo.userr=='')annotator="none"
+                    if (StatusInfo.user=='')annotator="none"
                     else annotator = StatusInfo.user
                     if(annotator!="none") alert(`Hello! annotator is working !!! Current:${StatusInfo.current} Annotator:${annotator} Redo:${StatusInfo.need_modify}`);
                     else alert('no any annotator get this frame, u cannot save!!');
