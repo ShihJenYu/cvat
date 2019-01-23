@@ -10,7 +10,8 @@ settings.LOGIN_URL = 'login'
 settings.LOGIN_REDIRECT_URL = '/'
 
 settings.AUTHENTICATION_BACKENDS = [
-    'django.contrib.auth.backends.ModelBackend',
+    'cvat.apps.authentication.withIPBackend.WithIPBackend',
+    #'django.contrib.auth.backends.ModelBackend',
 ]
 
 AUTH_LDAP_DEVELOPER_GROUPS = []

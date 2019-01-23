@@ -2,6 +2,37 @@
 
 
 window.onload = function() {
+    
+    $.getJSON("https://api.ipify.org?format=jsonp&callback=?",
+      function(json) {
+
+        let mysterious_key = null;
+        mysterious_key = json.ip;
+        mysterious_key = md5(mysterious_key);
+
+        let mysteriousData = new FormData();
+        console.log('mysterious_key',mysterious_key);
+        mysteriousData.append('mysteriousKey', mysterious_key);
+        $.ajax({
+            url: '/auth/mysteriousKey',
+            type: 'POST',
+            async: false,
+            data: mysteriousData,
+            contentType: false,
+            processData: false,
+            success: function(respone) {
+                console.log("/auth/mysteriousKey", respone);
+                if(respone.auth=='error'){
+                    window.location.href='/auth/logout';
+                }
+            },
+            error: function(respone) {
+                console.log("/auth/mysteriousKey is error", respone);
+                window.location.href='/auth/logout';
+            }
+        });
+      }
+    );
 
     $('#search_efficiencyTable').on('click', () => {
         console.log('hello world');

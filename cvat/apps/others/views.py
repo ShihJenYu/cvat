@@ -63,7 +63,7 @@ def efficiencyTable(request, raise_exception=True):
             
             users = list(User.objects.filter(groups__name=project_group).values_list('username', flat=True))
             admins = list(User.objects.filter(groups__name='admin').values_list('username', flat=True))
-            
+
             users = list(filter(lambda x: x not in admins, users))
 
             for user in users:
