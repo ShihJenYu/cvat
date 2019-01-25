@@ -352,3 +352,8 @@ class FrameName(models.Model):
     task = models.ForeignKey(Task, on_delete=models.CASCADE)
     frame = models.PositiveIntegerField()
     name =  models.CharField(max_length=256, default="")
+
+class UserWorkSpace(models.Model):
+    username = models.CharField(max_length=150,default="")
+    project = models.CharField(max_length=150,default="")
+    packagename = models.CharField(max_length=1024,default="")

@@ -1518,7 +1518,7 @@ class ShapeController {
         this._model.updatePosition(frame, position);
 
         // add by jeff woeking
-        if (position.xtl>=0 && position.xbr<=window.cvat.player.geometry.frameWidth-1) {
+        if (position.xtl>0 && position.xbr<=window.cvat.player.geometry.frameWidth-1) {
             let flag = false, detectPoints_id = null, type_value = '';
             for (let attrId in this._model._attributes.mutable[frame]) {
                 let attrInfo = window.cvat.labelsInfo.attrInfo(attrId);
@@ -3133,13 +3133,14 @@ class ShapeView extends Listener {
                     case 2 : controller.updateAttribute(window.cvat.player.frames.current, att_id, "\"0.1,-1,0.9,-1\""); break;
                 }
             } else {
-                if (detectpoints.includes("-1")){
-                    switch(value) {
-                        case 0 : controller.updateAttribute(window.cvat.player.frames.current, att_id, "\"-1,-1,-1,-1\""); break;
-                        case 1 : controller.updateAttribute(window.cvat.player.frames.current, att_id, "\"0,-1,0.5,-1\""); break;
-                        case 2 : controller.updateAttribute(window.cvat.player.frames.current, att_id, "\"0.1,-1,0.9,-1\""); break;
-                    }
-                }
+                // car to van , don't change detectpoints
+                // if (detectpoints.includes("-1")){
+                //     switch(value) {
+                //         case 0 : controller.updateAttribute(window.cvat.player.frames.current, att_id, "\"-1,-1,-1,-1\""); break;
+                //         case 1 : controller.updateAttribute(window.cvat.player.frames.current, att_id, "\"0,-1,0.5,-1\""); break;
+                //         case 2 : controller.updateAttribute(window.cvat.player.frames.current, att_id, "\"0.1,-1,0.9,-1\""); break;
+                //     }
+                // }
             }
         }
 

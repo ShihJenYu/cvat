@@ -6,10 +6,12 @@
 <html>
     <head>
         <title>Computer Vision Annotation Tool (CVAT)</title>
-        
+
         {% compress css %}
             {% block head_css %}
-                <link rel="stylesheet" type="text/css" href="{% static 'engine/base.css' %}">
+                <link rel="stylesheet" type="text/css" href="{% static 'engine/jquery-confirm.min.css' %}">
+                <link rel="stylesheet" type="text/css" href="{% static 'engine/bootstrap.min.css' %}">
+                <link rel="stylesheet" type="text/css" href="{% static 'engine/bootstrap-select.min.css' %}">
             {% endblock %}
         {% endcompress %}
 
@@ -24,6 +26,10 @@
                 <script type="text/javascript" src="{% static 'engine/js/3rdparty/md5.js' %}"></script>
                 <script type="text/javascript" src="{% static 'engine/js/3rdparty/js.cookie.js' %}"></script>
                 <script type="text/javascript" src="{% static 'engine/js/3rdparty/mousetrap.js' %}"></script>
+                <script type="text/javascript" src="{% static 'engine/js/3rdparty/jquery-confirm.min.js' %}"></script>
+                <script type="text/javascript" src="{% static 'engine/js/3rdparty/bootstrap.bundle.min.js' %}"></script>
+                <script type="text/javascript" src="{% static 'engine/js/3rdparty/bootstrap-select.min.js' %}"></script>
+                <script type="text/javascript" src="{% static 'others/js/3rdparty/multiselect.min.js' %}"></script>
             {% endblock %}
         {% endcompress %}
 
@@ -69,52 +75,123 @@
 
         <br><hr><br>
 
-        <table style="text-align: center;">
-            <tr>
-                <td>
-                    <select id="search_project">
-                        {% for project in projects %}
-                        <option value="{{project}}">{{project}}</option>
-                        {% endfor %}
-                    </select>
-                </td>
-                {% if permission == "管理員" %}
-                <td>
-                    <select id="office">
-                        <option value="Company">Company</option>
-                        <option value="SOHO">SOHO</option>
-                    </select>
-                </td>
-                {% endif %}
-                <td> <label for="startDate">開始日期:</label> </td>
-                <td> <input type="date" id="startDate" name="startDate"> </td>
-                <td> <label for="endDate">結束日期:</label> </td>
-                <td> <input type="date" id="endDate" name="endDate"> </td>
-                <td> <button id='search_efficiencyTable'> 搜尋 </button> </td>
-            </tr>
-        </table>
-        <!-- 
-        #時間內標記多少張（修改的送出時間先看 沒有的話看第一次送出時間）
-        #時間內檢查好的有幾張 與上個相同 但是多了檢查好  >>>
-        #時間內待修改還有幾張 與上個相同 但是多了待修改  >>>
-        #時間內沒檢查還有幾張 與上個相同 但是多了以送出  >>>
+        <div class="container" style="max-width: 100%;">
+            <div class="row" style="max-width: 100%;">
+                <div class="col">
+                    <div class="row">
+                        <table style="text-align: center;">
+                            <tr>
+                                <td>
+                                    <select id="search_project">
+                                        {% for project in projects %}
+                                        <option value="{{project}}">{{project}}</option>
+                                        {% endfor %}
+                                    </select>
+                                </td>
+                                {% if permission == "管理員" %}
+                                <td>
+                                    <select id="office">
+                                        <option value="Company">Company</option>
+                                        <option value="SOHO">SOHO</option>
+                                    </select>
+                                </td>
+                                {% endif %}
+                                <td> <label for="startDate">開始日期:</label> </td>
+                                <td> <input type="date" id="startDate" name="startDate"> </td>
+                                <td> <label for="endDate">結束日期:</label> </td>
+                                <td> <input type="date" id="endDate" name="endDate"> </td>
+                                <td> <button id='search_efficiencyTable'> 搜尋 </button> </td>
+                            </tr>
+                        </table>
+                            <!-- 
+                            #時間內標記多少張（修改的送出時間先看 沒有的話看第一次送出時間）
+                            #時間內檢查好的有幾張 與上個相同 但是多了檢查好  >>>
+                            #時間內待修改還有幾張 與上個相同 但是多了待修改  >>>
+                            #時間內沒檢查還有幾張 與上個相同 但是多了以送出  >>>
+                    
+                            #用退件時間看 這時間內退了幾張
+                            #用完成時間看 這時間內完成幾張 ~~~ 這個算錢
+                            -->
+                        <table id="efficiencyTable" style="text-align: center; border-spacing: 20px;">
+                            <tr>
+                                <td> 用戶 </td>
+                                <td> 標記圖片量 </td>
+                                <td> 已正確圖片量 </td>
+                                <td> 待修改圖片量 </td>
+                                <td> 未檢查圖片量 </td>
+                                <td> 錯誤圖片量 </td>
+                                <td> 正確圖片量 </td>
+                                <td> 正確物件量 </td>
+                                <td> 查詢時間 </td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
 
-        #用退件時間看 這時間內退了幾張
-        #用完成時間看 這時間內完成幾張 ~~~ 這個算錢
-        -->
-        <table id="efficiencyTable" style="text-align: center; border-spacing: 20px;">
-            <tr>
-                <td> 用戶 </td>
-                <td> 標記圖片量 </td>
-                <td> 已正確圖片量 </td>
-                <td> 待修改圖片量 </td>
-                <td> 未檢查圖片量 </td>
-                <td> 錯誤圖片量 </td>
-                <td> 正確圖片量 </td>
-                <td> 正確物件量 </td>
-                <td> 查詢時間 </td>
-            </tr>
-        </table>
+                <div class="col">
+                {% if permission == "管理員" %}
+                    <div class="row">
+                        <label>Project :</label>
+                        <select id="userProject">
+                            {% for project in projects %}
+                            <option value="{{project}}">{{project}}</option>
+                            {% endfor %}
+                        </select>
+                        <label>用戶 :</label>
+                        <input id="inpustUser" type="text" placeholder="username"></input>
+                        <button id='search_user_btn'> 在哪裡 </button>
+                        <label id="userWorkSpace"></label>
+                    </div>
+                    <br>
+                    
+                    <div class="row">
+                        <label>Project :</label>
+                        <select id="workspace_project">
+                            {% for project in projects %}
+                            <option value="{{project}}">{{project}}</option>
+                            {% endfor %}
+                        </select>
+                        <button id='workspace_project_btn'> 搜尋 </button>
+                        <label>Package :</label>
+                        <select id="workspace_package">
+                        </select>
+                        <button id='workspace_package_btn'> 搜尋 </button>
+                        <button id='workspace_save_btn'> 儲存 </button>
+                        <div class="w-100"></div>
+                        <label>你選的Project : </label><label id="selected_project"></label>
+                        <div class="w-100"></div>
+                        <label>你選的Package : </label><label id="selected_package"></label>
+                    </div>
+                    <br>
+
+                    <div class="row">
+                        <div class="col">
+                            <select name="from[]" id="WorkSpaceUser" class="inWorkSpaceUser js-multiselect form-control" size="8" multiple="multiple">
+                                <optgroup label="Company"></optgroup>
+                                <optgroup label="SOHO"></optgroup>
+                            </select>
+                        </div>
+                        <div class="col-2">
+                            <button type="button" id="js_right_All_1" class="btn btn-block"><i class="glyphicon glyphicon-forward"> >> </i></button>
+                            <button type="button" id="js_right_Selected_1" class="btn btn-block"><i class="glyphicon glyphicon-chevron-right"> > </i></button>
+                            <button type="button" id="js_left_Selected_1" class="btn btn-block"><i class="glyphicon glyphicon-chevron-left"> < </i></button>
+                            <button type="button" id="js_left_All_1" class="btn btn-block"><i class="glyphicon glyphicon-backward"></i> > </button>
+                        </div>
+                        <div class="col">
+                            <select name="to[]" id="WorkSpaceUser_to" class="outWorkSpaceUser form-control" size="8" multiple="multiple">
+                                <optgroup label="Company"></optgroup>
+                                <optgroup label="SOHO"></optgroup>
+                            </select>
+                        </div>
+                    </div>
+                    
+                {% endif %}
+                
+                </div>
+            </div>
+        </div>
+
+        
 
     </body>
 </html>

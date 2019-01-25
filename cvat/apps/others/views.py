@@ -7,6 +7,7 @@ from ipware import get_client_ip
 
 import pytz
 
+from django.contrib.auth.decorators import permission_required
 from cvat.apps.authentication.decorators import login_required
 from django.contrib.auth.models import User, Group
 from cvat.apps.engine import models, task
@@ -57,7 +58,7 @@ def efficiencyTable(request, raise_exception=True):
         endDateTime = datetime.strptime(dateTime_str, '%Y-%m-%d %H:%M:%S.%f').replace(tzinfo=pytz.utc)
 
         if isAdmin:
-            project_group = ''
+            project_group = project
             if office == 'Company':
                 project_group = 'oto' + project
             
@@ -157,3 +158,120 @@ def getObjsCount(arrTidsFrames=None):
         counts += qs.count()
     
     return counts
+
+
+@login_required
+@permission_required('engine.add_task', raise_exception=True)
+def get_packagename(request, project):
+    try:
+        nameList = []
+        print('nameList',nameList)
+        if request.user.groups.filter(name='admin').exists():
+            tid_list = None
+            if project == 'fcw_training':
+                tid_list = list(models.FCWTrain.objects.all().values_list('task_id', flat=True))
+            elif project == 'fcw_testing':
+                tid_list = list(models.FCWTest.objects.all().values_list('task_id', flat=True))
+            elif project == 'apacorner':
+                tid_list = list(models.APACorner.objects.all().values_list('task_id', flat=True))
+
+            print('tid_list',tid_list)
+            packagename_list = list(models.Task.objects.filter(id__in=tid_list).values_list('packagename', flat=True))
+            print('packagename_list',packagename_list)
+            for packagename in packagename_list:
+                names = packagename.split(',')
+                print('names',names)
+                for name in names:
+                    if not name in nameList:
+                        nameList.append(name)
+                        print('nameList',nameList)
+
+        response = {'packagenames':nameList}
+        return JsonResponse(response, safe=False)
+    except Exception as e:
+        print(str(e))
+        return HttpResponseBadRequest(str(e))
+
+
+@login_required
+@permission_required('engine.add_task', raise_exception=True)
+def get_workSpace(request, user, project):
+    try:
+        packagename = ''
+        if request.user.groups.filter(name='admin').exists():
+            try:
+                packagename = ','.join(list(models.UserWorkSpace.objects.filter(username=user,project=project).values_list('packagename', flat=True)))
+            except ObjectDoesNotExist:
+                packagename = 'not found'
+
+        response = {'packagename':packagename}
+        return JsonResponse(response, safe=False)
+    except Exception as e:
+        print(str(e))
+        return HttpResponseBadRequest(str(e))
+
+
+@login_required
+@permission_required('engine.add_task', raise_exception=True)
+def get_workSpaceUsers(request, project, package):
+    try:
+        inWorkSpaceUsers = [] #project=project, packagename=package
+        outWorkSpaceUsers = [] # all user exclude  if UserWorkSpace project=project will exclude, and
+        if request.user.groups.filter(name='admin').exists():
+            
+            inWorkSpaceUsers = list(models.UserWorkSpace.objects.filter(project=project, packagename=package).values_list('username', flat=True))
+            print('inWorkSpaceUsers',inWorkSpaceUsers)
+            #sameProjectUsers = list(models.UserWorkSpace.objects.filter(project=project).values_list('username', flat=True))
+            
+            users = list(User.objects.filter(groups__name__icontains=project).values_list('username', flat=True))
+            print('users',users)
+            admins = list(User.objects.filter(groups__name='admin').values_list('username', flat=True))
+            print('admins',admins)
+            #outWorkSpaceUsers = list(filter(lambda x: x not in admins and x not in sameProjectUsers, users))
+            outWorkSpaceUsers = list(filter(lambda x: x not in admins and x not in inWorkSpaceUsers, users))
+            print('outWorkSpaceUsers',outWorkSpaceUsers)
+
+
+
+        response = {'inWorkSpaceUsers':inWorkSpaceUsers,'outWorkSpaceUsers':outWorkSpaceUsers}
+        return JsonResponse(response, safe=False)
+    except Exception as e:
+        print(str(e))
+        return HttpResponseBadRequest(str(e))
+
+
+@login_required
+@permission_required('engine.add_task', raise_exception=True)
+def set_workSpaceUsers(request):
+    try:
+        params = request.POST.dict()
+
+        project = params['project']
+        package = params['package']
+        inUsers = list(filter(None, params['inUsers'].split(',')))
+        outUsers = list(filter(None, params['outUsers'].split(',')))
+
+        print('inUsers',inUsers)
+        print('outUsers',outUsers)
+
+        if outUsers:
+            models.UserWorkSpace.objects.filter(Q(project=project) & Q(packagename=package) & Q(username__in=outUsers)).delete()
+        
+        if inUsers:
+            preInWorkSpaceUsers = list(models.UserWorkSpace.objects.filter(project=project, packagename=package).values_list('username', flat=True))
+
+            print('preInWorkSpaceUsers',preInWorkSpaceUsers)
+            willInWorkSpaceUsers = list(filter(lambda x: x not in preInWorkSpaceUsers, inUsers))
+            print('willInWorkSpaceUsers',willInWorkSpaceUsers)
+            insert_list = []
+            for user in willInWorkSpaceUsers:
+                insert_list.append(models.UserWorkSpace(username=user,project=project,packagename=package))
+
+            models.UserWorkSpace.objects.bulk_create(insert_list)
+            print(insert_list)
+
+        response = {'inUsers':inUsers,'outUsers':outUsers}
+        return JsonResponse(response, safe=False)
+    except Exception as e:
+        print(str(e))
+        return HttpResponseBadRequest(str(e))

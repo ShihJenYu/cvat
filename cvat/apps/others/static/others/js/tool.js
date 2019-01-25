@@ -34,8 +34,127 @@ window.onload = function() {
       }
     );
 
+
+    $('#search_user_btn').on('click', () => {
+        let project = $('#userProject').prop('value')
+        let user = $('#inpustUser').prop('value')
+        $('#userWorkSpace').text('');
+        $.ajax({
+            url: `get/${user}/${project}/workSpace`,
+            dataType: "json",
+            success: function(response){
+                console.log('success',response);
+                $('#userWorkSpace').text(response.packagename);
+            },
+            error: function(response){
+                console.log('error',response);
+            },
+        });
+    });
+
+    
+    $('#workspace_project_btn').on('click', () => {
+        $("#workspace_package").empty();
+        let project = $('#workspace_project').prop('value');
+        $('#selected_project').text(project);
+        $.ajax({
+            url: `get/${project}/packagename`,
+            dataType: "json",
+            success: function(response){
+                console.log('success',response);
+                for(let name of response.packagenames) {
+                    $('#workspace_package').append($("<option></option>").attr("value",name).text(name));
+                }
+            },
+            error: function(response){
+                console.log('error',response);
+            },
+        });
+    });
+
+    $('#workspace_package_btn').on('click', () => {
+
+        $('#WorkSpaceUser optgroup').empty()
+        $('#WorkSpaceUser_to optgroup').empty()
+
+        if ($('.inWorkSpaceUser optgroup[label="SOHO"]').length == 0)
+            $('.inWorkSpaceUser').append($("<optgroup></optgroup>").attr("label","SOHO"));
+        if ($('.outWorkSpaceUser optgroup[label="SOHO"]').length == 0)
+            $('.outWorkSpaceUser').append($("<optgroup></optgroup>").attr("label","SOHO"));
+        
+        if ($('.inWorkSpaceUser optgroup[label="Company"]').length == 0)
+            $('.inWorkSpaceUser').append($("<optgroup></optgroup>").attr("label","Company"));
+        if ($('.outWorkSpaceUser optgroup[label="Company"]').length == 0)
+            $('.outWorkSpaceUser').append($("<optgroup></optgroup>").attr("label","Company"));
+
+        let project = $('#selected_project').text();
+        let package = $('#workspace_package').prop('value');
+        $('#selected_package').text(package);
+        $.ajax({
+            url: `get/${project}/${package}/workSpaceUsers`,
+            dataType: "json",
+            success: function(response){
+                console.log('success',response);
+                let inWorkSpaceUsers = response.inWorkSpaceUsers;
+                let outWorkSpaceUsers = response.outWorkSpaceUsers;
+
+                for (let user of inWorkSpaceUsers) {
+                    if(user.toLowerCase().startsWith("oto")) {
+                        $('.inWorkSpaceUser optgroup[label="Company"]').append($("<option></option>").attr("value",user).text(user));
+                    }
+                    else {
+                        $('.inWorkSpaceUser optgroup[label="SOHO"]').append($("<option></option>").attr("value",user).text(user));
+                    }
+                }
+                for (let user of outWorkSpaceUsers) {
+                    if(user.toLowerCase().startsWith("oto")) {
+                        $('.outWorkSpaceUser optgroup[label="Company"]').append($("<option></option>").attr("value",user).text(user));
+                    }
+                    else {
+                        $('.outWorkSpaceUser optgroup[label="SOHO"]').append($("<option></option>").attr("value",user).text(user));
+                    }
+                }
+            },
+            error: function(response){
+                console.log('error',response);
+            },
+        });
+    });
+
+    $('#workspace_save_btn').on('click', () => {
+        
+        let inUsers = $.map($('.inWorkSpaceUser option') ,function(option) {
+            return option.value;
+        });
+        let outUsers = $.map($('.outWorkSpaceUser option') ,function(option) {
+            return option.value;
+        });
+
+        let project = $('#selected_project').text();
+        let package = $('#selected_package').text();
+
+        let workSpaceData = new FormData();
+        workSpaceData.append('project', project);
+        workSpaceData.append('package', package);
+        workSpaceData.append('inUsers', inUsers);
+        workSpaceData.append('outUsers', outUsers);
+        $.ajax({
+            url: 'set/workSpaceUsers',
+            type: 'POST',
+            data: workSpaceData,
+            contentType: false,
+            processData: false,
+            success: function(response) {
+                console.log(response);
+            },
+            error: function(response) {
+                console.log(response);
+            }
+        });
+    });
+
+
     $('#search_efficiencyTable').on('click', () => {
-        console.log('hello world');
 
         function formatDate(date_str) {
             let utcDate_strs = new Date(date_str).toUTCString().split(' ',5);
@@ -127,3 +246,22 @@ window.onload = function() {
         });
     });
 };
+
+$(document).ready(function($) {
+    $('#WorkSpaceUser').multiselect({
+        right: '#js_multiselect_to_1',
+        rightAll: '#js_right_All_1',
+        rightSelected: '#js_right_Selected_1',
+        leftSelected: '#js_left_Selected_1',
+        leftAll: '#js_left_All_1',
+        search: {
+            left: '<input type="text" name="q" class="form-control" placeholder="Search..." />',
+            right: '<input type="text" name="q" class="form-control" placeholder="Search..." />',
+        },
+        fireSearch: function(value) {
+            return value.length > 0;
+        },
+        keepRenderingSort: true,
+
+    });
+});

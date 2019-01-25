@@ -7,7 +7,7 @@ import os
 import json
 import traceback
 # add by jeff
-import time, random
+import time, random, operator, functools
 from django.utils import timezone
 from ipware import get_client_ip
 
@@ -1205,11 +1205,32 @@ def set_currentJob(request):
         new_jid = None
 
         user_priority = None
-
+        user_workSpace = None
         if username.startswith('oto',0,3):
             user_priority = {'priority':0,}
         else:
             user_priority = {'priority_out':0,}
+
+        user_workSpace = {'username':request.user.username, 'project':project}
+        task_list = None
+        try:
+            # print('user_workSpace',user_workSpace)
+            # packagename = models.UserWorkSpace.objects.get(**user_workSpace).packagename
+            # print('packagename',packagename)
+            # task_list = models.Task.objects.filter(packagename__icontains=packagename).values_list('id',flat=True)
+            # print('task_list',task_list)
+            print('user_workSpace',user_workSpace)
+            packagenames = list(models.UserWorkSpace.objects.filter(**user_workSpace).values_list('packagename',flat=True))
+
+            print('hahahahahahahaha packagenames',packagenames)
+            if len(packagenames) == 0:
+                return JsonResponse({'status':"A01",'text':"你沒被分配到工作, 請聯絡管理員哦"})
+            query = functools.reduce(operator.or_, (Q(packagename__icontains = item) for item in packagenames))
+            task_list = models.Task.objects.filter(query).values_list('id',flat=True)
+            print('hahahahahahahaha task_list',task_list)
+        except ObjectDoesNotExist:
+            return JsonResponse({'status':"A01",'text':"你沒被分配到工作, 請聯絡管理員哦"})
+        
 
         if project == 'fcw_training':
             start_time = time.time()
@@ -1245,6 +1266,7 @@ def set_currentJob(request):
             else:
                 print("need modify is none, try get new frame")
                 start_time = time.time()
+                db_fcwTrains = models.FCWTrain.objects.filter(Q(task_id__in=task_list) & ~Q(**user_priority)).order_by('-{}'.format(list(user_priority.keys())[0]), 'task__created_date')
                 print ("db_fcwTrains,",db_fcwTrains)
                 print ("len  db_fcwTrains,",len(db_fcwTrains))
                 if db_fcwTrains and len(db_fcwTrains):
@@ -1291,9 +1313,9 @@ def set_currentJob(request):
                 print("need modify is none, try get new frame")
                 start_time = time.time()
                 if project == 'fcw_testing':
-                    db_Project = models.FCWTest.objects.filter(~Q(**user_priority) & Q(user=request.user.username) & Q(userGet_date=None)).order_by('-{}'.format(list(user_priority.keys())[0]), 'task__created_date')
+                    db_Project = models.FCWTest.objects.filter(Q(task_id__in=task_list) & ~Q(**user_priority) & Q(user=request.user.username) & Q(userGet_date=None)).order_by('-{}'.format(list(user_priority.keys())[0]), 'task__created_date')
                 elif project == 'apacorner':
-                    db_Project = models.APACorner.objects.filter(~Q(**user_priority) & Q(user=request.user.username) & Q(userGet_date=None)).order_by('-{}'.format(list(user_priority.keys())[0]), 'task__created_date')
+                    db_Project = models.APACorner.objects.filter(Q(task_id__in=task_list) & ~Q(**user_priority) & Q(user=request.user.username) & Q(userGet_date=None)).order_by('-{}'.format(list(user_priority.keys())[0]), 'task__created_date')
                 print ("db_Project,",db_Project)
                 print ("len  db_Project,",len(db_Project))
                 user_record, new_jid = set_currentWithJob(request.user.username, db_Project, time='new')
@@ -1306,9 +1328,9 @@ def set_currentJob(request):
                 print("need modify is none, try get new frame")
                 start_time = time.time()
                 if project == 'fcw_testing':
-                    db_Project = models.FCWTest.objects.filter(~Q(**user_priority) & Q(user='')).order_by('-{}'.format(list(user_priority.keys())[0]), 'task__created_date')
+                    db_Project = models.FCWTest.objects.filter(Q(task_id__in=task_list) & ~Q(**user_priority) & Q(user='')).order_by('-{}'.format(list(user_priority.keys())[0]), 'task__created_date')
                 elif project == 'apacorner':
-                    db_Project = models.APACorner.objects.filter(~Q(**user_priority) & Q(user='')).order_by('-{}'.format(list(user_priority.keys())[0]), 'task__created_date')
+                    db_Project = models.APACorner.objects.filter(Q(task_id__in=task_list) & ~Q(**user_priority) & Q(user='')).order_by('-{}'.format(list(user_priority.keys())[0]), 'task__created_date')
                 print ("db_Project,",db_Project)
                 print ("len  db_Project,",len(db_Project))
                 user_record, new_jid = set_currentWithJob(request.user.username, db_Project, time='new')
