@@ -17,6 +17,7 @@ import re
 import csv, math
 import pickle
 import pytz
+import argparse
 from datetime import datetime
 import psycopg2
 
@@ -27,7 +28,7 @@ class oToPostgreSQLData():
     def __init__(self, a_sDatabase="cvat",
                        a_sUser="postgres",
                        a_sPassword="postgres0000",
-                       a_sHost="localhost",
+                       a_sHost="192.168.5.40",
                        a_sPort="2345"):
         """!
             @param a_sDatabase: 'string' Database name
@@ -42,17 +43,25 @@ class oToPostgreSQLData():
         self.i_sHost = a_sHost
         self.i_sPort = a_sPort
 
+        self.i_dictWorkingRecord = None
+        self.i_listSaveOutRecord = None
+        self.i_dictCorrectedRecord = None
+        self.i_dictCheckedDoneRecord = None
+
         self.i_dictUserRecord = None
-        self.i_dictBBoxRecord = None
+        self.i_dictTaskID_Frame_BBoxRecord = None
 
         self.i_oConnect = None
         self.i_dictVideoID_indb = None
         self.i_dictIDVideo_indb = None
 
+        self.i_dictFrame_Map = None
+
         self.i_dictAttriID_indb = None
         self.i_listBboxID_indb = None
         self.i_dictBBox = None
-        
+
+        self.i_dictTypeAttrRelation = None
         self.i_dictItemStrMap = None
         self.i_dictIDItemMap = None
         self.i_dictCarCarsideMap = None
@@ -62,12 +71,13 @@ class oToPostgreSQLData():
 
     def Read_Setting_Files(self, a_Setting_file):
 
+        self.i_dictTypeAttrRelation = {}
         self.i_dictItemStrMap = {}
         self.i_dictIDItemMap = {}
 
         sFilename = a_Setting_file
 
-        with open(sFilename, 'r') as file:
+        with open(sFilename, 'r', encoding = 'utf8') as file:
             for listline in file:
                 if 'Item' in listline:
                     if '_ID' in listline:
@@ -82,11 +92,17 @@ class oToPostgreSQLData():
                 if 'SubType' in listline:
                     break
 
-        with open(sFilename.replace('.ini', '_check.txt'), 'w') as file:
+        with open(sFilename.replace('.ini', '_check.txt'), 'w', encoding = 'utf8') as file:
             file.write('%4s, %4s, %s\n' % ('ID', 'Item', 'Describe'))
             for sID in self.i_dictIDItemMap:
                 file.write('%4d, %4d, %s\n' % (sID, self.i_dictIDItemMap[sID], self.i_dictItemStrMap[self.i_dictIDItemMap[sID]]))
-        
+
+        self.i_listTypeHaveLight = ['car', 'motorbike', 'truck', 'van', 'bus', 'bike', 
+                                                '代步車', # 代步車
+                                                '工程車', # 工程車
+                                                '有殼三輪車', # 有殼三輪車
+                                                '無殼三輪車'] # 無殼三輪車
+                                                
         self.i_dictCarCarsideMap = { 4: [ 0,  1,  2,  3, 200, 201], #   4 for 'car的車頭/車尾'
                                     10: [ 6,  7,  8,  9, 202, 203], #  10 for 'van的車頭/車尾'
                                     16: [12, 13, 14, 15, 204, 205], #  16 for 'truck的車頭/車尾'
@@ -95,8 +111,9 @@ class oToPostgreSQLData():
                                     53: [46, 50, 51, 52]          , #  53 for 'Bike的車頭/車尾'
                                     58: [47, 55, 56, 57]          , #  58 for '代步車的車頭/車尾'
                                     64: [60, 61, 62, 63]          , #  64 for '工程車的車頭/車尾'
-                                   304: [300, 301, 302, 303]     , # 304 for '無殼三輪車的車頭/車尾'
-                                   311: [307, 308, 309, 310]       # 311 for '有殼三輪車的車頭/車尾'
+                                   304: [300, 301, 302, 303]      , # 304 for '無殼三輪車的車頭/車尾'
+                                   311: [307, 308, 309, 310]      , # 311 for '有殼三輪車的車頭/車尾'
+                                   315: [314]                       # 315 for '動物_頭/尾'
         }
 
         self.i_dictCarNoCarsideMap = { 35: [ 0,  1,  2,  3, 200, 201], #  35 for 'car_完全不見的車頭/車尾'
@@ -108,7 +125,8 @@ class oToPostgreSQLData():
                                        59: [47, 55, 56, 57]          , #  59 for '代步車_完全不見的車頭/車尾'
                                        65: [60, 61, 62, 63]          , #  65 for '工程車_完全不見的車頭/車尾'
                                       305: [300, 301, 302, 303]      , # 305 for '無殼三輪車_完全不見的車頭/車尾'
-                                      312: [307, 308, 309, 310]        # 312 for '有殼三輪車_完全不見的車頭/車尾'
+                                      312: [307, 308, 309, 310]      , # 312 for '有殼三輪車_完全不見的車頭/車尾'
+                                      316: [314]                       # 316 for '動物_完全不見的頭/尾'
         }  
         
     def __Connect(self):
@@ -164,23 +182,29 @@ class oToPostgreSQLData():
             # No Select by other column.
             pass
         else:
-            # Only select by one column in this version code.
-            sReqest_sql_code += "WHERE "
-            sReqest_sql_code += a_sWHEREcolumn + " IN "
+            # IF not NULL
+            if a_listWHEREcolumnValue == "IS NOT NULL":
+                sReqest_sql_code += "WHERE "
+                sReqest_sql_code += a_sWHEREcolumn + " IS NOT NULL "    
+            else:
+                # Only select by one column in this version code.
+                sReqest_sql_code += "WHERE "
+                sReqest_sql_code += a_sWHEREcolumn + " IN "
 
-            # Onlu select by one column in this version code.
-            sReqest_sql_code += "("
-            for sIndexValue in a_listWHEREcolumnValue:
-                if len(a_listWHEREcolumnValue) == 1:
-                    sReqest_sql_code += str(sIndexValue) # only one value.
-                else:
-                    # Mutiple value.
-                    if sIndexValue == a_listWHEREcolumnValue[len(a_listWHEREcolumnValue)-1]:
-                        sReqest_sql_code += str(sIndexValue)
+                # Onlu select by one column in this version code.
+                sReqest_sql_code += "("
+                for sIndexValue in a_listWHEREcolumnValue:
+                    if len(a_listWHEREcolumnValue) == 1:
+                        sReqest_sql_code += str(sIndexValue) # only one value.
                     else:
-                        sReqest_sql_code += str(sIndexValue) + ", "
-            sReqest_sql_code += ")"
-        
+                        # Mutiple value.
+
+                        if sIndexValue == a_listWHEREcolumnValue[len(a_listWHEREcolumnValue)-1]:
+                            sReqest_sql_code += str(sIndexValue)
+                        else:
+                            sReqest_sql_code += str(sIndexValue) + ", "
+                sReqest_sql_code += ")"                      
+
         # print("PostgresSOL script: " + sReqest_sql_code + "\n")
 
         oCursor = self.i_oConnect.cursor() # use cursor to Get data from database.
@@ -188,7 +212,7 @@ class oToPostgreSQLData():
 
         return oCursor
 
-    def Statistic_record(self):
+    def Annotation_time_record(self):
         """!
         This function is getting statistic about annotation time, frame and object informations.
 
@@ -196,28 +220,33 @@ class oToPostgreSQLData():
 
         ## Use frame to get BBox
         oCursorBBoxRecord = self.Cursor_from_db(
-                            a_listSELECT=['"frame"', '"id"'],
+                            a_listSELECT=['"frame"', '"job_id"'],
                             a_sFROM="public.engine_labeledbox"
         )
         listCursordata = oCursorBBoxRecord.fetchall()
 
-        self.i_dictBBoxRecord = {}
+        self.i_dictTaskID_Frame_BBoxRecord = {}
         for listRow in listCursordata:
 
-            if listRow[0] not in self.i_dictBBoxRecord.keys():
-                self.i_dictBBoxRecord[listRow[0]] = 0
-            
-            self.i_dictBBoxRecord[listRow[0]] += 1
+            nJOB_ID = int(listRow[1])
+            nFRAME = int(listRow[0])
+
+            if nJOB_ID not in self.i_dictTaskID_Frame_BBoxRecord.keys():
+                self.i_dictTaskID_Frame_BBoxRecord[nJOB_ID] = {}
+            if nFRAME not in self.i_dictTaskID_Frame_BBoxRecord[nJOB_ID].keys(): 
+                self.i_dictTaskID_Frame_BBoxRecord[nJOB_ID][nFRAME] = 1
+            else:
+                self.i_dictTaskID_Frame_BBoxRecord[nJOB_ID][nFRAME] += 1
 
         # print(self.i_dictBBoxRecord)
         oCursorBBoxRecord.close()
 
         ## Get UserRecord
         oCursorUserRecord = self.Cursor_from_db(
-                            a_listSELECT=['"task_id"', '"user"', '"userGet_date"', '"userSubmit_date"', '"frame"'],
+                            a_listSELECT=['"task_id"', '"user"', '"userGet_date"', '"userSubmit_date"', '"frame"', '"need_modify"','"checked"'],
                             a_sFROM="public.engine_taskframeuserrecord",
-                            a_sWHEREcolumn='"user_submit"',
-                            a_listWHEREcolumnValue=["true"]
+                            a_sWHEREcolumn='"userSubmit_date"',
+                            a_listWHEREcolumnValue="IS NOT NULL"
         )
         listCursordata = oCursorUserRecord.fetchall()
 
@@ -234,11 +263,15 @@ class oToPostgreSQLData():
                 self.i_dictUserRecord[listRow[1]]["UserSubmit_date"] = []   
                 self.i_dictUserRecord[listRow[1]]["Differ_time"] = []                   
                 self.i_dictUserRecord[listRow[1]]["Object_number"] = []
-            
+                self.i_dictUserRecord[listRow[1]]["need_modify"] = []
+                self.i_dictUserRecord[listRow[1]]["checked"] = []
+
             dictUserRecord = self.i_dictUserRecord[listRow[1]]
-                   
+            
             dictUserRecord["TaskID"].append(listRow[0])
             dictUserRecord["frame"].append(listRow[4]) 
+            dictUserRecord["need_modify"].append(listRow[5])
+            dictUserRecord["checked"].append(listRow[6])
             oTimeConverted = oSetTimeZone.localize(listRow[2].replace(tzinfo=None), is_dst=None).astimezone(pytz.utc)
             dictUserRecord["UserGet_date"].append(oTimeConverted.strftime("%Y-%m-%d %a %H:%M"))
             oTimeConverted = oSetTimeZone.localize(listRow[3].replace(tzinfo=None), is_dst=None).astimezone(pytz.utc)
@@ -247,10 +280,12 @@ class oToPostgreSQLData():
             oDiffTime = (listRow[3] - listRow[2])
             dictUserRecord["Differ_time"].append(float(oDiffTime.seconds//60)) 
 
-            if listRow[4] in self.i_dictBBoxRecord.keys():
-                dictUserRecord["Object_number"].append(self.i_dictBBoxRecord[listRow[4]])
-            else: # for no object but submit
-                dictUserRecord["Object_number"].append(0)
+            if int(listRow[0]) in self.i_dictTaskID_Frame_BBoxRecord.keys():
+                if int(listRow[4]) in self.i_dictTaskID_Frame_BBoxRecord[int(listRow[0])].keys():
+                    nObject_number_DB = self.i_dictTaskID_Frame_BBoxRecord[int(listRow[0])][int(listRow[4])]
+                    dictUserRecord["Object_number"].append(nObject_number_DB)
+                else:
+                    dictUserRecord["Object_number"].append(0)  
 
         oCursorUserRecord.close() 
 
@@ -303,7 +338,7 @@ class oToPostgreSQLData():
         
         oCursorAttribute.close()
 
-    def Get_labelbox(self, a_listVideoDate):
+    def Get_labelbox(self, a_listVideoDate=None):
         """!
         To Get BBox value by VideoDate that assgined.
         Return BBox, xtl, ytl, xbr, ybr and occluded value to instance varibale i_dictBBox.
@@ -313,14 +348,18 @@ class oToPostgreSQLData():
 
         # To Create dict for getting BBox value that videodate you sgin.
         # Create Date and Id first.
+
         self.i_dictBBox = {}
+        if a_listVideoDate is None: # Download all data no matter what video.
+            a_listVideoDate = self.i_dictVideoID_indb.keys()
+
         for nDate in a_listVideoDate:
             nJob_ID = self.i_dictVideoID_indb[nDate]
             self.i_dictBBox[nJob_ID] = {}
             self.i_dictBBox[nJob_ID]["Date"] = nDate
 
         # Use Job_Id to get labeledbox from postgresql database
-        listId_sql_index = self.i_dictBBox.keys()
+        listId_sql_index = list(self.i_dictBBox.keys())
         oCursorBBox = self.Cursor_from_db(a_listSELECT=["*"], a_sFROM="public.engine_labeledbox",
                                             a_sWHEREcolumn="job_id", a_listWHEREcolumnValue=listId_sql_index)
         listRawBBox = oCursorBBox.fetchall()
@@ -340,14 +379,15 @@ class oToPostgreSQLData():
             self.i_dictBBox[nJob_ID][nframe][nBBOX_ID]["ytl"] = int(listRow[3])
             self.i_dictBBox[nJob_ID][nframe][nBBOX_ID]["xbr"] = int(listRow[4])
             self.i_dictBBox[nJob_ID][nframe][nBBOX_ID]["ybr"] = int(listRow[5])
-            
+            self.i_dictBBox[nJob_ID][nframe][nBBOX_ID]["obj_id"] = int(listRow[11])
+
             # BBox id is index for put in BBox attributes.
             if nJob_ID not in self.i_listBboxID_indb.keys():
                 self.i_listBboxID_indb[nJob_ID] = {}
             if nframe not in self.i_listBboxID_indb[nJob_ID]:
                 self.i_listBboxID_indb[nJob_ID][nframe] = []
-            self.i_listBboxID_indb[nJob_ID][nframe].append(nBBOX_ID) 
-        
+            self.i_listBboxID_indb[nJob_ID][nframe].append(nBBOX_ID)          
+
         print("Dictionary about RawBox data being saved!")
 
         oCursorBBox.close()
@@ -364,7 +404,7 @@ class oToPostgreSQLData():
             for nframe_num in self.i_listBboxID_indb[nJob_ID].keys():
                 for nBBox_id in self.i_listBboxID_indb[nJob_ID][nframe_num]:
                     listBBoxID_to_get.append(nBBox_id)
-                    listBBoxID_by_frame[nBBox_id] = [nJob_ID, nframe_num]
+                    listBBoxID_by_frame[nBBox_id] = [nJob_ID, nframe_num]              
 
         # Use bbox_Id to get Bbox attribute from postgresql database.
         oCursorBBoxAttri = self.Cursor_from_db(a_listSELECT=["*"], a_sFROM="public.engine_labeledboxattributeval",
@@ -391,6 +431,7 @@ class oToPostgreSQLData():
                 if nframe_num == 'Date':
                     continue
                 for nBBox_id in self.i_dictBBox[nJob_ID][nframe_num].keys():
+                    #print(nJob_ID, nframe_num) #
                     for sAttr in listBBoxAttri[nBBox_id].keys():
                         self.i_dictBBox[nJob_ID][nframe_num][nBBox_id][sAttr] = listBBoxAttri[nBBox_id][sAttr]
 
@@ -398,17 +439,47 @@ class oToPostgreSQLData():
 
         oCursorBBoxAttri.close()    
     
-    def CsvPreProcess(self, a_listVideoDate):
+    def Get_FrameMapping(self, a_listVideoID=None):
+        # Use Job_Id to get labeledbox from postgresql database
+        self.i_dictFrame_Map = {}
+
+        if a_listVideoID is None or len(a_listVideoID) == 0:
+            return None
+        else:
+            oCursorBBox = self.Cursor_from_db(a_listSELECT=["frame","name","task_id"], a_sFROM="public.engine_framename",
+                                                    a_sWHEREcolumn="task_id", a_listWHEREcolumnValue=a_listVideoID)
+
+        listRawBBox = oCursorBBox.fetchall()
+
+        for listRow in listRawBBox:
+            nFrame_indb = int(listRow[0])
+            nTask_ID = int(listRow[2])
+            listNameSplit = listRow[1].split("_")
+            # sVideoName = "_".join(listNameSplit[:-1])
+            nFrame = int(listNameSplit[-1])
+            # print(nFrame_indb, nTask_ID, sVideoName, nFrame)
+
+            if nTask_ID not in self.i_dictFrame_Map.keys():
+                self.i_dictFrame_Map[nTask_ID] = {}
+            if nFrame_indb not in self.i_dictFrame_Map[nTask_ID].keys():
+                self.i_dictFrame_Map[nTask_ID][nFrame_indb] = nFrame
+      
+        oCursorBBox.close()    
+
+    def CsvPreProcess(self, a_listVideoDate=None):
         """!
         To create carside points and Type-ID to instance varibale i_dictBBox that VideoDate assgined.
 
             @param a_listVideoDate: 'list' The video date that you want to convert carside object.
         """
 
+        if a_listVideoDate is None: # Download all data no matter what video.
+            a_listVideoDate = self.i_dictVideoID_indb.keys()        
+
         for nVideoDate in a_listVideoDate:
             if nVideoDate in self.i_dictVideoID_indb.keys():
                 nVideoID = self.i_dictVideoID_indb[str(nVideoDate)]
-                sCSV_OBJ_ID = 1 # ID for creating object data by row in csv files.
+
                 for nframe_num in self.i_dictBBox[nVideoID].keys():
 
                     if nframe_num == 'Date':
@@ -418,15 +489,34 @@ class oToPostgreSQLData():
                         
                         dictBBoxData = self.i_dictBBox[nVideoID][nframe_num]
 
-                        dictBBoxData[nOBJ_ID]["CSV_ID"] = sCSV_OBJ_ID
-                        sCSV_OBJ_ID += 1
-
                         # To convert Type ID number for csv.
                         sType_in_db = dictBBoxData[nOBJ_ID]['Type']
+                        sLight_state_in_db = dictBBoxData[nOBJ_ID]['有開燈']
+                        sObstacle_in_db = dictBBoxData[nOBJ_ID]['障礙物']
+                            
+                        sTransformType = ""
+                        if sType_in_db.lower() in self.i_listTypeHaveLight :
+                            
+                            if sLight_state_in_db == 'true':
+                                sTransformType = sTransformType + "有開燈" # 有開燈
+                            else:
+                                sTransformType = sTransformType + "沒開燈" # 沒開燈
 
-                        nItem_in_csv = self.i_dictItemStrMap.keys()[self.i_dictItemStrMap.values().index(sType_in_db)]
-                        nID_in_csv = self.i_dictIDItemMap.keys()[self.i_dictIDItemMap.values().index(nItem_in_csv)]
-                    
+                            sTransformType = sTransformType + "_"
+
+                            if sObstacle_in_db == 'true':
+                                # 有障礙物的
+                                sTransformType = sTransformType + '有障礙物的'
+                            else:
+                                # 正常的
+                                sTransformType = sTransformType + '正常的'
+
+                            sTransformType = sTransformType + sType_in_db.lower()
+                            sType_in_db = sTransformType
+
+                        nItem_in_csv = list(self.i_dictItemStrMap.keys())[list(self.i_dictItemStrMap.values()).index(sType_in_db.lower())]
+                        nID_in_csv = list(self.i_dictIDItemMap.keys())[list(self.i_dictIDItemMap.values()).index(nItem_in_csv)]
+
                         dictBBoxData[nOBJ_ID]['CSV_OBJ_ID'] = nID_in_csv
 
                         # To Convert absolute carSide X point.
@@ -434,49 +524,127 @@ class oToPostgreSQLData():
                         nxmax = float(dictBBoxData[nOBJ_ID]['xbr'])
                         nwidth = abs(nxmax - nxmin)
 
-                        sCarside = dictBBoxData[nOBJ_ID]['DetectPoints'].split(" ")
+                        sCarside = dictBBoxData[nOBJ_ID]['DetectPoints'].replace('"', '')
+                        sCarside = sCarside.replace(' ', ',').replace(',,',',')
 
-                        if sCarside == ['-1,-1,', '-1,-1']:
+                        if sCarside == ['-1,-1,-1,-1'] or sCarside == ['-1,-1, -1,-1']:
                             nCarside_x_min = -1
                             nCarside_x_max = -1
                         else:
-                            nCarside_x_point1 = float(re.sub('"', "", sCarside[0].split(",")[0]))
-                            nCarside_x_point2 = float(re.sub('"', "", sCarside[1].split(",")[0]))
+                            
+                            nCarside_x_point1 = float(sCarside.split(",")[0])
+                            nCarside_x_point2 = float(sCarside.split(",")[2])
 
-                            nCarside_x_min = int((min(nCarside_x_point1, nCarside_x_point2) * nwidth) + nxmin)
-                            nCarside_x_max = int((max(nCarside_x_point1, nCarside_x_point2) * nwidth) + nxmin)
+                            nCarside_x_min = int(round((min(nCarside_x_point1, nCarside_x_point2) * nwidth) + nxmin, 0))
+                            nCarside_x_max = int(round((max(nCarside_x_point1, nCarside_x_point2) * nwidth) + nxmin, 0))
 
                         dictBBoxData[nOBJ_ID]['side_x_min'] = nCarside_x_min
                         dictBBoxData[nOBJ_ID]['side_x_max'] = nCarside_x_max   
 
         print("Csv pre-processing done!")           
-
-    def CsvExport(self, a_listVideoDate, a_sSavePath_csv):
+                      
+    def CsvExport(self, a_sSavePath_csv, a_bErrorExport, a_listAnnotator_name=None, a_listVideoDate=None, a_bGetToday=False, 
+                        a_bGetCorrect=False, a_sGetCorrectDate=None):
         """!
         To Export Csv files.
 
             @param a_listVideoDate: 'list' The video date that you want to convert carside object.
             @param a_sSavePath_csv: 's' The dir that you want to write out dir including csv files.
         """
-        
+
         colnames = ["Version", "ID", "Type", "BBoxType", "SubType", "2DBB_tl_x", "2DBB_tl_y", "2DBB_br_x", "2DBB_br_y", 
                     "Location_x", "Location_y", "Location_z", "Dimension_x", "Dimension_y", "Dimension_z", 
                     "Alpha", "Rotation_y", "Occluded", "Truncated", "DontCare", "IsStartFrame", "IsEndFrame", "TrackingMethod", "LockPosition", "LinkedID"]
 
+        # for produce err csv
+        if a_bErrorExport:
+            sCurrentDate = datetime.now().strftime("%Y-%m-%d-%H-%M")
+            # sCurrentDate = '2019-01-16-18-30'
+            print(sCurrentDate)
+
+        if a_bGetCorrect:
+            sCurrentDate = a_sGetCorrectDate        
+
+        dictUserToGet = {}
+        for sUser in self.i_dictUserRecord.keys():
+            for nIndex in range(0, len(self.i_dictUserRecord[sUser]['TaskID'])):
+                nTaskId = self.i_dictUserRecord[sUser]['TaskID'][nIndex]
+                nframe = self.i_dictUserRecord[sUser]['frame'][nIndex]
+
+                if a_bGetToday:
+                    sDataDate = self.i_dictUserRecord[sUser]['UserSubmit_date'][nIndex][0:10]
+                    if sCurrentDate[0:10] != sDataDate:
+                        continue
+
+                if a_bGetCorrect:
+                    sDataDate = self.i_dictUserRecord[sUser]['UserSubmit_date'][nIndex][0:10]
+                    sDataChecked = self.i_dictUserRecord[sUser]['checked'][nIndex]
+                    sDataNeed_modify = self.i_dictUserRecord[sUser]['need_modify'][nIndex]
+
+                    if a_sGetCorrectDate != sDataDate: # if not this date data, skip
+                        continue
+                    else:
+                        if not (sDataChecked and not sDataNeed_modify): # only writeout checked and not modify, if not continue
+                            continue
+   
+                if nTaskId not in dictUserToGet.keys():
+                    dictUserToGet[nTaskId] = {}
+                if nframe not in dictUserToGet[nTaskId].keys():
+                    dictUserToGet[nTaskId][nframe] = []
+                dictUserToGet[nTaskId][nframe].append(sUser)
+
+        if a_listVideoDate is None: # Download all data no matter what video.
+            a_listVideoDate = self.i_dictVideoID_indb.keys()          
+        
+        # To Get Frames Mapping if exsists
+        listVideo_ID = list(dictUserToGet.keys())
+        self.Get_FrameMapping(a_listVideoID=listVideo_ID)
+
         for nVideoDate in a_listVideoDate:
+            
+            # sIndepend_ID = 1 # FOR LOCAL TOOL DEBUG
+
             if nVideoDate in self.i_dictVideoID_indb.keys():
                 nVideoID = self.i_dictVideoID_indb[str(nVideoDate)]
-            
-            # Create Dir by VideoDate
-            sCSVDir = os.path.join(a_sSavePath_csv, nVideoDate)
-            if not os.path.exists(sCSVDir):
-                os.makedirs(sCSVDir)
+
+            if not a_bErrorExport:
+                # Create Dir by VideoDate.
+                sCSVDir = os.path.join(a_sSavePath_csv, nVideoDate)
+                if not os.path.exists(sCSVDir):
+                    os.makedirs(sCSVDir)
 
             for nframe in self.i_dictBBox[nVideoID].keys():
+
                 if nframe == 'Date':
                     continue
 
-                sCSV_file_name = "key_%s_%04d.csv" %(nVideoDate, int(nframe)+1)
+                if nVideoID not in dictUserToGet.keys():
+                    continue
+                if nframe not in dictUserToGet[nVideoID].keys():
+                    continue
+                sAnnotator = dictUserToGet[nVideoID][nframe][0]
+
+                if a_bErrorExport or a_bGetCorrect:
+                    # Create Dir by Annotator and VideoDate today.
+                    sCSVDir = os.path.join(a_sSavePath_csv, sCurrentDate, sAnnotator, nVideoDate)
+                    if a_bGetCorrect:
+                        sCSVDir = os.path.join(a_sSavePath_csv, sCurrentDate, nVideoDate)
+                    if not os.path.exists(sCSVDir):
+                        os.makedirs(sCSVDir) 
+                
+                if a_listAnnotator_name is not None:
+                    if sAnnotator not in a_listAnnotator_name:
+                        continue                 
+
+                if self.i_dictFrame_Map is None:
+                    sCSV_file_name = "key_%s_%04d.csv" %(nVideoDate, int(nframe)+1)
+                else:
+                    if nVideoID in self.i_dictFrame_Map.keys():
+                         nframe_inVideo = self.i_dictFrame_Map[nVideoID][nframe]
+                         sCSV_file_name = "key_%s_%04d.csv" %(nVideoDate, nframe_inVideo)
+                    else:
+                         sCSV_file_name = "key_%s_%04d.csv" %(nVideoDate, int(nframe)+1)
+
                 sCSVPath = os.path.join(sCSVDir, sCSV_file_name)
 
                 sCSV_show_file_name = re.sub("key_", "", sCSV_file_name)
@@ -486,13 +654,16 @@ class oToPostgreSQLData():
                 if os.path.exists(sCSV_show_file):
                     os.remove(sCSV_show_file)
 
-                fileCSV = open(sCSVPath, mode='w')
-                fileCSV = csv.writer(fileCSV, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+                fileCSV = open(sCSVPath, mode='w', newline='')
+                fileCSV = csv.writer(fileCSV)
                 fileCSV.writerow(colnames)
 
                 for nID in self.i_dictBBox[nVideoID][nframe].keys():
+
+                    # sIndepend_ID += 1 # FOR LOCAL TOOL DEBUG
+                    # sCSVID = sIndepend_ID # FOR LOCAL TOOL DEBUG
                     
-                    sCSVID = self.i_dictBBox[nVideoID][nframe][nID]['CSV_ID']
+                    sCSVID = self.i_dictBBox[nVideoID][nframe][nID]['obj_id']
                     sType_ID = self.i_dictBBox[nVideoID][nframe][nID]['CSV_OBJ_ID']
 
                     stl_x = self.i_dictBBox[nVideoID][nframe][nID]['xtl']
@@ -500,11 +671,34 @@ class oToPostgreSQLData():
                     sbr_x = self.i_dictBBox[nVideoID][nframe][nID]['xbr']
                     sbr_y = self.i_dictBBox[nVideoID][nframe][nID]['ybr']
 
-                    nRawRotation = (float(self.i_dictBBox[nVideoID][nframe][nID]['Rotation']) / float(180)) * math.pi
-                    if nRawRotation > 0:
-                        sRotation_y = str(nRawRotation)[:-5]
-                    else:
-                        sRotation_y = str(nRawRotation)[:9]
+                    #print(nVideoDate, nframe)
+                    nDB_Rotation = int(self.i_dictBBox[nVideoID][nframe][nID]['Rotation'])
+
+
+                    if nDB_Rotation == -90:
+                       sRotation_y = '-1.570796'
+                    if nDB_Rotation == 90:
+                       sRotation_y = '1.570796'
+                    if nDB_Rotation == -120:
+                       sRotation_y = '-2.094395'
+                    if nDB_Rotation == -60:
+                       sRotation_y = '-1.047197'
+                    if nDB_Rotation == -150:
+                       sRotation_y = '-2.617993'
+                    if nDB_Rotation == -30:
+                       sRotation_y = '-0.523598'
+                    if nDB_Rotation == 0:
+                       sRotation_y = '0'
+                    if nDB_Rotation == 30:
+                       sRotation_y = '0.523598'
+                    if nDB_Rotation == 60:
+                       sRotation_y = '1.047197'
+                    if nDB_Rotation == 120:
+                       sRotation_y = '2.094395'
+                    if nDB_Rotation == 150:
+                       sRotation_y = '2.617993'
+                    if nDB_Rotation == 180:
+                       sRotation_y = '3.141592'
 
                     if self.i_dictBBox[nVideoID][nframe][nID]['Occluded'] == 'Fully_Visible':
                         sOccluded = 0
@@ -512,7 +706,7 @@ class oToPostgreSQLData():
                         sOccluded = 1
                     elif self.i_dictBBox[nVideoID][nframe][nID]['Occluded'] == 'Largely_Occluded':
                         sOccluded = 2
-                    elif self.i_dictBBox[nVideoID][nframe][nID]['Occluded'] == 'Unknown':
+                    elif self.i_dictBBox[nVideoID][nframe][nID]['Occluded'] == 'Unknow':
                         sOccluded = 3
                         
                     sTruncated = self.i_dictBBox[nVideoID][nframe][nID]['Truncated']
@@ -533,21 +727,25 @@ class oToPostgreSQLData():
 
                     sCarSideID = "5%03d" % sCSVID
                     sSide_stl_x = self.i_dictBBox[nVideoID][nframe][nID]['side_x_min']
-                    sSide_sbr_x = self.i_dictBBox[nVideoID][nframe][nID]['side_x_max']
+                    sSide_sbr_x = self.i_dictBBox[nVideoID][nframe][nID]['side_x_max']                      
+
+                    # 看不見車頭車尾
+                    if self.i_dictBBox[nVideoID][nframe][nID]['看不見車頭車尾'] == 'false':
+                        dictCheckCarSide = self.i_dictCarCarsideMap
+                    elif self.i_dictBBox[nVideoID][nframe][nID]['看不見車頭車尾'] == 'true':
+                        dictCheckCarSide = self.i_dictCarNoCarsideMap
+                        if stl_x < 50:
+                            sSide_stl_x = 1
+                            sSide_sbr_x = 1
+                        if sbr_x > 1250:
+                            sSide_stl_x = 1279
+                            sSide_sbr_x = 1279
 
                     if sSide_stl_x == -1 and sSide_stl_x == -1:
                         continue
 
-                    if self.i_dictBBox[nVideoID][nframe][nID]['Tolotally_NoCarSide'] == 'false':
-                        dictCheckCarSide = self.i_dictCarCarsideMap
-                    elif self.i_dictBBox[nVideoID][nframe][nID]['Tolotally_NoCarSide'] == 'true':
-                        dictCheckCarSide = self.i_dictCarNoCarsideMap
-                        if sbr_x < 640:
-                            sSide_stl_x = 1
-                            sSide_sbr_x = 1
-                        if stl_x > 640:
-                            sSide_stl_x = 1279
-                            sSide_sbr_x = 1279
+                    if sDontCare == 1:
+                        continue
 
                     sSideType = None
                     for nCarID in dictCheckCarSide.keys():
@@ -565,8 +763,40 @@ class oToPostgreSQLData():
                     ]
                     fileCSV.writerow(col)  
 
-    def StatisticTableExport(self, a_listAnnotator_name, a_sSavePath,
-                            a_bExportRawTable=True, a_bExportStatisticTable=True, ):
+        if a_bErrorExport or a_bGetCorrect:
+           # Create Dir by Annotator and VideoDate today.
+           # For create empty CSV files
+           
+           for nTaskId in dictUserToGet.keys():
+              for nframe in dictUserToGet[nTaskId].keys():
+                    if nframe not in self.i_dictBBox[nTaskId].keys():
+                        sAnnotator = dictUserToGet[nTaskId][nframe][0]
+                        nVideoDate = self.i_dictIDVideo_indb[nTaskId]
+                        sCSVDir = os.path.join(a_sSavePath_csv, sCurrentDate, sAnnotator, nVideoDate)
+                        if a_bGetCorrect:
+                            sCSVDir = os.path.join(a_sSavePath_csv, sCurrentDate, nVideoDate)
+                        if not os.path.exists(sCSVDir):
+                            os.makedirs(sCSVDir) 
+
+                        if self.i_dictFrame_Map is None:
+                            sCSV_file_name = "key_%s_%04d.csv" %(nVideoDate, int(nframe)+1)
+                        else:
+                           if nVideoID in self.i_dictFrame_Map.keys():
+                             nframe_inVideo = self.i_dictFrame_Map[nVideoID][nframe]
+                             sCSV_file_name = "key_%s_%04d.csv" %(nVideoDate, nframe_inVideo)
+                           else:
+                             sCSV_file_name = "key_%s_%04d.csv" %(nVideoDate, int(nframe)+1)
+
+                        sCSVPath = os.path.join(sCSVDir, sCSV_file_name)
+
+                        print("empty bbox", nframe+1, dictUserToGet[nTaskId][nframe], nVideoDate)
+
+                        with open(sCSVPath, mode='w', newline='') as fileCSV:
+                            fileCSV = csv.writer(fileCSV)
+                            fileCSV.writerow(colnames)
+
+    def StatisticTableExport(self, a_sSavePath,
+                            a_bExportRawTable=True, a_bExportStatisticTable=True, a_listAnnotator_name=None):
         """!
         To Export Csv files.
 
@@ -574,6 +804,8 @@ class oToPostgreSQLData():
             @param a_bExportRawTable: 'b' Whether you want RawTable or not.
             @param a_bExportStatisticTable: 'b' Whether you want StatisticTable or not.
         """
+        
+        print(a_sSavePath)
 
         if a_bExportRawTable: 
 
@@ -582,11 +814,14 @@ class oToPostgreSQLData():
 
             listcolnames = ["VideoName", "Annotator", "Start_time", "End_Time", "Differ_Time","Object_number", "Frame_number"]
 
-            fileCSV = open(sCSVDir, mode='w')
-            fileCSV = csv.writer(fileCSV, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+            fileCSV = open(sCSVDir, mode='w', newline='')
+            fileCSV = csv.writer(fileCSV)
             fileCSV.writerow(listcolnames)
 
             listVideoToGet = {}
+
+            if a_listAnnotator_name is None:
+                a_listAnnotator_name = self.i_dictUserRecord.keys()
 
             for sAnnotator in a_listAnnotator_name:
                 for nIndex in range(0, len(self.i_dictUserRecord[sAnnotator]["TaskID"])):
@@ -618,8 +853,8 @@ class oToPostgreSQLData():
             # Create Dir
             sCSVDir = os.path.join(a_sSavePath, "Statistic_Table.csv")
 
-            fileCSV = open(sCSVDir, mode='w')
-            fileCSV = csv.writer(fileCSV, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+            fileCSV = open(sCSVDir, mode='w', newline='')
+            fileCSV = csv.writer(fileCSV)
 
             for sAnnotator in a_listAnnotator_name:
                 
@@ -672,7 +907,7 @@ class oToPostgreSQLData():
                     oMaxSubmitTime = datetime.strptime(sMaxSubmitTime, "%H:%M")
 
                     oDifferTime = oMaxSubmitTime - oMinGetTime  
-                                                   
+
                     colnames = [sWorkDay, sum(dictWorkDays_Object[sWorkDay]), 
                                         len(dictWorkDays_frame[sWorkDay]),
                                         sMinGetTime,
@@ -688,34 +923,57 @@ class oToPostgreSQLData():
 
             print("Statistic Table has be exported!") 
 
+def str2bool(a_sSTR):
+    if a_sSTR.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif a_sSTR.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
+
+def get_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--CorrectDate', type = str, required = True, help='no')
+    parser.add_argument('--ProduceCorrect', type = str2bool, required = True, help='no')
+    return parser.parse_args()
+
 
 if __name__ == '__main__':
-    test = oToPostgreSQLData()
+    oSQLData = oToPostgreSQLData()
 
-    Table_write_out_dir = r"/home/share/Ericlou/Dataset/"
-    listUserToGet = ["test12345", "test123", "test1234", "Gina"]
-    test.Get_Video_link_ID()
-    test.Statistic_record()
-    test.StatisticTableExport(a_listAnnotator_name=listUserToGet,
+    dictArgs = get_args().__dict__
+
+    # UserRecord #
+
+    Table_write_out_dir = r"C:/Users/user/Desktop/CVAT/dump_data/Record"
+
+    oSQLData.Get_Video_link_ID()
+    oSQLData.Annotation_time_record()
+    oSQLData.StatisticTableExport(a_listAnnotator_name=None,
                               a_sSavePath=Table_write_out_dir,
                               a_bExportRawTable=True,
                               a_bExportStatisticTable=True)
 
-    # test.Get_Video_link_ID()
-    # test.Get_Attribute_Id()
+    # CSVoutput #
 
-    # FCW_Setting_file = r"/home/ericlou/CVAT/cvat_web/cvat/dump_data/FCW_Setting_training20181122.ini"
-    # CSV_write_out_dir = r"/home/share/Ericlou/Dataset/"
+    oSQLData.Get_Video_link_ID()
+    oSQLData.Get_Attribute_Id()
 
-    # test.Read_Setting_Files(a_Setting_file=FCW_Setting_file)
+    FCW_Setting_file = r"C:/Users/user/Desktop/CVAT/dump_data/FCW_Setting_training20181210.ini"
+    CSV_write_out_dir = r"C:/Users/user/Desktop/CVAT/dump_data/CSV_file"
 
-    # listVideoToGet = ["20180526_19_34_52_392_000", "20180526_19_40_33_230_000"]
-    # test.Get_labelbox(a_listVideoDate=listVideoToGet)
-    # test.Get_labelboxAttr()
-    # test.CsvPreProcess(a_listVideoDate=listVideoToGet)
-    # test.CsvExport(a_listVideoDate=listVideoToGet, a_sSavePath_csv=CSV_write_out_dir)
-    
-    
+    oSQLData.Read_Setting_Files(a_Setting_file=FCW_Setting_file)
+
+    oSQLData.Annotation_time_record()
+    oSQLData.Get_labelbox(a_listVideoDate=None)
+    oSQLData.Get_labelboxAttr()
+    oSQLData.CsvPreProcess(a_listVideoDate=None)
+
+    oSQLData.CsvExport(a_bErrorExport=True, a_listVideoDate=None, a_sSavePath_csv=CSV_write_out_dir, a_bGetToday=True)
+    oSQLData.CsvExport(a_bErrorExport=True, a_listVideoDate=None, a_sSavePath_csv=CSV_write_out_dir, 
+                        a_bGetCorrect=dictArgs['ProduceCorrect'], a_sGetCorrectDate=dictArgs['CorrectDate'])
+
+
 
 
 

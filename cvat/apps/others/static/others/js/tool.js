@@ -200,6 +200,7 @@ window.onload = function() {
                     let user = row.user;
                     let search_targets = row.search_targets;
                     let checked = row.checked;
+                    let checked_objs = row.checked_objs;
                     let need_modify = row.need_modify;
                     let uncheck = row.uncheck;
                     let terrible = row.terrible;
@@ -224,21 +225,23 @@ window.onload = function() {
                     // <td> 用戶 </td>
                     // <td> 標記圖片量 </td>
                     // <td> 已正確圖片量 </td>
+                    // <td> 目標[4000] /已正確圖片量的物件量 </td>
                     // <td> 待修改圖片量 </td>
                     // <td> 未檢查圖片量 </td>
                     // <td> 錯誤圖片量 </td>
                     // <td> 正確圖片量 </td>
                     // <td> 正確物件量 </td>
                     // <td> 查詢時間 </td>
+
+                    let perfection_color = (checked_objs >= 4000)?"background-color: greenyellow;":"background-color: lightcoral;";
                     $('#efficiencyTable > tbody:last-child').append(
                         `<tr class='per_data'><td>${user}</td>` + 
-                        `<td>${search_targets}</td>` + 
-                        `<td>${checked}</td>` + 
-                        `<td>${need_modify}</td>` + 
-                        `<td>${uncheck}</td>` + 
-                        `<td>${terrible}</td>` + 
-                        `<td>${excellent}</td>` + 
-                        `<td>${excellent_objs}</td>` + 
+                        `<td>${search_targets} / ${row.search_targets_objs}</td>` + 
+                        `<td style="${perfection_color}">${row.checked} / ${row.checked_objs}</td>` + 
+                        `<td>${need_modify} / ${row.need_modify_objs}</td>` + 
+                        `<td>${uncheck} / ${row.uncheck_objs}</td>` + 
+                        `<td>${terrible} / ${row.terrible}</td>` + 
+                        `<td>${excellent} / ${row.excellent_objs}</td>` + 
                         `<td>${date_str}</td></tr>`
                     );
                 }

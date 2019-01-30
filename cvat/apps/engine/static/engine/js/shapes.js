@@ -182,10 +182,10 @@ class ShapeModel extends Listener {
                 if (attrInfo.name=="Type"){
                     if (previous_type===null){
                         this._attributes.mutable[this._frame][attrId] = attrInfo.values[0];
-                        console.log(attrInfo.values[0], attrInfo.values[1], "mutable");
+                        // console.log(attrInfo.values[0], attrInfo.values[1], "mutable");
                     } else {
                         this._attributes.mutable[this._frame][attrId] = previous_type;
-                        console.log(previous_type, "mutable");
+                        // console.log(previous_type, "mutable");
                     }
                     Type_value = this._attributes.mutable[this._frame][attrId].toLowerCase();
                     this.mapColor(this._attributes.mutable[this._frame][attrId]);
@@ -202,20 +202,20 @@ class ShapeModel extends Listener {
                 if (attrInfo.name=="有開燈"){
                     if (previous_Light===null){
                         this._attributes.mutable[this._frame][attrId] = attrInfo.values[0];
-                        console.log(attrInfo.values[0], attrInfo.values[1], "mutable");
+                        // console.log(attrInfo.values[0], attrInfo.values[1], "mutable");
                     } else {
                         this._attributes.mutable[this._frame][attrId] = previous_Light;
-                        console.log(previous_Light, "mutable");
+                        // console.log(previous_Light, "mutable");
                     }
                 }
 
                 if (attrInfo.name=="障礙物"){
                     if (previous_cant_see===null){
                         this._attributes.mutable[this._frame][attrId] = attrInfo.values[0];
-                        console.log(attrInfo.values[0], attrInfo.values[1], "mutable");
+                        // console.log(attrInfo.values[0], attrInfo.values[1], "mutable");
                     } else {
                         this._attributes.mutable[this._frame][attrId] = previous_cant_see;
-                        console.log(previous_cant_see, "mutable");
+                        // console.log(previous_cant_see, "mutable");
                     }
                 }
                 if(attrInfo.name == "DetectPoints") {
@@ -727,7 +727,7 @@ class ShapeModel extends Listener {
             let attrInfo = labelsInfo.attrInfo(attrId);
                 // add by eric
                 if (attrInfo.name=="Type"){
-                    console.log(this._attributes.mutable[this._frame][attrId], "Type");
+                    // console.log(this._attributes.mutable[this._frame][attrId], "Type");
                     previous_type = this._attributes.mutable[this._frame][attrId];
                 }
                 // if (attrInfo.name=="Rotation"){
@@ -735,11 +735,11 @@ class ShapeModel extends Listener {
                 //     previous_rotation = this._attributes.mutable[this._frame][attrId];
                 // } 
                 if (attrInfo.name=="有開燈"){
-                    console.log(this._attributes.mutable[this._frame][attrId], "有開燈");
+                    // console.log(this._attributes.mutable[this._frame][attrId], "有開燈");
                     previous_Light = this._attributes.mutable[this._frame][attrId];
                 } 
                 if (attrInfo.name=="障礙物"){
-                    console.log(this._attributes.mutable[this._frame][attrId], "障礙物");
+                    // console.log(this._attributes.mutable[this._frame][attrId], "障礙物");
                     previous_cant_see = this._attributes.mutable[this._frame][attrId];
                 } 
         }
@@ -2268,6 +2268,9 @@ class ShapeView extends Listener {
 
         $(`#menu_obj_${obj_id} .selectpicker`).selectpicker('refresh');
         //this._scenes.menus.append(this._uis.menu);
+        
+        // add by ericlou, for Rotation Unknown
+        $("option[value='Unknown']").attr("disabled", "disabled");
 
         function makeTitleBlock(id, label, type, shortkeys) {
             let title = document.createElement('div');
@@ -3341,7 +3344,7 @@ class ShapeView extends Listener {
                 // draw carside once load UI.
                 console.log("in draw");
                 this._drawShapeUI(interpolation, id);
-                this._setupOccludedUI(interpolation.position.occluded);
+                // this._setupOccludedUI(interpolation.position.occluded);
                 this._setupMergeView(this._controller.merge);
                 if (!this._controller.hiddenText) {
                     // modify by Eric
@@ -3601,7 +3604,7 @@ class ShapeView extends Listener {
             if (!hiddenShape || activeAAM.shape) {
                 console.log("in set hidden");
                 this._drawShapeUI(interpolation, id);
-                this._setupOccludedUI(interpolation.position.occluded);
+                // this._setupOccludedUI(interpolation.position.occluded);
                 if (!hiddenText || active || activeAAM.shape) {
                     // modify by Eric
                     // this._removeShapeText();
@@ -3791,6 +3794,7 @@ class BoxView extends ShapeView {
 
         let dont_care_value = null;
         let type_value = '';
+        let Occlude_value = ''
 
         for (let attrId in attributes) {
             var get_name = String(attributes[attrId]['name']) ;
@@ -3802,6 +3806,9 @@ class BoxView extends ShapeView {
             }
             if (get_name === "Type"){
                 type_value = attributes[attrId]['value'];
+            }
+            if (get_name === "Occluded"){
+                Occlude_value = attributes[attrId]['value'];
             }
         }
 
@@ -3903,8 +3910,14 @@ class BoxView extends ShapeView {
             'fill-opacity': this._appearance.fillOpacity
         }).move(xtl, ytl).addClass('shape');
 
+        if (Occlude_value === "Largely_Occluded"){
+            this._uis.shape.node.classList.add('occludedShape'); 
+        } else {
+            this._uis.shape.node.classList.remove('occludedShape');
+        }
+
         ShapeView.prototype._drawShapeUI.call(this);
-        console.log("_drawShapeUI(interpolation, id_)");
+        // console.log("_drawShapeUI(interpolation, id_)");
         setDetectPoint(this._controller._model);
     }
 

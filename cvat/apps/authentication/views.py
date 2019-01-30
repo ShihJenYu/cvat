@@ -66,7 +66,7 @@ def auth_mysteriousKey(request):
         mysterious_key = params['mysteriousKey']
         print('mysteriousKey', mysterious_key)
 
-        OFFICE_IP = ['114.37.145.43', '220.134.104.253']
+        OFFICE_IP = ['114.37.145.43', '220.134.104.253','114.43.64.62']
         OFFICE_Key = []
         for ip in OFFICE_IP:
             mhash = hashlib.md5()

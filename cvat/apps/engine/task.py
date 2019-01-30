@@ -124,7 +124,6 @@ def update(tid, labels):
                         raise Exception("new_attr['prefix'] != old_attr['prefix']")
                     if new_attr['type'] != old_attr['type']:
                         raise Exception("new_attr['type'] != old_attr['type']")
-                    print('old - new ',old_attr['values'], new_attr['values'])
                     if set(old_attr['values']) - set(new_attr['values']):
                         raise Exception("set(old_attr['values']) - set(new_attr['values'])")
 

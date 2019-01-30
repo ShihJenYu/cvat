@@ -44,13 +44,31 @@
         <center>
             <table style="width: 65%;">
                 <tr>
-                    <td><button id="dashboardCreateTaskButton" class="regular h1"> Create New Task </button>
+                    <td>
+                        <div>
+                            <button id="dashboardCreateTaskButton" class="regular h1"> Create New Task </button>
+                        </div>
                         <!-- add by eric -->
-                        <button id="dashboardUploadKeyframeButton" class="regular h1"> Upload Keyframe </button>
-                        <input id="dashboardlocalKeyframeUploader" type="file" style="display: none" multiple/>
-                        <label id="dashboardKeyframeUploaderLabel" class="regular h2" style="margin-left: 10px"> No Files </label>
-                        <button id="dashboardSubmitKeyframe" class="regular h2"> Submit </button>
-                        <!--  -->
+                        <div>
+                            <button id="dashboardUploadKeyframeButton" class="regular h1"> Upload Keyframe </button>
+                            <input id="dashboardlocalKeyframeUploader" type="file" style="display: none" multiple/>
+                            <label id="dashboardKeyframeUploaderLabel" class="regular h2" style="margin-left: 10px"> No Files </label>
+                            <button id="dashboardSubmitKeyframe" class="regular h2"> Submit </button>
+                        </div>
+                        <!-- Upload CSV, add by eric-->
+                        <div>
+                            <button id="dashboardSelectCSV" class="regular h2"> Select CSV Files </button>
+                            <label id="dashboardCSVFilesLabel" class="regular h2" style="margin-left: 10px"> No Files </label>
+                            <button id="dashboardSubmitCSV" class="regular h2"> Submit CSV </button>
+                            <label id="dashboardUploadCSVMessage" class="regular h2 selectable" style="float:left;">  </label>
+                        </div>
+                        <!-- Insert Frame, add by jeff-->
+                        <div>
+                            <button id="dashboardInsertKeyframe" class="regular h2"> Insert Keyframe </button>
+                            <label id="dashboardKeyframesLabel" class="regular h2" style="margin-left: 10px"> No Files </label>
+                            <button id="dashboardSubmitKeyframe_insert" class="regular h2"> Submit Keyframe </button>
+                            <label id="dashboardInsertKeyframeMessage" class="regular h2 selectable" style="float:left;">  </label>
+                        </div>
                     </td>
                     <td>
                         <div style="width: 300px; float: right;">
@@ -205,6 +223,10 @@ Example: @select=race:__undefined__,skip,asian,black,caucasian,other'/>
             <center>
                 <button id="dashboardCancelBrowseServer" class="regular h2" style="margin: 0px 10px"> Cancel </button>
                 <button id="dashboardSubmitBrowseServer" class="regular h2" style="margin: 0px 10px"> Submit </button>
+                <!-- add by ericlou -->
+                <button id="dashboardSubmitCSVBrowseServer" class="regular h2" style="margin: 0px 10px"> Submit CSV </button>
+                <!-- add by jeff -->
+                <button id="dashboardSubmitKeyframesBrowseServer" class="regular h2" style="margin: 0px 10px"> Submit Keyframes </button>
             </center>
         </div>
     </div>

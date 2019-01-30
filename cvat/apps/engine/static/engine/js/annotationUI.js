@@ -1039,6 +1039,13 @@ function uploadAnnotation(shapeCollectionModel, historyModel, annotationParser, 
 
 
 function saveAnnotation(shapeCollectionModel, job) {
+
+    if (wasSend && !goNextRandom){
+        console.log("If autosave happend before was send, have to stop.");
+        return;
+    }
+
+
     let saveButton = $('#saveButton');
     if (wasSend){console.log("was send, will not save"); return;}
 

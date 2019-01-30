@@ -348,6 +348,9 @@ class PlayerModel extends Listener {
             this.notify();
         }
 
+        // add by ericlou, for Rotation Unknown
+        $("option[value='Unknown']").attr("disabled", "disabled");            
+        
         return changed;
     }
 

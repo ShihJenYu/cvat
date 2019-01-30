@@ -1258,7 +1258,7 @@ class _AnnotationForJob(_Annotation):
 
                 db_shapes.append(db_shape)
 
-                print("be creat by bulk",db_shapes)
+                # print("be creat by bulk",db_shapes)
 
             db_shapes = self._get_shape_class(shape_type).objects.bulk_create(db_shapes)
 

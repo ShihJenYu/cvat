@@ -117,11 +117,28 @@ function setupTaskCreator() {
     let customCompressQuality = $('#dashboardCustomQuality');
 
     let taskMessage = $('#dashboardCreateTaskMessage');
+    // add by ericlou
+    let CSVMessage = $('#dashboardUploadCSVMessage');
+    let KeyframeMessage = $('#dashboardInsertKeyframeMessage');
+    
     let submitCreate = $('#dashboardSubmitTask');
     let cancelCreate = $('#dashboardCancelTask');
 
     // add by ericlou
     let SubmitKeyframe = $('#dashboardSubmitKeyframe');
+    
+
+    // add by ericlou, CSV upload
+    let selectCSV = $('#dashboardSelectCSV');
+    let CSVfilesLabel = $('#dashboardCSVFilesLabel');
+    let submitCSVServer = $('#dashboardSubmitCSVBrowseServer');
+    let submitCSVCreate = $('#dashboardSubmitCSV');
+    //
+    // add by jeff, insert keyframes
+    let selectKeyframe = $('#dashboardInsertKeyframe');
+    let keyframesfilesLabel = $('#dashboardKeyframesLabel');
+    let submitKeyframesServer = $('#dashboardSubmitKeyframesBrowseServer');
+    let submitKeyframesCreate = $('#dashboardSubmitKeyframe_insert');
     //
 
     //add by jeff
@@ -159,11 +176,11 @@ function setupTaskCreator() {
     $('.dashboardNickName[id]').on('focusout', (e) => {
         let tid = parseInt(e.target.id.split('_')[1]);
         let nickname = (e.target.value=='')? 'default': e.target.value;
-        console.log(tid, nickname);
+        // console.log(tid, nickname);
         $.ajax ({
             url: `set/task/${tid}/nickname/${nickname}`,
             success: function(response) {
-                console.log(response);
+                // console.log(response);
             },
             error: function(response) {
                 let message = 'Abort. Reason: ' + response.responseText;
@@ -176,11 +193,11 @@ function setupTaskCreator() {
         if (e.keyCode != 13) return;
         let tid = parseInt(e.target.id.split('_')[1]);
         let nickname = (e.target.value=='')? 'default': e.target.value;
-        console.log(tid, nickname);
+        // console.log(tid, nickname);
         $.ajax ({
             url: `set/task/${tid}/nickname/${nickname}`,
             success: function(response) {
-                console.log(response);
+                // console.log(response);
             },
             error: function(response) {
                 let message = 'Abort. Reason: ' + response.responseText;
@@ -241,6 +258,9 @@ function setupTaskCreator() {
     });
 
     selectFiles.on('click', function() {
+        submitBrowseServer.removeClass('hidden');
+        submitCSVServer.addClass('hidden');
+        submitKeyframesServer.addClass('hidden');
         if (source == 'local') {
             localFileSelector.click();
         }
@@ -270,6 +290,58 @@ function setupTaskCreator() {
         files = shareBrowseTree.jstree(true).get_selected();
         cancelBrowseServer.click();
         updateSelectedFiles();
+    });
+
+    // upload_CSV, add by ericlou
+    selectCSV.on('click', function() {
+        submitCSVServer.removeClass('hidden');
+        submitBrowseServer.addClass('hidden');
+        submitKeyframesServer.addClass('hidden');
+
+        shareBrowseTree.jstree("refresh");
+        shareFileSelector.removeClass('hidden');
+        shareBrowseTree.jstree({
+            core: {
+                data: {
+                    url: 'get_share_nodes',
+                    data: (node) => { return {'id' : node.id}; }
+                }
+            },
+            plugins: ['checkbox', 'sort'],
+        });
+    });
+
+    submitCSVServer.on('click', function() {
+        files = shareBrowseTree.jstree(true).get_selected();
+        cancelBrowseServer.click();
+        updateSelectedCSVFiles();
+        // console.log(files, "456");
+    });
+
+    // insert Keyframes, add by jeff
+    selectKeyframe.on('click', function() {
+        submitCSVServer.addClass('hidden');
+        submitBrowseServer.addClass('hidden');
+        submitKeyframesServer.removeClass('hidden');
+
+        shareBrowseTree.jstree("refresh");
+        shareFileSelector.removeClass('hidden');
+        shareBrowseTree.jstree({
+            core: {
+                data: {
+                    url: 'get_share_nodes',
+                    data: (node) => { return {'id' : node.id}; }
+                }
+            },
+            plugins: ['checkbox', 'sort'],
+        });
+    });
+
+    submitKeyframesServer.on('click', function() {
+        files = shareBrowseTree.jstree(true).get_selected();
+        cancelBrowseServer.click();
+        updateSelectedKeyframeFiles();
+        // console.log(files, "456");
     });
 
     flipImagesBox.on('click', (e) => {
@@ -315,6 +387,59 @@ function setupTaskCreator() {
         imageQualityInput.prop('value', value);
         compressQuality = value;
     });
+
+    // working
+    submitCSVCreate.on('click', function(){
+        
+        if (files.length <= 0) {
+            CSVMessage.css('color', 'red');
+            CSVMessage.text('Need specify files for task');
+            return;
+        }
+
+        let CSVkData = new FormData();
+
+        for (let file of files) {
+            CSVkData.append('data', file);
+        }        
+        // console.log(CSVkData, "submitCSVCreate");
+        submitCSVCreate.prop('disabled', true);
+
+        UploadCSVRequest(CSVkData, 
+            () => submitCSVCreate.prop('disabled', false),
+            () => {
+                CSVMessage.css('color', 'red');
+                CSVMessage.text("Please contact enginer");
+            });
+    });
+
+    // add by jeff
+    submitKeyframesCreate.on('click', function(){
+        
+        if (files.length <= 0) {
+            KeyframeMessage.css('color', 'red');
+            KeyframeMessage.text('Need specify files for task');
+            return;
+        }
+
+        let KeyframesData = new FormData();
+
+        for (let file of files) {
+            KeyframesData.append('data', file);
+        }        
+        // console.log(CSVkData, "submitCSVCreate");
+        submitKeyframesCreate.prop('disabled', true);
+
+        InsertKeyframeRequest(KeyframesData, 
+            () => submitKeyframesCreate.prop('disabled', false),
+            () => {
+                KeyframeMessage.css('color', 'red');
+                KeyframeMessage.text("Please contact enginer");
+            });
+    });
+
+
+
 
     submitCreate.on('click', function() {
         if (!validateName(name)) {
@@ -424,6 +549,32 @@ function setupTaskCreator() {
         }
     }
 
+    // add by ericlou
+    function updateSelectedCSVFiles() {
+        switch (files.length) {
+        case 0:
+            CSVfilesLabel.text('No Files');
+            break;
+        case 1:
+            CSVfilesLabel.text(typeof(files[0]) == 'string' ? files[0] : files[0].name);
+            break;
+        default:
+            CSVfilesLabel.text(files.length + ' files');
+        }
+    }
+    // add by jeff
+    function updateSelectedKeyframeFiles() {
+        switch (files.length) {
+        case 0:
+            keyframesfilesLabel.text('No Files');
+            break;
+        case 1:
+            keyframesfilesLabel.text(typeof(files[0]) == 'string' ? files[0] : files[0].name);
+            break;
+        default:
+            keyframesfilesLabel.text(files.length + ' files');
+        }
+    }
 
     function validateName(name) {
         let math = name.match('[a-zA-Z0-9()_ ]+');
@@ -475,7 +626,7 @@ function setupTaskCreator() {
     SubmitKeyframe.on('click', function() {
 
         $.ajax({
-            url: 'update_keyframe',
+            url: '/dashboard/update_keyframe',
             type: 'POST',
             data: keyframefiles[0],
             contentType: false,
@@ -493,7 +644,7 @@ function setupTaskCreator() {
             }
         });
     });
-    // add by eric
+
 }
 
 
@@ -757,3 +908,49 @@ function uploadAnnotationRequest() {
         });
     }
 }
+
+// add by eric
+function UploadCSVRequest(oData, onSuccessRequest, onError) {
+    $.ajax({
+        url: '/dashboard/upload_CSV',
+        type: 'POST',
+        data: oData,
+        contentType: false,
+        processData: false,
+        success: function(respone) {
+            if (respone){
+                let message = 'CSV files successfully uploaded';
+                showMessage(message);
+                onSuccessRequest();
+            }
+        },
+        error: function() {
+            let message = 'Error';
+            showMessage(message);
+            onError();
+        }
+    });
+}
+
+// add by jeff
+function InsertKeyframeRequest(oData, onSuccessRequest, onError) {
+    $.ajax({
+        url: '/dashboard/insert_keyframes',
+        type: 'POST',
+        data: oData,
+        contentType: false,
+        processData: false,
+        success: function(respone) {
+            if (respone){
+                let message = 'Keyframe files successfully inserted';
+                showMessage(message);
+                onSuccessRequest();
+            }
+        },
+        error: function(respone) {
+            let message = 'Error';
+            showMessage(respone);
+            onError();
+        }
+    });
+}                                

@@ -114,12 +114,17 @@ def getPersonEfficiency(user=None, project=None, startDateTime=None, endDateTime
 
     response = {'user':user,
                 'search_targets':search_targets.count(),
+                'search_targets_objs':getObjsCount(list(search_targets.values_list('task_id','frame'))),
                 'checked': checked.count(),
+                'checked_objs': getObjsCount(list(checked.values_list('task_id','frame'))),
                 'uncheck': uncheck.count(),
+                'uncheck_objs': getObjsCount(list(uncheck.values_list('task_id','frame'))),
                 'need_modify': need_modify.count(),
+                'need_modify_objs': getObjsCount(list(need_modify.values_list('task_id','frame'))),
                 'excellent': excellent.count(),
                 'excellent_objs': getObjsCount(list(excellent.values_list('task_id','frame'))),
-                'terrible': terrible.count(),}
+                'terrible': terrible.count(),
+                'terrible_objs': getObjsCount(list(terrible.values_list('task_id','frame'))),}
     return response
 
 

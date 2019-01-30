@@ -590,7 +590,7 @@ class ShapeCollectionModel extends Listener {
                     //setDetectPoint(this._activeShape);
                 }
                 if (this._activeShape === model) {
-                    console.log("But it will go on 'else' branch and this._activeShape will set to null");
+                    // console.log("But it will go on 'else' branch and this._activeShape will set to null");
                     setDetectPoint(this._activeShape);
                 }
             }
@@ -862,7 +862,7 @@ class ShapeCollectionModel extends Listener {
                 while (!shape.hiddenShape) {
                     shape.switchHide();
                 }
-                console.log("invisile");
+                // console.log("invisile");
             }
 
         } else{
@@ -873,7 +873,7 @@ class ShapeCollectionModel extends Listener {
                 while (shape.hiddenShape) {
                     shape.switchHide();
                 }
-                console.log("visible");
+                // console.log("visible");
             }
 
         }
@@ -1119,7 +1119,7 @@ class ShapeCollectionController {
 
             let changeShapeColorHandler = Logger.shortkeyLogDecorator(function() {
                 //this.switchActiveColor();
-                console.log("closed switchActiveColor by enter");
+                // console.log("closed switchActiveColor by enter");
             }.bind(this));
 
             //add by jeff
@@ -1219,7 +1219,7 @@ class ShapeCollectionController {
 
             // add by jeff
             function shiftShape(direction){
-                console.log("shiftShape",direction);
+                // console.log("shiftShape",direction);
                 trainigsaveFlag = false;
                 let shape =  $('.shape.selectedShape'); //this._uis.shape.node;//
                 let deltaX = 0;
@@ -1230,7 +1230,7 @@ class ShapeCollectionController {
                     case 4:deltaX=-1;deltaY=0;break;
                     case 6:deltaX=1;deltaY=0;break;
                 }
-                console.log(direction,deltaX,deltaY,"shiftShape");
+                // console.log(direction,deltaX,deltaY,"shiftShape");
                 return {
                     xtl: +shape.attr('x') +deltaX,
                     ytl: +shape.attr('y') +deltaY,
@@ -1699,7 +1699,6 @@ class ShapeCollectionView {
             //add by jeff
             case "detect_point":
                 //this._controller.setDetectPoint();
-                console.log(" $('#shapeContextMenu li').click((e) ");
                 setDetectPoint(this._controller.activeShape);
                 break;
             //add by eric
@@ -1793,8 +1792,8 @@ class ShapeCollectionView {
                     }
                 }
 
-                console.log(hiddenShape, "hiddenShape");
-                console.log(hiddenText, "hiddenText")
+                // console.log(hiddenShape, "hiddenShape");
+                // console.log(hiddenText, "hiddenText")
 
                 if (hiddenShape) {
                     button.removeClass('hiddenText');
@@ -2092,10 +2091,10 @@ function setDetectPoint(activeShape){
 
     if(activeShape._type !== "annotation_box"){return;}
     
-    console.log("in set ");
+    // console.log("in set ");
     if(activeShape && activeShape._hiddenShape===false){
         //menuScroll = true;
-        console.log("in if");
+
         let DETECTPOINT = "detectpoint";
         let DETECTPOINTAIM = "detectpointAim";
 

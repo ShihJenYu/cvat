@@ -3,9 +3,14 @@
 #
 # SPDX-License-Identifier: MIT
 
-import os
+import os,errno
+import io
+import csv
 import json
+import math
 import traceback
+import glob
+import shutil
 # add by jeff
 import time, random, operator, functools
 from django.utils import timezone
@@ -83,6 +88,146 @@ def dispatch_request(request):
             'js_3rdparty': JS_3RDPARTY.get('engine', [])
         })
 
+# Add by jeff
+@login_required
+@transaction.atomic
+@permission_required('engine.add_task', raise_exception=True)
+def insert_keyframes(request):
+    try:
+        print("doing")
+
+        listKeyFrames = request.POST.getlist('data')
+        sShare_Root = settings.SHARE_ROOT
+
+        for framePath in listKeyFrames:
+            if os.path.splitext(framePath)[-1] != '':
+                continue
+
+            frame_uploadpath = os.path.normpath(framePath).lstrip('/')
+            frame_abs_uploadpath = os.path.abspath(os.path.join(sShare_Root, frame_uploadpath))
+
+            images_per_video = glob.glob('{}/*.{}'.format(frame_abs_uploadpath,'png'))
+            if images_per_video :
+                packagename, videoname = frame_abs_uploadpath.split('/')[-2:]
+
+                print('packagename',packagename)
+                print('videoname',videoname)
+                print('images_per_video',images_per_video)
+                
+                #插入圖片再這個影片的這個批次
+                video_task = models.Task.objects.select_for_update().get(name=videoname)
+                #插入一個全新的批次再已經有的影片
+                video_tid = video_task.id
+                video_size = video_task.size
+                video_path = video_task.path
+
+                # get image path in .upload
+                realvideopath = glob.glob('{}/*/*'.format(video_task.get_upload_dirname()))
+                if len(realvideopath) != 1:
+                    raise Exception('find two folder in realvideopath ')
+                
+                video_project = realvideopath[0].split('/')[-2]
+                #copy image from share to real
+                for image in images_per_video:
+                    shutil.copy(image, realvideopath[0])
+                
+                #create fullpath list
+                insertedImages =[]
+                for f in sorted(os.listdir(realvideopath[0])):
+                    fullname = os.path.join(realvideopath[0], f)
+                    insertedImages.append(fullname)
+                
+                after_size = 0
+                # create new link
+                for frame, image_orig_path in enumerate(insertedImages):
+                    image_dest_path = task._get_frame_path(frame, video_task.get_data_dirname())
+                    image_orig_path = os.path.abspath(image_orig_path)
+
+                    after_size += 1
+                    dirname = os.path.dirname(image_dest_path)
+                    if not os.path.exists(dirname):
+                        os.makedirs(dirname)
+                    try:
+                        os.symlink(image_orig_path, image_dest_path)
+                    except OSError as e:
+                        if e.errno == errno.EEXIST:
+                            os.remove(image_dest_path)
+                            os.symlink(image_orig_path, image_dest_path)
+                        else:
+                            raise e
+
+                # save new size
+                video_task.size = after_size
+                video_task.save()
+                video_seg = models.Segment.objects.select_for_update().get(task_id=video_tid)
+                video_seg.stop_frame = after_size-1
+                video_seg.save()
+
+                #update exist frame with tid
+                db_framenames = models.FrameName.objects.select_for_update().filter(task_id=video_tid)
+                for db_framename in db_framenames:
+                    before_frame = db_framename.frame
+                    before_name = db_framename.name
+                    if not before_name.endswith('.png'):
+                        before_name += '.png'
+
+                    after_index = insertedImages.index(os.path.join(realvideopath[0], before_name))
+                    if after_index!=-1 and after_index!=before_frame:
+                        #framename
+                        db_framename.frame=after_index
+                        db_framename.save()
+                        #keyframe
+                        db_keyframe = models.TaskFrameUserRecord.objects.select_for_update().get(task_id=video_tid,frame=before_frame)
+                        db_keyframe.frame = after_index
+                        db_keyframe.save()
+                        #box
+                        db_labelboxs = models.LabeledBox.objects.select_for_update().filter(job_id=video_tid,frame=before_frame).update(frame=after_index)
+
+                #insert new frame
+                for image in images_per_video:
+                    imagename = os.path.basename(image)
+
+                    after_index = insertedImages.index(os.path.join(realvideopath[0], imagename))
+                    print('imagename',imagename)
+                    print('after_index',after_index)
+
+                    db_fcwTrain = models.FCWTrain.objects.select_for_update().get(task_id=video_tid)
+
+                    try:
+                        db_taskFrameUserRecord = models.TaskFrameUserRecord.objects.select_for_update().get(task_id=video_tid,frame=after_index)
+                        print('db_taskFrameUserRecord is exist will pass')
+                    except ObjectDoesNotExist:
+                        db_taskFrameUserRecord = models.TaskFrameUserRecord()
+                        db_taskFrameUserRecord.task = video_task
+                        db_taskFrameUserRecord.frame = after_index
+                        db_taskFrameUserRecord.packagename = packagename
+                        db_taskFrameUserRecord.save()
+                        db_fcwTrain.keyframe_count += 1
+                        db_fcwTrain.priority = 0
+                        db_fcwTrain.priority_out = 0
+                        db_fcwTrain.save()
+
+                    try:
+                        db_FrameName = models.FrameName.objects.select_for_update().get(task_id=video_tid,frame=after_index)
+                        print('db_FrameName is exist will pass')
+                    except ObjectDoesNotExist:
+                        realname = imagename.replace(".png", "")
+                        db_FrameName = models.FrameName()
+                        db_FrameName.task = video_task
+                        db_FrameName.frame = after_index
+                        db_FrameName.name = realname
+                        db_FrameName.save()
+
+        print("done")
+
+        response = {'data':"Success insert_keyframes"}
+        return JsonResponse(response, safe=False)
+ 
+    except Exception as e:
+
+        print("error is !!!!",str(e))
+        return HttpResponseBadRequest(str(e))
+
 
 # Add by Eric
 @login_required
@@ -154,7 +299,7 @@ def update_keyframe(request):
                 db_fcwTrain.save()
 
                 path = os.path.realpath(task.get_frame_path(tid, nFrameNumber))
-                realname = os.path.basename(path)
+                realname = os.path.basename(path).replace(".png", "")
                 db_FrameName = models.FrameName()
                 db_FrameName.task = db_task
                 db_FrameName.frame = nFrameNumber
@@ -170,6 +315,134 @@ def update_keyframe(request):
 
         print("error is !!!!",str(e))
         return HttpResponseBadRequest(str(e))
+
+
+# Add by Eric
+@login_required
+@transaction.atomic
+@permission_required('engine.add_task', raise_exception=True)
+def upload_CSV(request, a_bIgnore_not_keyframe=True):
+    """Upload CSV"""
+    try:
+        listCSVfile = request.POST.getlist('data')
+
+        sShare_Root = settings.SHARE_ROOT
+        fileSetting = r'/home/django/cvat/dump_data/FCW_Setting_training20181210.ini'
+
+        listPackage_name = []
+
+        oCSVcontainer = upload_CSV_container()
+        oCSVcontainer.Read_Setting_files(a_Setting_file=fileSetting)
+
+        for sCSVpath in listCSVfile:
+            
+            fileCSV_uploadpath = os.path.normpath(sCSVpath).lstrip('/')
+            fileCSV_abs_uploadpath = os.path.abspath(os.path.join(sShare_Root, fileCSV_uploadpath))
+
+            fileTaskName = os.path.basename(fileCSV_abs_uploadpath)
+
+            if fileTaskName.endswith(".csv"):
+                continue
+            
+            for root, dirs, files in os.walk(fileCSV_abs_uploadpath):
+                print(root, dirs, files)
+                fileRoot = root
+                for fileCSV in files:
+                    if not fileCSV.endswith(".csv"):
+                        continue
+                    if (not fileCSV.startswith("key_")):  # prevent bug for no root path
+                        continue            
+                    if 'VideoParam' in fileCSV:
+                        continue      
+                    fileCSV_Abspath = os.path.join(fileRoot, fileCSV)
+
+                    sPackage_name = os.path.basename(os.path.dirname(os.path.dirname(fileCSV_Abspath)))
+                    print(sPackage_name)
+                    if sPackage_name not in listPackage_name:
+                        listPackage_name.append(sPackage_name)
+                    print('fileCSV_Abspath',fileCSV_Abspath)
+                    oCSVcontainer.Reading_CSV(a_sCSV_path=fileCSV_Abspath)
+
+        assert len(listPackage_name) == 1
+
+        sPackagename = listPackage_name[0]
+
+        oCSVcontainer.Get_Task_ID()
+        oCSVcontainer.Get_db_labels_ID()
+        oCSVcontainer.Get_Attribute_ID()
+        oCSVcontainer.Convert_CSV2Server(a_bIgnore_not_keyframe=a_bIgnore_not_keyframe)
+        # print(oCSVcontainer.i_dictSever_Bbox)
+
+        fcwTrain_ids = list(models.FCWTrain.objects.all().values_list('task_id', flat=True))
+
+        for nTid in oCSVcontainer.i_dictSever_Bbox.keys():
+
+            sVideoName = oCSVcontainer.i_dictID_Taskname[nTid]  
+
+            db_task = models.Task.objects.select_for_update().filter(pk__in=fcwTrain_ids, name=sVideoName)[0]
+
+            history_packagenames = db_task.packagename
+            history_packagenames = list(filter(None, history_packagenames.split(',')))
+            if not sPackagename in history_packagenames: 
+                history_packagenames.append(sPackagename)
+
+            db_task.packagename = ','.join(history_packagenames)
+            db_task.save()   
+            print("Packagename save", sPackagename, " History packagenames", history_packagenames)    
+
+            db_fcwTrain = models.FCWTrain.objects.select_for_update().get(task_id=nTid)     
+
+            for nframe in oCSVcontainer.i_dictSever_Bbox[nTid].keys():
+            
+                current_frame = nframe - 1
+                dictData = oCSVcontainer.i_dictSever_Bbox[nTid][nframe]
+
+                # Also, set uploadframe as keyframe.
+                qs = models.TaskFrameUserRecord.objects.select_for_update().filter(task_id=nTid,frame=current_frame)
+
+                if len(qs) == 0:
+
+                    if a_bIgnore_not_keyframe:
+                        qs_name = models.FrameName.objects.select_for_update().filter(task_id=nTid,frame=current_frame)
+                        if len(qs_name) == 0:
+                            db_frameName = models.FrameName()
+                            db_frameName.task_id = nTid
+                            db_frameName.name = (sVideoName + "_%04d")%(oCSVcontainer.i_dictFrameMap[nTid][nframe])
+                            db_frameName.frame = current_frame
+                            db_frameName.save()  
+                            print("db_frameName", " Tid: ",nTid, " Frame: ", nframe)                  
+                    
+                    db_taskFrameUserRecord = models.TaskFrameUserRecord()
+                    db_taskFrameUserRecord.task = db_task
+                    db_taskFrameUserRecord.frame = current_frame
+
+                    db_taskFrameUserRecord.packagename = sPackagename
+                    db_taskFrameUserRecord.save()  
+
+                    db_fcwTrain.keyframe_count = models.TaskFrameUserRecord.objects.filter(task_id=nTid).count()
+                    db_fcwTrain.priority = 0
+                    db_fcwTrain.save()
+
+                    if request.user.groups.filter(name='admin').exists():
+                        print('Save CSV Job', "Tid:",nTid, " Frame:", nframe)
+                        annotation.save_job(nTid, dictData, oneFrameFlag=True,frame=current_frame)
+                    else:
+                        # annotation.save_job(nTid, dictData,oneFrameFlag=True,frame=current_frame)
+                        print("You cant save if you're not admin.")
+                        pass
+
+            print("Upload CSV End.")
+
+
+        return JsonResponse({'data':"success"})
+    except RequestException as e:
+        job_logger[nTid].error("cannot send annotation logs for job {}".format(nTid), exc_info=True)
+        return HttpResponseBadRequest(str(e))
+    except Exception as e:
+        job_logger[nTid].error("cannot save annotation for job {}".format(nTid), exc_info=True)
+        return HttpResponseBadRequest(str(e))
+ 
+
 
 
 
@@ -698,7 +971,7 @@ def set_frame_isKeyFrame(request, tid, frame, flag):
 
                 path = os.path.realpath(task.get_frame_path(tid, frame))
                 print('realpath is ', path)
-                realname = os.path.basename(path)
+                realname = os.path.basename(path).replace(".png", "")
                 keyframe_full_name = realname
                 db_FrameName = models.FrameName()
                 db_FrameName.task = db_task
@@ -1386,3 +1659,352 @@ def get_keyFrames(request, tid):
     except Exception as e:
         print("error is !!!!",str(e))
         return HttpResponseBadRequest(str(e))
+
+
+###################################
+# add by ericlou
+class upload_CSV_container:
+    def __init__(self):
+        self.i_dictItemStrMap = {}
+        self.i_dictIDItemMap = {}      
+        self.i_dictCSV_webType = {}  
+
+        self.i_dictID_attributes = {}
+        self.i_dictTaskname_ID = {}
+        self.i_dictID_Taskname = {}
+
+        self.i_dictTaskID_labelID = {}
+        self.i_dictTaskname_Frame_BBoxInfor = {}
+
+        self.i_dictSever_Bbox = {}
+
+        self.i_dictFrameMap = {}
+
+    def Read_Setting_files(self, a_Setting_file):
+
+        sFilename = a_Setting_file
+
+        with io.open(sFilename, 'r') as file:
+            for listline in file:
+                if 'Item' in listline:
+                    if '_ID' in listline:
+                        nIDNum = int(listline.strip().split('=')[-1])
+                        nItemNum = int((listline.strip().split('Item')[-1].split('_ID=')[0]))
+                        self.i_dictIDItemMap[nIDNum] = nItemNum
+                    else:
+                        nItemNum = int(listline.strip().split('Item')[-1].split('=')[0])
+                        sItemStr = listline.strip().split('=')[-1]
+                        self.i_dictItemStrMap[nItemNum] = sItemStr
+
+                if 'SubType' in listline:
+                    break
+
+        self.i_dictCSV_webType = {'的car':"car", #的car
+                                '的motorbike':"motorBike", #的MotorBike
+                                '的truck':"truck", #的truck
+                                  
+                                '的bus':"bus", #的bus
+                                '的bike':"Bike", #的bike
+                                '的van':"van", #的van
+        
+                                '的代步車':'代步車', #的代步車
+                                '的工程車':'工程車', #的工程車
+                                '的有殼三輪車':'有殼三輪車', #的有殼三輪車
+                                '的無殼三輪車':'無殼三輪車' #的無殼三輪車                                  
+        }
+
+    def Reading_CSV(self, a_sCSV_path):
+        
+        sTask_name = os.path.basename(a_sCSV_path)
+        sTask_name = sTask_name.replace("key_", "").replace(".csv", "")
+        sTask_name = sTask_name.split('_')
+
+        nframe = int(sTask_name[-1])
+        sTask_name = '_'.join(sTask_name[:-1])
+
+        if sTask_name not in self.i_dictTaskname_ID.keys():
+            self.i_dictTaskname_ID[sTask_name] = []
+
+        distBBoxSave = self.i_dictTaskname_Frame_BBoxInfor
+
+        if sTask_name not in distBBoxSave.keys():
+            distBBoxSave[sTask_name] = {}
+        if nframe not in distBBoxSave[sTask_name].keys():
+            distBBoxSave[sTask_name][nframe] = {}
+            distBBoxSave[sTask_name][nframe]['ID']=[]
+            distBBoxSave[sTask_name][nframe]['Type']=[]
+            distBBoxSave[sTask_name][nframe]['tl_x']=[]
+            distBBoxSave[sTask_name][nframe]['tl_y']=[]
+            distBBoxSave[sTask_name][nframe]['br_x']=[]
+            distBBoxSave[sTask_name][nframe]['br_y']=[]
+            distBBoxSave[sTask_name][nframe]['Rotation']=[]
+            distBBoxSave[sTask_name][nframe]['Occluded']=[]
+            distBBoxSave[sTask_name][nframe]['Truncated']=[]
+            distBBoxSave[sTask_name][nframe]['DontCare']=[]
+            distBBoxSave[sTask_name][nframe]['LinkedID']=[]
+
+        with open(a_sCSV_path, "r") as fileCSV:
+            fileCSVreaded = csv.reader(fileCSV)
+            for listRow in fileCSVreaded:
+                if listRow[0] == 'Version':
+                    continue
+
+                distBBoxSave[sTask_name][nframe]['ID'].append(listRow[1])
+                distBBoxSave[sTask_name][nframe]['Type'].append(listRow[2])
+                distBBoxSave[sTask_name][nframe]['tl_x'].append(listRow[5])
+                distBBoxSave[sTask_name][nframe]['tl_y'].append(listRow[6])
+                distBBoxSave[sTask_name][nframe]['br_x'].append(listRow[7])
+                distBBoxSave[sTask_name][nframe]['br_y'].append(listRow[8])
+                distBBoxSave[sTask_name][nframe]['Rotation'].append(listRow[16])
+                distBBoxSave[sTask_name][nframe]['Occluded'].append(listRow[17])
+                distBBoxSave[sTask_name][nframe]['Truncated'].append(listRow[18])
+                distBBoxSave[sTask_name][nframe]['DontCare'].append(listRow[19])
+                distBBoxSave[sTask_name][nframe]['LinkedID'].append(listRow[24])
+
+        print("Reading CSV done.")
+
+    def Get_Task_ID(self):
+        
+        for sVideoDate in self.i_dictTaskname_ID.keys():
+
+            oDB_task = models.Task.objects.select_for_update().get(name=sVideoDate)
+            nTid = int(oDB_task.id)
+
+            self.i_dictTaskname_ID[sVideoDate] = nTid
+            self.i_dictID_Taskname[nTid] = sVideoDate
+
+        print("Get_Task_ID done.")
+
+    def Get_db_labels_ID(self):
+
+        for nTid in self.i_dictTaskname_ID.values():
+            
+            db_task = models.Task.objects.select_for_update().get(id=nTid)
+            test_db_labels = db_task.label_set.all().prefetch_related('attributespec_set')
+
+            for db_label in test_db_labels:
+
+                if nTid not in self.i_dictTaskID_labelID.keys():
+                    self.i_dictTaskID_labelID[nTid] = db_label.id
+
+        print(self.i_dictTaskID_labelID)
+
+    def Get_Attribute_ID(self):
+
+        for sVideoDate in self.i_dictTaskname_ID.keys():
+
+            nTid = self.i_dictTaskname_ID[sVideoDate]
+
+            if nTid not in self.i_dictID_attributes.keys():
+                self.i_dictID_attributes[nTid] = {}
+            
+            for sDb_attr in models.AttributeSpec.objects.filter(label__task__id=nTid):
+                self.i_dictID_attributes[nTid][sDb_attr.get_name()] = int(sDb_attr.id)
+
+        print("Get_Attribute_ID done.")
+
+    def Convert_CSV2Server(self, a_bIgnore_not_keyframe=True):
+
+        print("Convert_CSV2Server Start.")
+
+        for sVideoName in self.i_dictTaskname_Frame_BBoxInfor.keys():
+            
+            nTid = self.i_dictTaskname_ID[sVideoName]
+
+            if nTid not in self.i_dictSever_Bbox.keys():
+                self.i_dictSever_Bbox[nTid] = {}    
+
+            if a_bIgnore_not_keyframe: # for only save keyframe in database
+                db_frame_count = 1                
+                self.i_dictFrameMap[nTid] = {}
+
+            listFrameNumber = list(self.i_dictTaskname_Frame_BBoxInfor[sVideoName].keys())
+            listFrameNumber.sort()
+
+            for nframe in listFrameNumber:
+                
+                print("Start to Convert VideoName", sVideoName, "FrameNumber", nframe)
+
+                dictBBoxFrameInfor = self.i_dictTaskname_Frame_BBoxInfor[sVideoName][nframe]
+
+                if a_bIgnore_not_keyframe: # for only save keyframe in database
+                    self.i_dictFrameMap[nTid][db_frame_count] = nframe
+                    nframe = db_frame_count
+                    db_frame_count += 1
+
+                if nframe not in self.i_dictSever_Bbox[nTid].keys():
+                    self.i_dictSever_Bbox[nTid][nframe] = {'boxes':[],'points': [], 'polygons': [], 
+                    'points_paths': [], 'box_paths': [], 'polygon_paths': [], 'polylines': [], 'polyline_paths': []}    
+
+                # Get Linked information first
+                dictLinkedID_objIndex = {}
+                
+                for nIndex in range(0, len(dictBBoxFrameInfor['ID'])):
+                    
+                    sLinkedID = str(dictBBoxFrameInfor['LinkedID'][nIndex])
+
+                    if sLinkedID != '-1': 
+                        # dont need to create carside as one BBox in Server
+                        # put CareSide in Next Loop
+                        if sLinkedID not in dictLinkedID_objIndex.keys():
+                            dictLinkedID_objIndex[sLinkedID] = nIndex
+
+                nZorder = 1
+
+                for nIndex in range(0, len(dictBBoxFrameInfor['ID'])):
+                    
+                    sID = str(dictBBoxFrameInfor['ID'][nIndex])
+                    if sID == '0':
+                        continue
+
+                    sLinkedID = str(dictBBoxFrameInfor['LinkedID'][nIndex])
+                    
+                    if sLinkedID != '-1': 
+                        continue                    
+                    
+                    nType = int(dictBBoxFrameInfor['Type'][nIndex])
+                    sTl_x = dictBBoxFrameInfor['tl_x'][nIndex]
+                    sTl_y = dictBBoxFrameInfor['tl_y'][nIndex]
+                    sBr_x = dictBBoxFrameInfor['br_x'][nIndex]
+                    sBr_y = dictBBoxFrameInfor['br_y'][nIndex]
+
+                    sRotation = dictBBoxFrameInfor['Rotation'][nIndex]
+                    nOccluded = int(dictBBoxFrameInfor['Occluded'][nIndex])
+                    sTruncated = str(dictBBoxFrameInfor['Truncated'][nIndex])
+
+                    sDontCare = dictBBoxFrameInfor['DontCare'][nIndex]
+                    
+                    ## Rotation
+                    nNew_Rotation = str(round(float(sRotation) /math.pi * float(180)))
+                    
+                    ## Occluded
+                    if nOccluded == 0:
+                        sNew_Occluded = 'Fully_Visible'
+                    elif nOccluded == 1:
+                        sNew_Occluded = 'Partly_Occluded'
+                    elif nOccluded == 2:
+                        sNew_Occluded = 'Largely_Occluded'
+                    elif nOccluded == 3:
+                        sNew_Occluded = 'Unknow'
+
+                    ## DontCare
+                    if int(sDontCare) == 1:
+                        bNew_DontCare = True
+                    elif int(sDontCare) == 0:
+                        bNew_DontCare = False
+
+                    ## Type Convert            
+                    if nType not in self.i_dictIDItemMap:
+                        continue
+                    sSTR_Type = self.i_dictItemStrMap[int(self.i_dictIDItemMap[nType])]
+
+                    ## 有開燈
+                    bLight_state = False
+                    if '有開燈' in sSTR_Type:
+                        bLight_state = True
+                    
+                    ## 有障礙物的
+                    bObstacle = False
+                    if '有障礙物的' in sSTR_Type:
+                        bObstacle = True
+
+                    # Match type to get type in Server
+                    listMatch = self.i_dictCSV_webType.keys()
+
+                    for sSTR_Match in listMatch:
+                        if sSTR_Match in sSTR_Type:  
+                            sSTR_Type = self.i_dictCSV_webType[sSTR_Match]
+                            continue
+                    
+                    # for lower problem in setting files
+                    sSTR_Type = sSTR_Type.replace('motorbike', "motorBike")
+                    sSTR_Type = sSTR_Type.replace('pedestrian', "Pedestrian")
+                    sSTR_Type = sSTR_Type.replace('personsitting', "PersonSitting")
+                    sSTR_Type = sSTR_Type.replace('misc', 'Misc')
+                    sSTR_Type = sSTR_Type.replace('background', 'Background')
+                    sSTR_Type = sSTR_Type.replace('tram', 'Tram')
+
+                    ## for Linked_ID
+                    ## 完全不見的車頭
+                    bCheckCarSide = False
+                    sCarSidePoint = "-1,-1,-1,-1"
+                    
+                    if sID in dictLinkedID_objIndex.keys(): # have CarSide
+                        nLink_ID_Index = int(dictLinkedID_objIndex[sID])
+                        
+                        sLink_Type = int(dictBBoxFrameInfor['Type'][nLink_ID_Index])
+
+                        ## Type Convert            
+                        sLink_STR_Type = self.i_dictItemStrMap[int(self.i_dictIDItemMap[sLink_Type])]  
+                        
+                        if '完全不見的車頭' in sLink_STR_Type:
+                            bCheckCarSide = True   
+                        else:
+                            sLink_tl_x = float(dictBBoxFrameInfor['tl_x'][nLink_ID_Index])
+                            sLink_br_x = float(dictBBoxFrameInfor['br_x'][nLink_ID_Index])
+
+                            nLeft_x = min(float(sBr_x), float(sTl_x))
+                            nRight_x = max(float(sBr_x), float(sTl_x))
+
+                            nWidth = nRight_x - nLeft_x
+
+                            if nWidth == 0:
+                                print(nframe, sID, "Width = 0")
+                                nWidth = 0.0001
+
+                            nleft_ratio = round((sLink_tl_x - nLeft_x) / nWidth, 6)
+                            nRight_ratio = round((sLink_br_x - nLeft_x) / nWidth, 6)
+
+                            if nleft_ratio == 1.0: nleft_ratio = 1
+                            if nleft_ratio == 0.0: nleft_ratio = 0
+
+                            if nRight_ratio == 1.0: nRight_ratio = 1
+                            if nRight_ratio == 0.0: nRight_ratio = 0
+
+                            sCarSidePoint = str(nleft_ratio)+",-1,"+str(nRight_ratio)+",-1"
+
+                    ## Save Into DataBase form
+                    dictLoadInBBox = {}
+
+                    dictLoadInBBox['obj_id'] = int(sID)
+                    dictLoadInBBox['ybr'] = float(sBr_y)
+                    dictLoadInBBox['ytl'] = float(sTl_y)
+                    dictLoadInBBox['xtl'] = float(sTl_x)
+                    dictLoadInBBox['xbr'] = float(sBr_x)
+
+                    dictLoadInBBox['occluded'] = False
+                    dictLoadInBBox['group_id'] = 0
+                    dictLoadInBBox['grouping'] = ''
+                    dictLoadInBBox['frame'] = (nframe - 1)
+                    
+                    dictLoadInBBox['z_order'] = nZorder
+                    nZorder += 1
+
+                    dictLoadInBBox['label_id'] = self.i_dictTaskID_labelID[nTid]
+                    ## Attribute
+
+                    dictLoadInBBox['attributes'] = []
+                    dictLoadInBBox['attributes'].append({'id': self.i_dictID_attributes[nTid]['Type'], 'value': sSTR_Type})
+                    dictLoadInBBox['attributes'].append({'id': self.i_dictID_attributes[nTid]['障礙物'], 'value': bObstacle})
+                    dictLoadInBBox['attributes'].append({'id': self.i_dictID_attributes[nTid]['有開燈'], 'value': bLight_state})
+                    dictLoadInBBox['attributes'].append({'id': self.i_dictID_attributes[nTid]['Rotation'], 'value': nNew_Rotation})
+                    dictLoadInBBox['attributes'].append({'id': self.i_dictID_attributes[nTid]['Occluded'], 'value': sNew_Occluded})
+                    dictLoadInBBox['attributes'].append({'id': self.i_dictID_attributes[nTid]['看不見車頭車尾'], 'value': bCheckCarSide})
+                    dictLoadInBBox['attributes'].append({'id': self.i_dictID_attributes[nTid]['DetectPoints'], 'value': sCarSidePoint})
+                    dictLoadInBBox['attributes'].append({'id': self.i_dictID_attributes[nTid]['Truncated'], 'value': sTruncated})
+                    dictLoadInBBox['attributes'].append({'id': self.i_dictID_attributes[nTid]['Dont_Care'], 'value': bNew_DontCare})
+
+                    self.i_dictSever_Bbox[nTid][nframe]['boxes'].append(dictLoadInBBox)
+
+        print("Convert_CSV2Server End.")
+        return
+
+        
+
+
+
+
+
+
+
+
