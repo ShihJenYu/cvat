@@ -2157,7 +2157,7 @@ function setDetectPoint(activeShape){
             thisframeContent.rect(scaledR*3,scaledR*3).draggable({
                 minX: xtl - scaledR*1.5,
                 minY: +ydl - scaledR*1.5,
-                maxX: xbr + scaledR*1.5,
+                maxX: (middlecarside == false)?xbr + scaledR*1.5 : xtl + scaledR*1.5,
                 maxY: +ydl + scaledR*1.5,
                 snapToGrid: 0.1 
             }).center(xdl_draw,ydl).addClass(DETECTPOINT).fill('#ffff00').attr({
@@ -2187,6 +2187,8 @@ function setDetectPoint(activeShape){
                     content.append(shape);
                 }
             });
+            if(middlecarside)
+                $("#" + DETECTPOINT + "_" + activeShape._id + "_L").draggable( 'disable' );
 
             thisframeContent.rect(scaledR*3,scaledR*3).draggable({
                 minX: xtl - scaledR*1.5,

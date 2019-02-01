@@ -271,7 +271,7 @@ function setupTaskCreator() {
                 core: {
                     data: {
                         url: 'get_share_nodes',
-                        data: (node) => { return {'id' : node.id}; }
+                        data: (node) => { return {'project':window.location.pathname.split('/')[2],'id' : node.id}; }
                     }
                 },
                 plugins: ['checkbox', 'sort'],
@@ -304,7 +304,7 @@ function setupTaskCreator() {
             core: {
                 data: {
                     url: 'get_share_nodes',
-                    data: (node) => { return {'id' : node.id}; }
+                    data: (node) => { return {'project':window.location.pathname.split('/')[2],'id' : node.id}; }
                 }
             },
             plugins: ['checkbox', 'sort'],
@@ -330,7 +330,7 @@ function setupTaskCreator() {
             core: {
                 data: {
                     url: 'get_share_nodes',
-                    data: (node) => { return {'id' : node.id}; }
+                    data: (node) => { return {'project':window.location.pathname.split('/')[2],'id' : node.id}; }
                 }
             },
             plugins: ['checkbox', 'sort'],

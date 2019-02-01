@@ -20,7 +20,7 @@ from cvat.settings.base import JS_3RDPARTY
 import os
 from datetime import datetime
 
-def ScanNode(directory):
+def ScanNode(directory,project=None):
     if '..' in directory.split(os.path.sep):
         return HttpResponseBadRequest('Permission Denied')
 
@@ -31,8 +31,13 @@ def ScanNode(directory):
     files = filter(os.path.isfile, map(lambda f: os.path.join(act_dir, f), nodes))
     dirs = filter(os.path.isdir, map(lambda d: os.path.join(act_dir, d), nodes))
 
+    ProjectToFolder = {'fcw_training':'FCW_Train','fcw_testing':'FCW_Test','apacorner':'APA_Corner'}
+
     for d in dirs:
         name = os.path.basename(d)
+        if (directory =='/') and (project != None) and (name != ProjectToFolder[project]):
+            continue
+
         children = len(os.listdir(d)) > 0
         node = {'id': directory + name + '/', 'text': name, 'children': children}
         result.append(node)
@@ -48,12 +53,16 @@ def ScanNode(directory):
 @permission_required('engine.add_task', raise_exception=True)
 def JsTreeView(request):
     node_id = None
+    project = None
     if 'id' in request.GET:
         node_id = request.GET['id']
 
+    if 'project' in request.GET:
+        project = request.GET['project']
+
     if node_id is None or node_id == '#':
         node_id = '/'
-        response = [{"id": node_id, "text": node_id, "children": ScanNode(node_id)}]
+        response = [{"id": node_id, "text": node_id, "children": ScanNode(node_id,project=project)}]
     else:
         response = ScanNode(node_id)
 

@@ -349,8 +349,8 @@ class PlayerModel extends Listener {
         }
 
         // add by ericlou, for Rotation Unknown
-        $("option[value='Unknown']").attr("disabled", "disabled");            
-        
+        $("option[value='Unknown']").attr("disabled", "disabled");
+        $("input[type='radio'][value='Unknow']").attr("disabled", "disabled");
         return changed;
     }
 

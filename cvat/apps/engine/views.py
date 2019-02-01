@@ -107,6 +107,7 @@ def insert_keyframes(request):
             frame_abs_uploadpath = os.path.abspath(os.path.join(sShare_Root, frame_uploadpath))
 
             images_per_video = glob.glob('{}/*.{}'.format(frame_abs_uploadpath,'png'))
+            print("doing",images_per_video)
             if images_per_video :
                 packagename, videoname = frame_abs_uploadpath.split('/')[-2:]
 
@@ -120,11 +121,17 @@ def insert_keyframes(request):
                 video_tid = video_task.id
                 video_size = video_task.size
                 video_path = video_task.path
-
+                video_packagenames = video_task.packagename
+                
                 # get image path in .upload
-                realvideopath = glob.glob('{}/*/*'.format(video_task.get_upload_dirname()))
+                realvideopath = glob.glob('{}/*/Images/*/*'.format(video_task.get_upload_dirname()))
+                if len(realvideopath) == 0:
+                    realvideopath = glob.glob('{}/*/*'.format(video_task.get_upload_dirname()))
                 if len(realvideopath) != 1:
                     raise Exception('find two folder in realvideopath ')
+
+                if len(realvideopath) == 0:
+                    raise Exception('not found folder in realvideopath ')
                 
                 video_project = realvideopath[0].split('/')[-2]
                 #copy image from share to real
@@ -139,6 +146,7 @@ def insert_keyframes(request):
                 
                 after_size = 0
                 # create new link
+                print("create new link")
                 for frame, image_orig_path in enumerate(insertedImages):
                     image_dest_path = task._get_frame_path(frame, video_task.get_data_dirname())
                     image_orig_path = os.path.abspath(image_orig_path)
@@ -157,13 +165,21 @@ def insert_keyframes(request):
                             raise e
 
                 # save new size
+                print("save new size")
                 video_task.size = after_size
+                video_packagenames = video_packagenames.split(',')
+                if not packagename in video_packagenames:
+                    if len(video_packagenames):
+                        video_task.packagename += ',{}'.format(packagename)
+                    else:
+                        video_task.packagename = packagename
                 video_task.save()
                 video_seg = models.Segment.objects.select_for_update().get(task_id=video_tid)
                 video_seg.stop_frame = after_size-1
                 video_seg.save()
 
                 #update exist frame with tid
+                print("update exist frame with tid")
                 db_framenames = models.FrameName.objects.select_for_update().filter(task_id=video_tid)
                 for db_framename in db_framenames:
                     before_frame = db_framename.frame
@@ -171,7 +187,10 @@ def insert_keyframes(request):
                     if not before_name.endswith('.png'):
                         before_name += '.png'
 
+
                     after_index = insertedImages.index(os.path.join(realvideopath[0], before_name))
+
+                    print('video {} update {} to {}'.format(video_tid, before_frame, after_index))
                     if after_index!=-1 and after_index!=before_frame:
                         #framename
                         db_framename.frame=after_index
@@ -184,39 +203,39 @@ def insert_keyframes(request):
                         db_labelboxs = models.LabeledBox.objects.select_for_update().filter(job_id=video_tid,frame=before_frame).update(frame=after_index)
 
                 #insert new frame
-                for image in images_per_video:
-                    imagename = os.path.basename(image)
+                # for image in images_per_video:
+                #     imagename = os.path.basename(image)
 
-                    after_index = insertedImages.index(os.path.join(realvideopath[0], imagename))
-                    print('imagename',imagename)
-                    print('after_index',after_index)
+                #     after_index = insertedImages.index(os.path.join(realvideopath[0], imagename))
 
-                    db_fcwTrain = models.FCWTrain.objects.select_for_update().get(task_id=video_tid)
+                #     print('video {} insert {} to {}'.format(video_tid, imagename, after_index))
 
-                    try:
-                        db_taskFrameUserRecord = models.TaskFrameUserRecord.objects.select_for_update().get(task_id=video_tid,frame=after_index)
-                        print('db_taskFrameUserRecord is exist will pass')
-                    except ObjectDoesNotExist:
-                        db_taskFrameUserRecord = models.TaskFrameUserRecord()
-                        db_taskFrameUserRecord.task = video_task
-                        db_taskFrameUserRecord.frame = after_index
-                        db_taskFrameUserRecord.packagename = packagename
-                        db_taskFrameUserRecord.save()
-                        db_fcwTrain.keyframe_count += 1
-                        db_fcwTrain.priority = 0
-                        db_fcwTrain.priority_out = 0
-                        db_fcwTrain.save()
+                #     db_fcwTrain = models.FCWTrain.objects.select_for_update().get(task_id=video_tid)
 
-                    try:
-                        db_FrameName = models.FrameName.objects.select_for_update().get(task_id=video_tid,frame=after_index)
-                        print('db_FrameName is exist will pass')
-                    except ObjectDoesNotExist:
-                        realname = imagename.replace(".png", "")
-                        db_FrameName = models.FrameName()
-                        db_FrameName.task = video_task
-                        db_FrameName.frame = after_index
-                        db_FrameName.name = realname
-                        db_FrameName.save()
+                #     try:
+                #         db_taskFrameUserRecord = models.TaskFrameUserRecord.objects.select_for_update().get(task_id=video_tid,frame=after_index)
+                #         print('db_taskFrameUserRecord is exist will pass')
+                #     except ObjectDoesNotExist:
+                #         db_taskFrameUserRecord = models.TaskFrameUserRecord()
+                #         db_taskFrameUserRecord.task = video_task
+                #         db_taskFrameUserRecord.frame = after_index
+                #         db_taskFrameUserRecord.packagename = packagename
+                #         db_taskFrameUserRecord.save()
+                #         db_fcwTrain.keyframe_count += 1
+                #         db_fcwTrain.priority = 0
+                #         db_fcwTrain.priority_out = 0
+                #         db_fcwTrain.save()
+
+                #     try:
+                #         db_FrameName = models.FrameName.objects.select_for_update().get(task_id=video_tid,frame=after_index)
+                #         print('db_FrameName is exist will pass')
+                #     except ObjectDoesNotExist:
+                #         realname = imagename.replace(".png", "")
+                #         db_FrameName = models.FrameName()
+                #         db_FrameName.task = video_task
+                #         db_FrameName.frame = after_index
+                #         db_FrameName.name = realname
+                #         db_FrameName.save()
 
         print("done")
 
@@ -455,63 +474,108 @@ def create_task(request):
     params['owner'] = request.user
     global_logger.info("create task with params = {}".format(params))
     try:
-        projects = ['/FCW_Train/','/FCW_Test/','/LVSA_Train/','/LVSA_Test/','/APA_Corner/','/APA_Segment/','/LDWS/']
+        PROJECT_FOLDER = ['/FCW_Train/','/FCW_Test/','/LVSA_Train/','/LVSA_Test/','/APA_Corner/','/APA_Segment/','/LDWS/']
         share_root = settings.SHARE_ROOT
+
+        target_paths = []
+        source_paths = []
+
         if params['storage'] == 'share':
             data_list = request.POST.getlist('data')
             data_list.sort(key=len)
-            tmp = []
-            data_list_len = 1 if len(data_list) == 1 else 0
-            task_list = {}
-            if len(data_list)==1 and (data_list[0] in projects):
-                relpath = os.path.normpath(data_list[0]).lstrip('/')
-                if '..' in relpath.split(os.path.sep):
-                    raise Exception('Permission denied')
-                abspath = os.path.abspath(os.path.join(share_root, relpath))
-                if os.path.commonprefix([share_root, abspath]) != share_root:
-                    raise Exception('Bad file path on share: ' + abspath)
-                for name in os.listdir(abspath):
-                    path = os.path.join(abspath, name)
-                    if os.path.isdir(path):
-                        path = path.replace(share_root,'') + '/'
-                        tmp.append(path)
-            else:
-                for share_path in data_list:
-                    if share_path.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp')):
-                        share_path = share_path.rsplit('/')[0] + '/'
-                        # print("share_path:",share_path)
-                    if (not share_path in tmp) and (not share_path in projects) and (share_path != '/'):
-                        tmp.append(share_path)
+            createList = []
+            passList = []
+            print(data_list)
 
-            # print("\n\n\n\n\ntmp:{}\n\n\n\n\n".format(tmp))
-
-            for share_path in tmp:
-                params['task_name'] = os.path.split(share_path.rstrip('/'))[-1]
-
-                db_task = task.create_empty(params)
-                ###########################################
-                target_paths = []
-                source_paths = []
-                upload_dir = db_task.get_upload_dirname()
-
+            for share_path in data_list:
                 relpath = os.path.normpath(share_path).lstrip('/')
                 if '..' in relpath.split(os.path.sep):
                     raise Exception('Permission denied')
                 abspath = os.path.abspath(os.path.join(share_root, relpath))
-                
                 if os.path.commonprefix([share_root, abspath]) != share_root:
                     raise Exception('Bad file path on share: ' + abspath)
-                source_paths.append(abspath)
-                # print("------------source_paths; ",abspath,"------------\n\n\n\n")
-                target_paths.append(os.path.join(upload_dir, relpath))
-                # print("------------target_paths; ",os.path.join(upload_dir, relpath),"------------\n\n\n\n")
-                
-                params['SOURCE_PATHS'] = source_paths
-                params['TARGET_PATHS'] = target_paths
-                task.create(db_task.id, params)
-                task_list['tid'] = db_task.id
 
-            return JsonResponse(task_list)
+                print('abspath',abspath)
+                print('target_paths',relpath)
+
+                if params['project'] == 'fcw_training':
+                    imgs_list = glob.glob('{}/*.{}'.format(abspath,'png'))
+                    if imgs_list:
+                        task_name = os.path.basename(abspath)
+
+                        tids = models.FCWTrain.objects.all().values_list('task_id', flat=True)
+                        exist_count = models.Task.objects.filter(name=task_name, id__in=tids).count()
+                        if exist_count == 1:
+                            passList.append(task_name)
+                            continue
+                        if exist_count > 1:
+                            passList.append(task_name + ' more_{}'.format(exist_count))
+                            continue
+
+
+                        params['task_name'] = task_name
+                        db_task = task.create_empty(params)
+                        upload_dir = db_task.get_upload_dirname()
+
+                        target_paths = []
+                        source_paths = []
+
+                        source_paths.append(abspath)
+                        target_paths.append(os.path.join(upload_dir, relpath))
+                        print('source_paths',source_paths)
+                        print('target_paths',target_paths)
+
+                        params['SOURCE_PATHS'] = source_paths
+                        params['TARGET_PATHS'] = target_paths
+                        task.create(db_task.id, params)
+                        createList.append(task_name)
+                
+                if params['project'] == 'apacorner':
+
+                    Camaras = ['TopLeft','TopLeft_full']
+                    for camara in Camaras:
+
+                        imgs_list = glob.glob('{}/{}/*.{}'.format(abspath,camara,'png'))
+
+                        print('imgs_list ',imgs_list)
+                        if imgs_list:
+                            task_name = os.path.basename(abspath) + '_{}'.format(camara)
+
+                            tids = models.APACorner.objects.all().values_list('task_id', flat=True)
+
+                            print('task_name',task_name)
+                            print('tids',tids)
+                            exist_count = models.Task.objects.filter(name=task_name, id__in=tids).count()
+
+                            print('exist_count',exist_count)
+                            if exist_count == 1:
+                                passList.append(task_name)
+                                continue
+                            if exist_count > 1:
+                                passList.append(task_name + ' more_{}'.format(exist_count))
+                                continue
+
+                            params['task_name'] = task_name
+                            db_task = task.create_empty(params)
+                            upload_dir = db_task.get_upload_dirname()
+
+                            models.Task.objects.filter(name=task_name)
+
+                            target_paths = []
+                            source_paths = []
+
+                            source_paths.append(os.path.join(abspath, camara))
+                            target_paths.append(os.path.join(*[upload_dir, relpath, camara]))
+                            print('source_paths',source_paths)
+                            print('target_paths',target_paths)
+
+                            params['SOURCE_PATHS'] = source_paths
+                            params['TARGET_PATHS'] = target_paths
+                            task.create(db_task.id, params)
+                            createList.append(task_name)
+
+            return JsonResponse({'createList':createList,'passList':passList})
+
         else:
 
             db_task = task.create_empty(params)
@@ -519,6 +583,8 @@ def create_task(request):
             source_paths = []
             upload_dir = db_task.get_upload_dirname()
             data_list = request.FILES.getlist('data')
+
+            print(data_list)
 
             if len(data_list) > settings.LOCAL_LOAD_MAX_FILES_COUNT:
                 raise Exception('Too many files. Please use download via share')

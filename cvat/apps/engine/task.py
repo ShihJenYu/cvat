@@ -40,7 +40,7 @@ global_logger = logging.getLogger(__name__)
 ############################# Low Level server API
 
 @transaction.atomic
-def create_empty(params):
+def create_empty(params=None):
     """Create empty directory structure for a new task, add it to DB."""
 
     db_task = models.Task()
@@ -66,7 +66,7 @@ def create_empty(params):
 
     return db_task
 
-def create(tid, params):
+def create(tid=None, params=None):
     """Schedule the task"""
     q = django_rq.get_queue('default')
     q.enqueue_call(func=_create_thread, args=(tid, params),
@@ -657,7 +657,7 @@ def _save_task_to_db(db_task, task_params):
 
 
 @transaction.atomic
-def _create_thread(tid, params):
+def _create_thread(tid=None, params=None):
     def raise_exception(images, dirs, videos, archives):
         raise Exception('Only one archive, one video or many images can be dowloaded simultaneously. \
             {} image(s), {} dir(s), {} video(s), {} archive(s) found'.format(images, dirs, videos, archives))

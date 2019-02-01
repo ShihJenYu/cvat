@@ -2271,6 +2271,7 @@ class ShapeView extends Listener {
         
         // add by ericlou, for Rotation Unknown
         $("option[value='Unknown']").attr("disabled", "disabled");
+        $("input[type='radio'][value='Unknow']").attr("disabled", "disabled");
 
         function makeTitleBlock(id, label, type, shortkeys) {
             let title = document.createElement('div');
