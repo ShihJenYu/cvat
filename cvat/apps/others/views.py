@@ -175,6 +175,8 @@ def get_packagename(request, project):
             tid_list = None
             if project == 'fcw_training':
                 tid_list = list(models.FCWTrain.objects.all().values_list('task_id', flat=True))
+            elif project == 'bsd_training':
+                tid_list = list(models.BSDTrain.objects.all().values_list('task_id', flat=True))
             elif project == 'fcw_testing':
                 tid_list = list(models.FCWTest.objects.all().values_list('task_id', flat=True))
             elif project == 'apacorner':

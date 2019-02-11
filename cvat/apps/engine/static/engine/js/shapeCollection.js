@@ -2086,7 +2086,7 @@ class ShapeCollectionView {
 
 // add by jeff
 function setDetectPoint(activeShape){
-    if(!['fcw_training', 'fcw_testing'].includes(PROJECT)){return;}
+    if(!['fcw_training', 'fcw_testing', 'bsd_training'].includes(PROJECT)){return;}
     $(".detectpoint").remove();
 
     if(activeShape._type !== "annotation_box"){return;}
@@ -2187,8 +2187,7 @@ function setDetectPoint(activeShape){
                     content.append(shape);
                 }
             });
-            if(middlecarside)
-                $("#" + DETECTPOINT + "_" + activeShape._id + "_L").draggable( 'disable' );
+            
 
             thisframeContent.rect(scaledR*3,scaledR*3).draggable({
                 minX: xtl - scaledR*1.5,

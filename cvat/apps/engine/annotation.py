@@ -24,15 +24,34 @@ from django.db import transaction
 #add by jeff
 from django.db.models import Q, Max, Min
 from django.core.exceptions import ObjectDoesNotExist
+#add by jeff
+from django.apps import apps
 
 from . import models
 from .task import get_frame_path, get_image_meta_cache
+#from .views import get_ProjectModel, get_FrameUserRecordModel, new_ProjectObject, new_FrameUserRecordObject
 from .logging import task_logger, job_logger
 
 ############################# Low Level server API
 
 FORMAT_XML = 1
 FORMAT_JSON = 2
+
+
+def get_ProjectModel(project):
+    if project == 'fcw_training':
+        return apps.get_model('engine', 'FCWTrain')
+    elif project == 'bsd_training':
+        return apps.get_model('engine', 'BSDTrain')
+    elif project == 'apacorner':
+        return apps.get_model('engine', 'APACorner')
+def get_FrameUserRecordModel(project):
+    if project == 'fcw_training':
+        return apps.get_model('engine', 'TaskFrameUserRecord')
+    elif project == 'bsd_training':
+        return apps.get_model('engine', 'BSDTrain_FrameUserRecord')
+    elif project == 'apacorner':
+        return apps.get_model('engine', 'APACorner_FrameUserRecord')
 
 def dump(tid, data_format, scheme, host):
     """
@@ -70,7 +89,9 @@ def get(jid,project=None,requestUser=None,frame=None):
     """
     Get annotations for the job.
     """
-    
+    _ProjectModel = get_ProjectModel(project)
+    _FrameUserRecordModel = get_FrameUserRecordModel(project)
+
     db_job = models.Job.objects.select_for_update().get(id=jid)
     annotation = _AnnotationForJob(db_job)
     new_jid = jid # use taskid
@@ -78,9 +99,9 @@ def get(jid,project=None,requestUser=None,frame=None):
     if requestUser.groups.filter(name='annotator').exists():
         user_record = None
 
-        if project == 'fcw_training':
+        if project in ['fcw_training','bsd_training']:
             try:
-                user_record = models.TaskFrameUserRecord.objects.select_for_update().get(user=requestUser.username,current=True)
+                user_record = _FrameUserRecordModel.objects.select_for_update().get(user=requestUser.username,current=True)
                 frame = user_record.frame
                 new_jid  = user_record.task_id
 
@@ -172,9 +193,9 @@ def get(jid,project=None,requestUser=None,frame=None):
         video_submit = None
         video_current = None
         video_needModify = None
-        if project == 'fcw_training':
+        if project in ['fcw_training','bsd_training']:
             print('project is',project)
-            records = models.TaskFrameUserRecord.objects.select_for_update().filter(task_id=new_jid).order_by('frame')
+            records = _FrameUserRecordModel.objects.select_for_update().filter(task_id=new_jid).order_by('frame')
         elif project in ['fcw_testing', 'apacorner']:
             print('project is',project)
             if project == 'fcw_testing':

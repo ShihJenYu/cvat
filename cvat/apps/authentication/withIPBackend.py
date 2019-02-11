@@ -19,7 +19,7 @@ class WithIPBackend(ModelBackend):
                 if isAdmin:
                     return user
                 print('is my auth')
-                OFFICE_IP = ['114.37.145.43', '220.134.104.253', '114.43.64.62', '114.37.145.175']
+                OFFICE_IP = ['114.37.145.43', '220.134.104.253', '114.43.64.62', '114.37.145.175', '114.45.6.174']
                 OFFICE_Key = []
                 for ip in OFFICE_IP:
                     mhash = hashlib.md5()

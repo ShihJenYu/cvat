@@ -22,7 +22,8 @@ urlpatterns = [
     path('dump/annotation/task/<int:tid>', views2.dump_annotation),
     path('set/tasks/priority', views2.set_tasks_priority),
     path('set/task/<int:tid>/nickname/<str:nickname>', views2.set_task_nickname),
-    path('insert_keyframes', views2.insert_keyframes),
+    path('insert_images', views2.insert_images),
+    path('upload_XML', views2.upload_XML),
 
     # add by Eric
     path('update_keyframe', views2.update_keyframe),
@@ -35,5 +36,7 @@ urlpatterns = [
     path('otofcw_training', views.DashboardView),
     path('apacorner', views.DashboardView),
     path('otoapacorner', views.DashboardView),
+    path('bsd_training', views.DashboardView),
+    path('otobsd_training', views.DashboardView),
 ]
 

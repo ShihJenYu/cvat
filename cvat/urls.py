@@ -41,6 +41,8 @@ urlpatterns = [
     path('otofcw_training/', include('cvat.apps.engine.urls')),
     path('apacorner/', include('cvat.apps.engine.urls')),
     path('otoapacorner/', include('cvat.apps.engine.urls')),
+    path('bsd_training/', include('cvat.apps.engine.urls')),
+    path('otobsd_training/', include('cvat.apps.engine.urls')),
 ]
 
 if 'yes' == os.environ.get('TF_ANNOTATION', 'no'):

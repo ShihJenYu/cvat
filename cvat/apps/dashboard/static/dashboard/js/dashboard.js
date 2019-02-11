@@ -398,6 +398,7 @@ function setupTaskCreator() {
         }
 
         let CSVkData = new FormData();
+        CSVkData.append('project', window.location.pathname.split('/')[2]);
 
         for (let file of files) {
             CSVkData.append('data', file);
@@ -423,14 +424,14 @@ function setupTaskCreator() {
         }
 
         let KeyframesData = new FormData();
-
+        KeyframesData.append('project', window.location.pathname.split('/')[2]);
         for (let file of files) {
             KeyframesData.append('data', file);
         }        
         // console.log(CSVkData, "submitCSVCreate");
         submitKeyframesCreate.prop('disabled', true);
 
-        InsertKeyframeRequest(KeyframesData, 
+        InsertImagesRequest(KeyframesData, 
             () => submitKeyframesCreate.prop('disabled', false),
             () => {
                 KeyframeMessage.css('color', 'red');
@@ -625,16 +626,30 @@ function setupTaskCreator() {
 
     SubmitKeyframe.on('click', function() {
 
+        let keyframeData = new FormData();
+        keyframeData.append('data', keyframefiles[0]);
+        keyframeData.append('project', window.location.pathname.split('/')[2]);
         $.ajax({
             url: '/dashboard/update_keyframe',
             type: 'POST',
-            data: keyframefiles[0],
+            data: keyframeData,
             contentType: false,
             processData: false,
             success: function(response) {
-                KeyframeUploaderLabel.css('color', 'green');
-                KeyframeUploaderLabel.text("Upload Success.");
-                console.log(response);
+
+                if (respone.data=='Success update frames'){
+                    let message = 'Keyframe files successfully inserted';
+                    KeyframeUploaderLabel.css('color', 'green');
+                    KeyframeUploaderLabel.text("Upload Success.");
+                    console.log(message);
+                }
+                else{
+                    let message = 'Error';
+                    showMessage(respone);
+                    onError();
+                    console.log("error list",respone.data);
+                }
+
             },
             error: function(response) {
                 KeyframeUploaderLabel.css('color', 'red');
@@ -933,18 +948,24 @@ function UploadCSVRequest(oData, onSuccessRequest, onError) {
 }
 
 // add by jeff
-function InsertKeyframeRequest(oData, onSuccessRequest, onError) {
+function InsertImagesRequest(oData, onSuccessRequest, onError) {
     $.ajax({
-        url: '/dashboard/insert_keyframes',
+        url: '/dashboard/insert_images',
         type: 'POST',
         data: oData,
         contentType: false,
         processData: false,
         success: function(respone) {
-            if (respone){
+            if (respone.data=='Success insert_frames'){
                 let message = 'Keyframe files successfully inserted';
                 showMessage(message);
                 onSuccessRequest();
+            }
+            else{
+                let message = 'Error';
+                showMessage(respone);
+                onError();
+                console.log("error list",respone.data);
             }
         },
         error: function(respone) {
@@ -953,4 +974,4 @@ function InsertKeyframeRequest(oData, onSuccessRequest, onError) {
             onError();
         }
     });
-}                                
+}

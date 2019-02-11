@@ -212,7 +212,7 @@ function buildAnnotationUI(job, shapeData, loadJobEvent) {
     // });
 
     PROJECT = window.location.pathname.split('/')[1];
-    if(PROJECT != 'fcw_training'){
+    if(!['fcw_training','bsd_training'].includes(PROJECT)) {
         $('#isKeyFrame').prop('disabled',true);
     }
     
@@ -291,7 +291,7 @@ function buildAnnotationUI(job, shapeData, loadJobEvent) {
     }
     else{
         window.history.replaceState(null, null, `${window.location.origin}${window.location.pathname}`);
-        if(PROJECT=='fcw_training') {
+        if(['fcw_training','bsd_training'].includes(PROJECT)) {
             let full_name = shapeData.frameInfo[shapeData.frame].full_name;
             txt = (full_name)? full_name : job.slug + ', F' + String(+shapeData.frame+1).padStart(4, '0');
             $('#task_name').text(txt)
@@ -901,13 +901,18 @@ function setupMenu(job, shapeCollectionModel, annotationParser, aamModel, player
         if(isAdminFlag){
             if(StatusInfo==null) {return; /* not keyframe */ }
             else if(StatusInfo.need_modify || StatusInfo.current || StatusInfo.user==''){
-                if(saveByShift) {saveByShift = false;}
+                if (PROJECT=='bsd_training'){ // special project, admin always can save
+                    saveAnnotation(shapeCollectionModel, job);
+                }
                 else {
-                    let annotator = '';
-                    if (StatusInfo.user=='')annotator="none"
-                    else annotator = StatusInfo.user
-                    if(annotator!="none") alert(`Hello! annotator is working !!! Current:${StatusInfo.current} Annotator:${annotator} Redo:${StatusInfo.need_modify}`);
-                    else alert('no any annotator get this frame, u cannot save!!');
+                    if(saveByShift) {saveByShift = false;}
+                    else {
+                        let annotator = '';
+                        if (StatusInfo.user=='')annotator="none"
+                        else annotator = StatusInfo.user
+                        if(annotator!="none") alert(`Hello! annotator is working !!! Current:${StatusInfo.current} Annotator:${annotator} Redo:${StatusInfo.need_modify}`);
+                        else alert('no any annotator get this frame, u cannot save!!');
+                    }
                 }
             }
             else {
