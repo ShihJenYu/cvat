@@ -392,7 +392,7 @@ def update_keyframe(request):
                 print("tid:{} frame:{} is add".format(tid,nFrameNumber))
 
         if len(no_update_video):
-            response = {'data':not_do_paths}
+            response = {'data':no_update_video}
             return JsonResponse(response, safe=False)
         else:
             response = {'data':"Success update frames"}
