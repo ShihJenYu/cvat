@@ -690,13 +690,13 @@ class PlayerController {
             url: "save/currentJob",
             dataType: "json",
             async: false,
-            success: function(respone) {
-                console.log("done save/currentJob", respone);
-                data = respone;
+            success: function(response) {
+                console.log("done save/currentJob", response);
+                data = response;
                 $('#sendButton').prop('disabled',true);
                 $('#sendButton').unbind('click');
             },
-            error: function(respone) {
+            error: function(response) {
                 wasSend = false;
                 serverError();
             }

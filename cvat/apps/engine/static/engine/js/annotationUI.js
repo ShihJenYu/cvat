@@ -299,11 +299,11 @@ function buildAnnotationUI(job, shapeData, loadJobEvent) {
         else {
             $('#task_name').text(job.slug);
         }
-
-        let comment_list = window.cvat.frameInfo[shapeData.frame].comment.split(',');
+        let index = (shapeData.frame!=null)? shapeData.frame : 0;
+        let comment_list = window.cvat.frameInfo[index].comment.split(',');
         let comment_href = comment_list[0];
         if(!comment_href.includes('file:')){
-            $('#redoComment_readonly').text(window.cvat.frameInfo[shapeData.frame].comment);
+            $('#redoComment_readonly').text(window.cvat.frameInfo[index].comment);
 
             $('#commentImgButton').addClass('hidden');
             console.log(' commentImgButton add hidden');

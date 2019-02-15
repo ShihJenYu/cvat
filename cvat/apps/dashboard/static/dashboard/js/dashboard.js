@@ -637,7 +637,7 @@ function setupTaskCreator() {
             processData: false,
             success: function(response) {
 
-                if (respone.data=='Success update frames'){
+                if (response.data=='Success update frames'){
                     let message = 'Keyframe files successfully inserted';
                     KeyframeUploaderLabel.css('color', 'green');
                     KeyframeUploaderLabel.text("Upload Success.");
@@ -645,9 +645,9 @@ function setupTaskCreator() {
                 }
                 else{
                     let message = 'Error';
-                    showMessage(respone);
+                    showMessage(response);
                     onError();
-                    console.log("error list",respone.data);
+                    console.log("error list",response.data);
                 }
 
             },
@@ -927,13 +927,13 @@ function uploadAnnotationRequest() {
 // add by eric
 function UploadCSVRequest(oData, onSuccessRequest, onError) {
     $.ajax({
-        url: '/dashboard/upload_CSV',
+        url: '/dashboard/upload_XML',
         type: 'POST',
         data: oData,
         contentType: false,
         processData: false,
-        success: function(respone) {
-            if (respone){
+        success: function(response) {
+            if (response){
                 let message = 'CSV files successfully uploaded';
                 showMessage(message);
                 onSuccessRequest();
@@ -955,22 +955,22 @@ function InsertImagesRequest(oData, onSuccessRequest, onError) {
         data: oData,
         contentType: false,
         processData: false,
-        success: function(respone) {
-            if (respone.data=='Success insert_frames'){
+        success: function(response) {
+            if (response.data=='Success insert_frames'){
                 let message = 'Keyframe files successfully inserted';
                 showMessage(message);
                 onSuccessRequest();
             }
             else{
                 let message = 'Error';
-                showMessage(respone);
+                showMessage(response);
                 onError();
-                console.log("error list",respone.data);
+                console.log("error list",response.data);
             }
         },
-        error: function(respone) {
+        error: function(response) {
             let message = 'Error';
-            showMessage(respone);
+            showMessage(response);
             onError();
         }
     });

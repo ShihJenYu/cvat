@@ -47,14 +47,14 @@ window.onload = function() {
             data: mysteriousData,
             contentType: false,
             processData: false,
-            success: function(respone) {
-                console.log("/auth/mysteriousKey", respone);
-                if(respone.auth=='error'){
+            success: function(response) {
+                console.log("/auth/mysteriousKey", response);
+                if(response.auth=='error'){
                     window.location.href='/auth/logout';
                 }
             },
-            error: function(respone) {
-                console.log("/auth/mysteriousKey is error", respone);
+            error: function(response) {
+                console.log("/auth/mysteriousKey is error", response);
                 window.location.href='/auth/logout';
             }
         });

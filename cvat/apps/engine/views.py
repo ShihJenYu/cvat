@@ -30,7 +30,7 @@ from django.db import transaction
 from django.db.models import Q, Max, Min
 from django.core.exceptions import ObjectDoesNotExist
 
-from . import annotation, task, models
+from . import annotation, task, parseXML, models
 from cvat.settings.base import JS_3RDPARTY
 from cvat.apps.authentication.decorators import login_required
 from requests.exceptions import RequestException
@@ -417,6 +417,12 @@ def upload_XML(request):
         listLabelfile = request.POST.getlist('data')
         share_root = settings.SHARE_ROOT
 
+        _ProjectModel = get_ProjectModel(params['project'])
+        _FrameUserRecordModel = get_FrameUserRecordModel(params['project'])
+
+
+        project_tids = list(_ProjectModel.objects.all().values_list('task_id', flat=True))
+
         print('listLabelfile',listLabelfile)
 
         for sLabelpath in listLabelfile:
@@ -430,13 +436,104 @@ def upload_XML(request):
             print('abspath',abspath)
             print('target_paths',relpath)
 
+            
+            not_do_paths = []
             if params['project'] == 'apacorner':
                 Camaras = ['TopLeft','TopLeft_full']
                 for camara in Camaras:
                     xmls_list = glob.glob('{}/{}/*.{}'.format(abspath,camara,'xml'))
                     if xmls_list:
+                        tid = None
+                        print('AAA')
+                        videoname = os.path.basename(abspath) + "_" + camara
+                        print(videoname)
+                        try:
+                            db_task = models.Task.objects.select_for_update().get(name=videoname, id__in=project_tids)
+                            tid = db_task.id
+                        except ObjectDoesNotExist:
+                            not_do_paths.append({'path':videoname, 'reason':'not found video in data'})
+                            continue
+                        print('BBB')
+
+                        dictRealToFrame = {} # {realframe:linkframe}
+                        root = db_task.get_data_dirname()
+                        start_time = time.time()
+
+                        for subDir in sorted(os.listdir(root)):
+                            subRoot = os.path.join(root,subDir)
+                            for subDir_sec in sorted(os.listdir(subRoot)):
+                                subRoot_sec = os.path.join(subRoot,subDir_sec)
+                                for mfile in sorted(os.listdir(subRoot_sec)):
+                                    mfile_path = os.path.join(subRoot_sec,mfile)
+                                    frame = int(os.path.splitext(mfile)[0])
+                                    realname = os.path.basename(os.path.realpath(mfile_path))
+                                    realframe = int(os.path.splitext(realname)[0][-4:])
+                                    dictRealToFrame[realframe] = frame
+                        print("--- create dictRealToFrame cost %s seconds ---" % (time.time() - start_time))
+                        print(dictRealToFrame)
+
+                        listTaskKeyframeExist = list(_FrameUserRecordModel.objects.filter(task_id=tid).values_list('frame', flat=True))
+                        
                         print('------------------')
-                        print('xmls_list',xmls_list)
+                        print('has xmls_list')
+                        for xml in xmls_list:
+                            nFrameNumber = dictRealToFrame[int(os.path.splitext(xml)[0][-4:])]
+                            
+                            if not nFrameNumber in listTaskKeyframeExist:
+                                print(nFrameNumber, 'not is keyframe')
+                                not_do_paths.append({'video':xml, 'frame':str(nFrameNumber), 'reason':'frame not exist'})
+                                continue
+
+                            db_project = _ProjectModel.objects.select_for_update().get(task_id=tid)
+                            db_project.priority = 0
+                            db_project.priority_out = 0
+                            db_project.save()
+
+                            file_objects = parseXML.parseFile(xml)
+                            print('xml',xml)
+                            print(file_objects)
+                            dictData = {"boxes":[],"box_paths":[],"points":[],"points_paths":[],
+                                        "polygons":[],"polygon_paths":[],"polylines":[],"polyline_paths":[]}
+
+
+                            attributesID = {} #name to id, label_id
+                            
+                            for sDb_attr in models.AttributeSpec.objects.filter(label__task__id=tid):
+                                attributesID[sDb_attr.get_name()] = [int(sDb_attr.id), int(sDb_attr.label_id)]
+
+                            
+
+                            for s_obj_id in file_objects:
+                                obj_id = int(s_obj_id)
+                                isPolygon = True if file_objects[s_obj_id]['points'].count(' ') > 2 else False
+                                item = {}
+                                item['points'] = file_objects[s_obj_id]['points']
+                                item['occluded'] = file_objects[s_obj_id]['occluded']
+                                item['z_order'] = file_objects[s_obj_id]['z_order']
+                                
+                                item['attributes'] = [{'id':attributesID['大標'][0],'value':file_objects[s_obj_id]['name'].replace(' ','_')},
+                                                        {'id':attributesID['小標'][0],'value':str(list(filter(None,file_objects[s_obj_id]['attributes'].split(','))))}]
+                                item['label_id'] = attributesID['大標'][1]
+                                item['group_id'] = 0
+                                item['grouping'] = ','.join(file_objects[s_obj_id]['grouping'])
+                                item['obj_id'] = obj_id
+                                item['frame'] = nFrameNumber
+
+                                print('will save item',item)
+
+                                if isPolygon:
+                                    dictData["polygons"].append(item)
+                                else:
+                                    dictData["polylines"].append(item)
+                                
+
+                            if request.user.groups.filter(name='admin').exists():
+                                print('Save xml Job', "Tid:",tid, " Frame:", nFrameNumber)
+                                annotation.save_job(tid, dictData, oneFrameFlag=True,frame=nFrameNumber)
+                            else:
+                                # annotation.save_job(nTid, dictData,oneFrameFlag=True,frame=current_frame)
+                                print("You cant save if you're not admin.")
+                                pass
                         print('------------------')
                     else:
                         print('no xmls_list')
@@ -672,8 +769,6 @@ def create_task(request):
                             params['task_name'] = task_name
                             db_task = task.create_empty(params)
                             upload_dir = db_task.get_upload_dirname()
-
-                            models.Task.objects.filter(name=task_name)
 
                             target_paths = []
                             source_paths = []
@@ -1273,18 +1368,6 @@ def set_frame_isComplete(request, tid, frame, flag):
         db_project = None
         qs_project = None
 
-        # if project == 'fcw_training':
-        #     keyframe = models.TaskFrameUserRecord.objects.select_for_update().get(task_id=tid,frame=frame)
-        #     db_project = models.FCWTrain.objects.select_for_update().get(task_id=tid)
-        #     qs_project = models.TaskFrameUserRecord.objects.all()
-        # elif project == 'fcw_testing':
-        #     keyframe = models.FCWTest_FrameUserRecord.objects.select_for_update().get(task_id=tid,frame=frame)
-        #     db_project = models.FCWTest.objects.select_for_update().get(task_id=tid)
-        #     qs_project = models.FCWTest_FrameUserRecord.objects.all()
-        # elif project == 'apacorner':
-        #     keyframe = models.APACorner_FrameUserRecord.objects.select_for_update().get(task_id=tid,frame=frame)
-        #     db_project = models.APACorner.objects.select_for_update().get(task_id=tid)
-        #     qs_project = models.APACorner_FrameUserRecord.objects.all()
         keyframe = _FrameUserRecordModel.objects.select_for_update().get(task_id=tid,frame=frame)
         db_project = _ProjectModel.objects.select_for_update().get(task_id=tid)
 
@@ -1315,6 +1398,17 @@ def set_frame_isComplete(request, tid, frame, flag):
 @login_required
 @transaction.atomic
 @permission_required('engine.add_task', raise_exception=True)
+def set_job_isRedo(request, tid, flag):
+    try:
+        response = {'data':set_job_isRedo}
+        return JsonResponse(response, safe=False)
+    except Exception as e:
+        print("error is !!!!",str(e))
+        return HttpResponseBadRequest(str(e))
+
+@login_required
+@transaction.atomic
+@permission_required('engine.add_task', raise_exception=True)
 def set_frame_isRedo(request, tid, frame, flag):
     try:
         
@@ -1327,18 +1421,6 @@ def set_frame_isRedo(request, tid, frame, flag):
         db_project = None
         qs_project = None
 
-        # if project == 'fcw_training':
-        #     keyframe = models.TaskFrameUserRecord.objects.select_for_update().get(task_id=tid,frame=frame)
-        #     db_project = models.FCWTrain.objects.select_for_update().get(task_id=tid)
-        #     qs_project = models.TaskFrameUserRecord.objects.all()
-        # elif project == 'fcw_testing':
-        #     keyframe = models.FCWTest_FrameUserRecord.objects.select_for_update().get(task_id=tid,frame=frame)
-        #     db_project = models.FCWTest.objects.select_for_update().get(task_id=tid)
-        #     qs_project = models.FCWTest_FrameUserRecord.objects.all()
-        # elif project == 'apacorner':
-        #     keyframe = models.APACorner_FrameUserRecord.objects.select_for_update().get(task_id=tid,frame=frame)
-        #     db_project = models.APACorner.objects.select_for_update().get(task_id=tid)
-        #     qs_project = models.APACorner_FrameUserRecord.objects.all()
         keyframe = _FrameUserRecordModel.objects.select_for_update().get(task_id=tid,frame=frame)
         db_project = _ProjectModel.objects.select_for_update().get(task_id=tid)
 
@@ -1355,9 +1437,9 @@ def set_frame_isRedo(request, tid, frame, flag):
             keyframe.user_submit = True
             keyframe.save()
 
-        db_project.checked_count = _FrameUserRecordModel.filter(task_id=tid,checked=True).count()
-        db_project.unchecked_count = _FrameUserRecordModel.filter(task_id=tid,user_submit=True).count()
-        db_project.need_modify_count = _FrameUserRecordModel.filter(task_id=tid,need_modify=True).count()
+        db_project.checked_count = _FrameUserRecordModel.objects.filter(task_id=tid,checked=True).count()
+        db_project.unchecked_count = _FrameUserRecordModel.objects.filter(task_id=tid,user_submit=True).count()
+        db_project.need_modify_count = _FrameUserRecordModel.objects.filter(task_id=tid,need_modify=True).count()
         db_project.save()
 
         response = {'frame': frame,'isRedo':flag}
@@ -1377,14 +1459,6 @@ def set_frame_redoComment(request, tid, frame, comment):
 
         _ProjectModel = get_ProjectModel(project)
         _FrameUserRecordModel = get_FrameUserRecordModel(project)
-
-        keyframe = None
-        # if project == 'fcw_training':
-        #     keyframe = models.TaskFrameUserRecord.objects.select_for_update().get(task_id=tid,frame=frame)
-        # elif project == 'fcw_testing':
-        #     keyframe = models.FCWTest_FrameUserRecord.objects.select_for_update().get(task_id=tid,frame=frame)
-        # elif project == 'apacorner':
-        #     keyframe = models.APACorner_FrameUserRecord.objects.select_for_update().get(task_id=tid,frame=frame)
 
         keyframe = _FrameUserRecordModel.objects.select_for_update().get(task_id=tid,frame=frame)
         
@@ -1422,32 +1496,6 @@ def set_tasks_priority(request):
 
         if(params['selectTasks'] != ''):
             tasks = params['selectTasks'].split(',')
-            # if project == 'fcw_training':
-            #     for tid in tasks:
-            #         db_Project = models.FCWTrain.objects.select_for_update().get(task_id=int(tid))
-            #         if inCompany:
-            #             print('db_Project.priority = priority')
-            #             db_Project.priority = priority
-            #         else:
-            #             print('db_Project.priority_out = priority')
-            #             db_Project.priority_out = priority
-            #         db_Project.save()
-            # elif project == 'fcw_testing':
-            #     for tid in tasks:
-            #         db_Project = models.FCWTest.objects.select_for_update().get(task_id=int(tid))
-            #         if inCompany:
-            #             db_Project.priority = priority
-            #         else:
-            #             db_Project.priority_out = priority
-            #         db_Project.save()
-            # elif project == 'apacorner':
-            #     for tid in tasks:
-            #         db_Project = models.APACorner.objects.select_for_update().get(task_id=int(tid))
-            #         if inCompany:
-            #             db_Project.priority = priority
-            #         else:
-            #             db_Project.priority_out = priority
-            #         db_Project.save()
             for tid in tasks:
                 db_project = _ProjectModel.objects.select_for_update().get(task_id=int(tid))
                 if inCompany:
@@ -1592,20 +1640,11 @@ def save_currentJob(request):
         db_project = None
         qs_project = None
         with transaction.atomic():
-            # if project == 'fcw_training':
-            #     db_project = models.FCWTrain.objects.select_for_update().get(task_id=tid)
-            #     qs_project = models.TaskFrameUserRecord.objects.all()
-            # elif project == 'fcw_testing':
-            #     db_project = models.FCWTest.objects.select_for_update().get(task_id=tid)
-            #     qs_project = models.FCWTest_FrameUserRecord.objects.all()
-            # elif project == 'apacorner':
-            #     db_project = models.APACorner.objects.select_for_update().get(task_id=tid)
-            #     qs_project = models.APACorner_FrameUserRecord.objects.all()
             db_project = _ProjectModel.objects.select_for_update().get(task_id=tid)
 
-            db_project.checked_count = _FrameUserRecordModel.filter(task_id=tid,checked=True).count()
-            db_project.unchecked_count = _FrameUserRecordModel.filter(task_id=tid,user_submit=True).count()
-            db_project.need_modify_count = _FrameUserRecordModel.filter(task_id=tid,need_modify=True).count()
+            db_project.checked_count = _FrameUserRecordModel.objects.filter(task_id=tid,checked=True).count()
+            db_project.unchecked_count = _FrameUserRecordModel.objects.filter(task_id=tid,user_submit=True).count()
+            db_project.need_modify_count = _FrameUserRecordModel.objects.filter(task_id=tid,need_modify=True).count()
             db_project.save()
 
         return JsonResponse({'data':"success"})
@@ -1736,7 +1775,7 @@ def set_currentJob(request):
             if db_projects and len(db_projects):
                 print ("db_projects has {} data".format(len(db_projects)))
                 for db_project in db_projects:
-                    tmp_tid = db_project.task.id
+                    tmp_tid = db_project.task_id
                     with transaction.atomic():
                         qs = _FrameUserRecordModel.objects.filter(task_id=tmp_tid,user=request.user.username,need_modify=True)
                         ids = qs.values_list('id', flat=True)
@@ -1768,7 +1807,7 @@ def set_currentJob(request):
                 if db_projects and len(db_projects):
                     print ("db_projects has {} data".format(len(db_projects)))
                     for db_project in db_projects:
-                        tmp_tid = db_projects.task.id
+                        tmp_tid = db_project.task_id
                         with transaction.atomic():
                             qs = _FrameUserRecordModel.objects.select_for_update().filter(task_id=tmp_tid,user='')
                             ids = qs.values_list('id', flat=True)
