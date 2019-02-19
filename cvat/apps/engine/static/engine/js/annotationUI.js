@@ -215,6 +215,64 @@ function buildAnnotationUI(job, shapeData, loadJobEvent) {
     if(!['fcw_training','bsd_training'].includes(PROJECT)) {
         $('#isKeyFrame').prop('disabled',true);
     }
+
+    if(PROJECT == 'apacorner')
+    for (let a in window.cvat.labelsInfo._attributes){
+        if(window.cvat.labelsInfo._attributes[a].name=='大標'){
+            console.log(window.cvat.labelsInfo._attributes[a].values);
+            for(let element of window.cvat.labelsInfo._attributes[a].values){
+                $("#default_corner_type").append('<option value="'+element+'">'+element+'</option>');
+            }
+            $("#default_corner_type").prop('value','');
+            $("#default_corner_type").selectpicker("refresh");
+        }
+        else if(window.cvat.labelsInfo._attributes[a].name=='小標'){
+            let select = $("#default_corner_att")[0];
+            let flag_for_disabled = false;
+            for (let values of window.cvat.labelsInfo._attributes[a].values) {
+                let optgroup = document.createElement('optgroup');
+                // disable next group
+                if (flag_for_disabled) optgroup.setAttribute('disabled', true);
+
+                for (let value of values) {
+                    if (PROJECT == 'apacorner' && value == 'obstructed') { flag_for_disabled = true; }
+
+                    let option = document.createElement('option');
+                    option.setAttribute('value', value);
+                    if (value === AAMUndefinedKeyword) {
+                        option.innerText = '';
+                    }
+                    else {
+                        option.innerText = value.normalize();
+                    }
+                    optgroup.appendChild(option);
+                }
+                select.add(optgroup);
+            }
+            $("#default_corner_att").prop('value','');
+            $("#default_corner_att").selectpicker("refresh");
+
+            $("#default_corner_att").on('change', function(e) {
+                console.log('in onchange multiselect');
+                let values = $(e.target).val();
+                if($(e.target).val().includes('obstructed')) {
+                    $(e.target).children()[1].removeAttribute('disabled');
+                }
+                else {
+                    $(e.target).children()[1].setAttribute('disabled', true);
+                    values = values.filter(function(value, index, arr){ return ['stopper','unarmed_lock'].includes(value); });
+                    $(e.target).val(values);
+                }
+                $(e.target).selectpicker('refresh');
+            });
+        }
+        $("#clear_default_corner").on('click', function(e) {
+            $("#default_corner_att").val([]);
+            $("#default_corner_att").selectpicker("refresh");
+            $("#default_corner_type").prop('value','');
+            $("#default_corner_type").selectpicker("refresh");
+        });
+    }
     
     if(isAdminFlag){
         window.history.replaceState(null, null, `${window.location.origin}${window.location.pathname}?id=${job.jobid}&setKey=${setKeyFlag}`);
@@ -224,6 +282,17 @@ function buildAnnotationUI(job, shapeData, loadJobEvent) {
         let framePackage = window.cvat.videoInfo.framePackage;
         let packages = Object.keys(window.cvat.videoInfo.framePackage);
         let allKeyframes = [];
+
+        if(['apacorner'].includes(PROJECT)) {
+            if(window.cvat.videoInfo.video_checked==true){
+                $('#realComplete').prop('checked',true);
+                $('#realRedo').prop('disabled',true);
+            }
+            else if(window.cvat.videoInfo.video_needModify==true){
+                $('#realRedo').prop('checked',true);
+                $('#realComplete').prop('disabled',true);
+            }
+        }
 
         $("#select_keyframes").empty();
         $("#select_package").empty();
@@ -878,6 +947,40 @@ function setupMenu(job, shapeCollectionModel, annotationParser, aamModel, player
                 uploadAnnotation(shapeCollectionModel, historyModel, annotationParser, $('#uploadAnnotationButton'));
             }
         );
+    });
+
+    $('#realComplete').on('click', () => {
+        $('#realComplete').prop('disabled',true);
+        let flag = $('#realComplete').prop('checked');
+        console.log(flag);
+        serverRequest(`set/task/${playerModel.tid}/isComplete/${+flag}`, function(response) {
+            console.log(response);
+            $('#realComplete').prop('disabled',false);
+            if(response.isComplete==1){
+                $('#realRedo').prop('disabled',true);
+                $('#realRedo').prop('checked',false);
+            }
+            else{
+                $('#realRedo').prop('disabled',false);
+            }
+        });
+    });
+
+    $('#realRedo').on('click', () => {
+        $('#realRedo').prop('disabled',true);
+        let flag = $('#realRedo').prop('checked');
+        console.log(flag);
+        serverRequest(`set/task/${playerModel.tid}/isRedo/${+flag}`, function(response) {
+            console.log(response);
+            $('#realRedo').prop('disabled',false);
+            if(response.isRedo==1){
+                $('#realComplete').prop('disabled',true);
+                $('#realComplete').prop('checked',false);
+            }
+            else{
+                $('#realComplete').prop('disabled',false);
+            }
+        });
     });
 
     $('#removeAnnotationButton').on('click', () => {

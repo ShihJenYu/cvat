@@ -926,8 +926,18 @@ function uploadAnnotationRequest() {
 
 // add by eric
 function UploadCSVRequest(oData, onSuccessRequest, onError) {
+
+    let url_str = '';
+    let project = window.location.pathname.split('/')[2];
+    if (project=='apacorner') {
+        url_str = '/dashboard/upload_XML';
+    }
+    else {
+        url_str = '/dashboard/upload_CSV';
+    }
+
     $.ajax({
-        url: '/dashboard/upload_XML',
+        url: url_str,
         type: 'POST',
         data: oData,
         contentType: false,

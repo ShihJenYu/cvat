@@ -376,7 +376,16 @@ class ShapeCollectionModel extends Listener {
 
     add(data, type) {
         menuScroll = true;
-        let model = buildShapeModel(data, type, this._nextIdx(), {shape: "#255f9d",ui: "#255f9d"}); // default car color
+        let default_color = {shape: "#ffffff",ui: "#ffffff"};
+
+        if(PROJECT=='apacorner'){
+            default_color = {shape: "#0b8043",ui: "#0b8043"};
+        }
+        else {
+            default_color = {shape: "#255f9d",ui: "#255f9d"};
+        }
+
+        let model = buildShapeModel(data, type, this._nextIdx(), default_color); // default car color
         //let model = buildShapeModel(data, type, this._nextIdx(), this.nextColor());
         if (type.startsWith('interpolation')) {
             this._interpolationShapes.push(model);

@@ -373,7 +373,7 @@ def _parse_labels(labels):
         else:
             attr = models.parse_attribute(token)
             attr['text'] = token
-            if not attr['type'] in ['checkbox', 'radio', 'number', 'text', 'select', 'multiselect']:
+            if not attr['type'] in ['checkbox', 'radio', 'number', 'text', 'select', 'multiselect', 'singleselect']:
                 raise ValueError("labels string is not corect. " +
                     "`{}` attribute has incorrect type {}.".format(
                     attr['name'], attr['type']))
@@ -576,7 +576,7 @@ def _find_and_compress_images(upload_dir, output_dir, db_task, compress_quality,
 def get_realname(db_task, frame):
     try:
         path = os.path.realpath(_get_frame_path(frame, db_task.get_data_dirname()))
-        return os.path.basename(path)
+        return os.path.basename(path).split('.')[0]
     except Exception as e:
         return 'not_found'
 

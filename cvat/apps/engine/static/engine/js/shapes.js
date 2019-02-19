@@ -20,6 +20,104 @@ var previous_type = null;
 var previous_Light = null;
 var previous_cant_see = null;
 
+function mapColor_Corner(type_value){
+    let value = type_value.toLowerCase();
+    if(value == ("corner_perpendicular")){
+        return {shape: "#0b8043",ui: "#0b8043"};
+    }
+    else if(value == ("corner_parallel")){
+        return {shape: "#ff00ff",ui: "#ff00ff"};
+    }
+    else if(value == ("corner_slanted")){
+        return {shape: "#3d85c6",ui: "#3d85c6"};
+    }
+    else if(value == ("corner")){
+        return {shape: "#ffff00",ui: "#ffff00"};
+    }
+    else if(value == ("corner_far")){
+        return {shape: "#d4b639",ui: "#d4b639"};
+    }
+    else if(value == ("corner_aux")){
+        return {shape: "#ff0000",ui: "#ff0000"};
+    }
+    else if(value == ("corner_noncar")){
+        return {shape: "#dd42cd",ui: "#dd42cd"};
+    }
+    else if(value == ("corner_far_noncar")){
+        return {shape: "#ff9900",ui: "#ff9900"};
+    }
+    else if(value == ("endpoint_perpendicular")){
+        return {shape: "#00ffff",ui: "#00ffff"};
+    }
+    else if(value == ("endpoint_parallel")){
+        return {shape: "#f4cccc",ui: "#f4cccc"};
+    }
+    else if(value == ("endpoint_slanted")){
+        return {shape: "#9900ff",ui: "#9900ff"};
+    }
+    else if(value == ("endpoint")){
+        return {shape: "#84c44f",ui: "#84c44f"};
+    }
+    else if(value == ("endpoint_far")){
+        return {shape: "#1155cc",ui: "#1155cc"};
+    }
+    else if(value == ("endpoint_aux")){
+        return {shape: "#ffd966",ui: "#ffd966"};
+    }
+    else if(value == ("endpoint_noncar")){
+        return {shape: "#ea9999",ui: "#ea9999"};
+    }
+    else if(value == ("endpoint_far_noncar")){
+        return {shape: "#ff9900",ui: "#ff9900"};
+    }
+    else if(value == ("angcorner_slanted")){
+        return {shape: "#00ff00",ui: "#00ff00"};
+    }
+    else if(value == ("angcorner")){
+        return {shape: "#ff0000",ui: "#ff0000"};
+    }
+    else if(value == ("angcorner_far")){
+        return {shape: "#fff100",ui: "#fff100"};
+    }
+    else if(value == ("angcorner_aux")){
+        return {shape: "#0000ff",ui: "#0000ff"};
+    }
+    else if(value == ("angcorner_noncar")){
+        return {shape: "#4a86e8",ui: "#4a86e8"};
+    }
+    else if(value == ("angcorner_far_noncar")){
+        return {shape: "#ff9900",ui: "#ff9900"};
+    }
+    else if(value == ("double_perpendicular")){
+        return {shape: "#0fb860",ui: "#0fb860"};
+    }
+    else if(value == ("double_parallel")){
+        return {shape: "#f2a0ff",ui: "#f2a0ff"};
+    }
+    else if(value == ("double_slanted")){
+        return {shape: "#4eabff",ui: "#4eabff"};
+    }
+    else if(value == ("double")){
+        return {shape: "#faff83",ui: "#faff83"};
+    }
+    else if(value == ("double_far")){
+        return {shape: "#d4b639",ui: "#d4b639"};
+    }
+    else if(value == ("double_aux")){
+        return {shape: "#ff0000",ui: "#ff0000"};
+    }
+    else if(value == ("double_noncar")){
+        return {shape: "#dd42cd",ui: "#dd42cd"};
+    }
+    else if(value == ("double_far_noncar")){
+        return {shape: "#ff9900",ui: "#ff9900"};
+    }
+    else {
+        console.log("error but set default with corner_perpendicular");
+        return {shape: "#0b8043",ui: "#0b8043"};
+    }
+}
+
 /******************************** SHAPE MODELS  ********************************/
 class ShapeModel extends Listener {
     constructor(data, positions, type, id, color) {
@@ -117,6 +215,7 @@ class ShapeModel extends Listener {
             this._color = {shape: "#255f9d",ui: "#255f9d"};
         }
     }
+    
 
     _importGrouping(grouping) {
         if(grouping!=null && grouping.length) {
@@ -176,6 +275,19 @@ class ShapeModel extends Listener {
                 // add by jeff
                 if (attrInfo.type=="multiselect") {
                     this._attributes.mutable[this._frame][attrId] = [];
+
+                    if(attrInfo.name=="小標"){
+                        let corner_att =  $('#default_corner_att').val();
+                        if (corner_att==null)corner_att=[];
+                        this._attributes.mutable[this._frame][attrId] = corner_att;
+                    }
+                }
+                if (attrInfo.type=="singleselect" && attrInfo.name=="大標") {
+                    let corner_type =  $('#default_corner_type').prop('value');
+                    if (attrInfo.values.includes(corner_type)) {
+                        this._attributes.mutable[this._frame][attrId] = corner_type;
+                    }
+                    this._color = mapColor_Corner(this._attributes.mutable[this._frame][attrId]);
                 }
 
                 // add by eric
@@ -241,6 +353,9 @@ class ShapeModel extends Listener {
             let attrInfo = labelsInfo.attrInfo(attrId);
             if(attrInfo.name=="Type") {
                 this.mapColor(attributes[attrId]);
+            }
+            if (attrInfo.type=="singleselect" && attrInfo.name=="大標") {
+                this._color = mapColor_Corner(attributes[attrId]);
             }
             if (attrInfo.mutable) {
                 if(attrInfo.name == "DetectPoints"){
@@ -2476,6 +2591,7 @@ class ShapeView extends Listener {
                 let numbers = attrByType['number'] || [];
                 let checkboxes = attrByType['checkbox'] || [];
                 let multiselects = attrByType['multiselect'] || [];
+                let singleselects = attrByType['singleselect'] || [];
 
                 selects.sort((attrId_1, attrId_2) =>
                     attributes[attrId_1].normalize().length - attributes[attrId_2].normalize().length
@@ -2519,6 +2635,8 @@ class ShapeView extends Listener {
                 return makeTextAttr.call(this, attrInfo, attrId, objectId);
             case 'multiselect':
                 return makeMultiselectAttr.call(this, attrInfo, attrId, objectId);
+            case 'singleselect':
+                return makeSingleselectAttr.call(this, attrInfo, attrId, objectId);
             default:
                 throw Error(`Unknown attribute type found: ${attrInfo.type}`);
             }
@@ -2549,6 +2667,36 @@ class ShapeView extends Listener {
             let select = document.createElement('select');
             select.setAttribute('attrId', attrId);
             select.classList.add('regular', 'selectAttr');
+            for (let value of attrInfo.values) {
+                let option = document.createElement('option');
+                option.setAttribute('value', value);
+                if (value === AAMUndefinedKeyword) {
+                    option.innerText = '';
+                }
+                else {
+                    option.innerText = value.normalize();
+                }
+
+                select.add(option);
+            }
+
+            let label = document.createElement('label');
+            label.innerText = `${attrInfo.name.normalize()}: `;
+
+            block.appendChild(label);
+            block.appendChild(select);
+
+            this._uis.attributes[attrId] = select;
+            return block;
+        }
+
+        function makeSingleselectAttr(attrInfo, attrId) {
+            let block = document.createElement('div');
+
+            let select = document.createElement('select');
+            select.setAttribute('data-live-search', true);
+            select.setAttribute('attrId', attrId);
+            select.classList.add('selectpicker','regular', 'selectAttr');
             for (let value of attrInfo.values) {
                 let option = document.createElement('option');
                 option.setAttribute('value', value);
@@ -2823,6 +2971,10 @@ class ShapeView extends Listener {
                     // this._uis.attributes[attrId].value = attributes[attrId].value;
                     // $(this._uis.attributes[attrId]).selectpicker('refresh');
                     console.log('_updateMenuContent multiselect',attributes[attrId].value);
+                }
+                else if (attrInfo.type === 'singleselect') {
+                    $(this._uis.attributes[attrId]).val(attributes[attrId].value);
+                    $(this._uis.attributes[attrId]).selectpicker('render');
                 }
                 else {
                     this._uis.attributes[attrId].value = attributes[attrId].value;
@@ -3226,6 +3378,15 @@ class ShapeView extends Listener {
                         $(e.target).selectpicker('refresh');
                     }
                     this._controller.updateAttribute(window.cvat.player.frames.current, attrId, values);
+                }.bind(this);
+                break;
+            case 'singleselect':
+                this._uis.attributes[attrId].onchange = function(e) {
+                    console.log('in onchange singleselect');
+                    let value = $(e.target).val();
+                    this._controller.updateAttribute(window.cvat.player.frames.current, attrId, value);
+                    value = value.toLowerCase();
+                    this._controller.changeColor(mapColor_Corner(value));
                 }.bind(this);
                 break;
             default:

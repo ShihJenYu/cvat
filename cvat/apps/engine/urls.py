@@ -34,6 +34,7 @@ urlpatterns = [
     path('set/task/<str:tid>/frame/<int:frame>/redoComment/<str:comment>', views.set_frame_redoComment),
 
     path('set/task/<str:tid>/isRedo/<int:flag>', views.set_job_isRedo),
+    path('set/task/<str:tid>/isComplete/<int:flag>', views.set_job_isComplete),
 
     # path('get/fcw/job', views.get_FCW_Job),
     # path('get/fcw/job/name/<int:jid>', views.get_FCW_Job_Name),

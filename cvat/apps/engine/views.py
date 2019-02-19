@@ -439,7 +439,7 @@ def upload_XML(request):
             
             not_do_paths = []
             if params['project'] == 'apacorner':
-                Camaras = ['TopLeft','TopLeft_full']
+                Camaras = ['TopLeft','TopLeft_full','TopRight','TopRight_full','TopRear','TopRear_full']
                 for camara in Camaras:
                     xmls_list = glob.glob('{}/{}/*.{}'.format(abspath,camara,'xml'))
                     if xmls_list:
@@ -743,7 +743,7 @@ def create_task(request):
                 
                 if params['project'] == 'apacorner':
 
-                    Camaras = ['TopLeft','TopLeft_full']
+                    Camaras = ['TopLeft','TopLeft_full','TopRight','TopRight_full','TopRear','TopRear_full']
                     for camara in Camaras:
 
                         imgs_list = glob.glob('{}/{}/*.{}'.format(abspath,camara,'png'))
@@ -1398,9 +1398,27 @@ def set_frame_isComplete(request, tid, frame, flag):
 @login_required
 @transaction.atomic
 @permission_required('engine.add_task', raise_exception=True)
-def set_job_isRedo(request, tid, flag):
+def set_job_isComplete(request, tid, flag):
     try:
-        response = {'data':set_job_isRedo}
+        project = list(filter(None, request.path.split('/')))[0]
+
+        _ProjectModel = get_ProjectModel(project)
+        db_project = _ProjectModel.objects.select_for_update().get(task_id=tid)
+
+        if flag:
+            db_project.checker = request.user.username
+            db_project.checked = True
+            db_project.checked_date = timezone.now()
+            db_project.user_submit = False
+            db_project.save()
+            print("tid:{} is Complete".format(tid))
+        else:
+            db_project.checker = request.user.username
+            db_project.checked = False
+            db_project.user_submit = True
+            db_project.save()
+
+        response = {'job': tid,'isComplete':flag}
         return JsonResponse(response, safe=False)
     except Exception as e:
         print("error is !!!!",str(e))
@@ -1443,6 +1461,35 @@ def set_frame_isRedo(request, tid, frame, flag):
         db_project.save()
 
         response = {'frame': frame,'isRedo':flag}
+        return JsonResponse(response, safe=False)
+    except Exception as e:
+        print("error is !!!!",str(e))
+        return HttpResponseBadRequest(str(e))
+
+@login_required
+@transaction.atomic
+@permission_required('engine.add_task', raise_exception=True)
+def set_job_isRedo(request, tid, flag):
+    try:
+        project = list(filter(None, request.path.split('/')))[0]
+
+        _ProjectModel = get_ProjectModel(project)        
+        db_project = _ProjectModel.objects.select_for_update().get(task_id=tid)
+
+        if flag:
+            db_project.checker = request.user.username
+            db_project.need_modify = True
+            db_project.need_modify_date = timezone.now()
+            db_project.user_submit = False
+            db_project.save()
+            print("tid:{} is Redo".format(tid))
+        else:
+            db_project.checker = request.user.username
+            db_project.need_modify = False
+            db_project.user_submit = True
+            db_project.save()
+
+        response = {'job': tid,'isRedo':flag}
         return JsonResponse(response, safe=False)
     except Exception as e:
         print("error is !!!!",str(e))

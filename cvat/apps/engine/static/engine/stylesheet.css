@@ -5,6 +5,10 @@
  */
 
 /* ----------------------- Classes ----------------------- */
+*,::after,::before {
+    box-sizing: border-box;
+}
+
 .playerButton {
     fill: #09c;
     stroke-width: 2px;

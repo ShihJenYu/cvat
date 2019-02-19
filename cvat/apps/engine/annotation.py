@@ -192,6 +192,7 @@ def get(jid,project=None,requestUser=None,frame=None):
         video_user = None
         video_submit = None
         video_current = None
+        video_checked = None
         video_needModify = None
         if project in ['fcw_training','bsd_training']:
             print('project is',project)
@@ -207,6 +208,7 @@ def get(jid,project=None,requestUser=None,frame=None):
             video_user = video_record.user
             video_submit = video_record.user_submit
             video_current = video_record.current
+            video_checked = video_record.checked
             video_needModify = video_record.need_modify
             print('video_user is',video_user)
             
@@ -240,6 +242,7 @@ def get(jid,project=None,requestUser=None,frame=None):
         videoInfo = { 'video_current':video_current,
                     'video_submit':video_submit,
                     'video_needModify':video_needModify,
+                    'video_checked':video_checked,
                     'framePackage':framePackage
                     }
 

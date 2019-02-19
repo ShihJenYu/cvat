@@ -262,6 +262,7 @@ class ShapeCreatorView {
         // add by jeff , set default type
         if(PROJECT=='apacorner'){
             this._typeSelector.val('polyline').trigger('change');
+            this._polyShapeSizeInput.val(2).trigger('change');
         }
 
         this._labelSelector.on('change', (e) => {

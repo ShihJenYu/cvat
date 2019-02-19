@@ -204,7 +204,7 @@
             </svg>
             <input type = "range" id = "playerProgress"/>
         </div>  <!-- END of PLAYER PANEL -->
-        <div style="margin-top: 30px">
+        <div style="margin-top: 40px">
             <button id="menuButton" class="regular h1"> Open Menu </button>
             <label class="regular h1" style="margin-left: 50px"> Filter: </label>
             <input type="text" id="filterInputString" class="regular h2"/>
@@ -221,6 +221,16 @@
                 <input class="regular h2" style="width: 3.5em;" type="number" id="frameNumber_show", value="1">
                 <input class="regular h2" style="display: none; width: 3.5em;" type="number" id="frameNumber">
             </div>
+
+            {% if project == "apacorner" %}
+            <!-- add by jeff apacorner -->
+            <label for="default_corner_type"> 預設大標 </label>
+            <select id="default_corner_type" class="selectpicker" data-live-search="true"></select>
+            <label for="default_corner_att"> 預設小標 </label>
+            <select id="default_corner_att" class="selectpicker" multiple data-live-search="true"></select>
+            <button id="clear_default_corner"> 清除預設 </button>
+            {% endif %}
+
             <hr>
             <table class="regular" cellpadding="20">
                 <tr>
@@ -388,6 +398,17 @@
 
     <div id="annotationMenu" class="hidden regular keyframe">
         <center style="float:left; width: 28%; height: 100%;" id="engineMenuButtons">
+            {% if project == "apacorner" %}
+            <div class="menuButton semiBold h2">
+                <input type="checkbox" id="realComplete" value="realComplete" style="margin-left: 50px;"/>
+                <label class="regular h1" id="realComplete_text" for="realComplete">realComplete</label>
+            </div>
+            <div class="menuButton semiBold h2">
+                <input type="checkbox" id="realRedo" value="realRedo" style="margin-left: 50px;"/>
+                <label class="regular h1" id="realRedo_text" for="realRedo">realRedo</label>
+            </div>
+            <hr>
+            {% endif %}
             <button id="downloadAnnotationButton" class="menuButton semiBold h2"> Dump Annotation </button>
             <button id="uploadAnnotationButton" class="menuButton semiBold h2"> Upload Annotation </button>
             <button id="removeAnnotationButton" class="menuButton semiBold h2"> Remove Annotation </button>
