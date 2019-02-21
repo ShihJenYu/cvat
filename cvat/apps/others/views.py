@@ -181,6 +181,8 @@ def get_packagename(request, project):
                 tid_list = list(models.FCWTest.objects.all().values_list('task_id', flat=True))
             elif project == 'apacorner':
                 tid_list = list(models.APACorner.objects.all().values_list('task_id', flat=True))
+            elif project == 'dms_training':
+                tid_list = list(models.DMSTrain.objects.all().values_list('task_id', flat=True))
 
             print('tid_list',tid_list)
             packagename_list = list(models.Task.objects.filter(id__in=tid_list).values_list('packagename', flat=True))

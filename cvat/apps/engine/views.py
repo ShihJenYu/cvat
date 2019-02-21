@@ -27,7 +27,7 @@ from sendfile import sendfile
 from django.apps import apps
 
 from django.db import transaction
-from django.db.models import Q, Max, Min
+from django.db.models import Q, Max, Min, F
 from django.core.exceptions import ObjectDoesNotExist
 
 from . import annotation, task, parseXML, models
@@ -74,13 +74,15 @@ def dispatch_request(request):
             return redirect('/dashboard/' + project)
     else:
         web = ''
-        if project == 'fcw_training':# and request.user.groups.filter(name='fcw_training').exists():
+        if project == 'fcw_training' and request.user.groups.filter(name__in=['fcw_training','otofcw_training']).exists():
             web = 'annotation_training'
-        elif project == 'fcw_testing':# and request.user.groups.filter(name='fcw_testing').exists():
+        elif project == 'fcw_testing' and request.user.groups.filter(name__in=['fcw_testing','otofcw_testing']).exists():
             web = 'annotation_fcw_testing'
-        elif project == 'apacorner':# and request.user.groups.filter(name='fcw_testing').exists():
+        elif project == 'apacorner' and request.user.groups.filter(name__in=['apacorner','otoapacorner']).exists():
             web = 'annotation_apacorner'
-        elif project == 'bsd_training':# and request.user.groups.filter(name='fcw_training').exists():
+        elif project == 'dms_training' and request.user.groups.filter(name__in=['dms_training','otodms_training']).exists():
+            web = 'annotation_dms_training'
+        elif project == 'bsd_training' and request.user.groups.filter(name__in=['bsd_training','otobsd_training']).exists():
             web = 'annotation_training'
         else:
             return redirect('/')
@@ -96,6 +98,8 @@ def get_ProjectModel(project):
         return apps.get_model('engine', 'FCWTrain')
     elif project == 'bsd_training':
         return apps.get_model('engine', 'BSDTrain')
+    elif project == 'dms_training':
+        return apps.get_model('engine', 'DMSTrain')
     elif project == 'apacorner':
         return apps.get_model('engine', 'APACorner')
 def get_FrameUserRecordModel(project):
@@ -103,6 +107,8 @@ def get_FrameUserRecordModel(project):
         return apps.get_model('engine', 'TaskFrameUserRecord')
     elif project == 'bsd_training':
         return apps.get_model('engine', 'BSDTrain_FrameUserRecord')
+    elif project == 'dms_training':
+        return apps.get_model('engine', 'DMSTrain_FrameUserRecord')
     elif project == 'apacorner':
         return apps.get_model('engine', 'APACorner_FrameUserRecord')
 
@@ -111,6 +117,8 @@ def new_ProjectObject(project):
         return models.FCWTrain()
     elif project == 'bsd_training':
         return models.BSDTrain()
+    elif project == 'dms_training':
+        return models.DMSTrain()
     elif project == 'apacorner':
         return models.APACorner()
 def new_FrameUserRecordObject(project):
@@ -118,6 +126,8 @@ def new_FrameUserRecordObject(project):
         return models.TaskFrameUserRecord()
     elif project == 'bsd_training':
         return models.BSDTrain_FrameUserRecord()
+    elif project == 'dms_training':
+        return models.DMSTrain_FrameUserRecord()
     elif project == 'apacorner':
         return models.APACorner_FrameUserRecord()
 
@@ -132,7 +142,7 @@ def get_imagesDir_Info(project=None,src_path=None):
         return None, None, None
 
     elements = src_path.split('/')
-    if project in ['fcw_training','bsd_training']:
+    if project in ['fcw_training','bsd_training','dms_training']:
         return elements[-2], elements[-1], None
     elif project == 'apacorner':
         return elements[-3], elements[-2], elements[-1]
@@ -709,7 +719,7 @@ def create_task(request):
                 print('target_paths',relpath)
 
 
-                if params['project'] in ['fcw_training','bsd_training']:
+                if params['project'] in ['fcw_training','bsd_training','dms_training']:
                     imgs_list = glob.glob('{}/*.{}'.format(abspath,'png'))
                     if imgs_list:
                         task_name = os.path.basename(abspath)
@@ -1280,13 +1290,9 @@ def set_frame_isKeyFrame(request, tid, frame, flag):
             print(list(frames))
             return JsonResponse({'frames': list(frames), 'full_name': keyframe_full_name}, safe=False)
 
-        elif project in ['fcw_testing', 'apacorner']:
+        elif project in ['fcw_testing', 'apacorner','dms_training']:
             print('project is',project)
-            qs = None
-            if project == 'fcw_testing':
-                qs = models.FCWTest_FrameUserRecord.objects.select_for_update().filter(task_id=tid)
-            elif project == 'apacorner':
-                qs = models.APACorner_FrameUserRecord.objects.select_for_update().filter(task_id=tid)
+            qs = _FrameUserRecordModel.objects.select_for_update().filter(task_id=tid)
             frames = qs.values_list('frame', flat=True)
             print(list(frames),'but test not show ')
             return JsonResponse({'frames': []}, safe=False)
@@ -1318,9 +1324,12 @@ def get_frame_isKeyFrame(request, tid, frame):
 def get_keyFrame_stage(request, tid, frame):
     try:
         project = list(filter(None, request.path.split('/')))[0]
+        _ProjectModel = get_ProjectModel(project)
+        _FrameUserRecordModel = get_FrameUserRecordModel(project)
+
         response = None
-        if project == 'fcw_training':
-            keyframe = models.TaskFrameUserRecord.objects.select_for_update().get(task_id=tid,frame=frame)
+        if project in ['fcw_training', 'bsd_training']:
+            keyframe = _FrameUserRecordModel.objects.select_for_update().get(task_id=tid,frame=frame)
             response = {
                 'annotator': keyframe.user,
                 'current': keyframe.current,
@@ -1329,15 +1338,10 @@ def get_keyFrame_stage(request, tid, frame):
                 'checked': keyframe.checked,
                 'comment': keyframe.comment
             }
-        elif project in ['fcw_testing', 'apacorner']:
-            keyframe = None
-            video_user = None
-            if project == 'fcw_testing':
-                keyframe = models.FCWTest_FrameUserRecord.objects.select_for_update().get(task_id=tid,frame=frame)
-                video_user = models.FCWTest.objects.select_for_update().get(task_id=tid).user
-            elif project == 'apacorner':
-                keyframe = models.APACorner_FrameUserRecord.objects.select_for_update().get(task_id=tid,frame=frame)
-                video_user = models.APACorner.objects.select_for_update().get(task_id=tid).user
+        elif project in ['fcw_testing', 'apacorner', 'dms_training']:
+            keyframe = _FrameUserRecordModel.objects.select_for_update().get(task_id=tid,frame=frame)
+            video_user = _ProjectModel.objects.select_for_update().get(task_id=tid).user
+                
             response = {
                 'annotator': video_user,
                 'current': keyframe.current,
@@ -1659,13 +1663,10 @@ def save_currentJob(request):
             except ObjectDoesNotExist:
                 print ("user: {}'s not found current frame".format(request.user.username))
                 raise Exception('user_record is None')
-        elif project in ['fcw_testing', 'apacorner']:
+        elif project in ['fcw_testing', 'apacorner', 'dms_training']:
             try:
                 with transaction.atomic():
-                    if project == 'fcw_testing':
-                        user_record = models.FCWTest.objects.select_for_update().get(user=request.user.username,current=True)
-                    elif project == 'apacorner':
-                        user_record = models.APACorner.objects.select_for_update().get(user=request.user.username,current=True)
+                    user_record = _ProjectModel.objects.select_for_update().get(user=request.user.username,current=True)
                     tid = user_record.task_id
                     print ("user: {} find current {}".format(request.user.username,tid))
                     user_record.current = False
@@ -1724,6 +1725,8 @@ def get_currentJob(request):
                 user_record = models.FCWTest.objects.select_for_update().get(user=request.user.username,current=True)
             elif project == 'apacorner':
                 user_record = models.APACorner.objects.select_for_update().get(user=request.user.username,current=True)
+            elif project == 'dms_training':
+                user_record = models.DMSTrain.objects.select_for_update().get(user=request.user.username,current=True)
             jid = user_record.task_id
         except ObjectDoesNotExist:
             return JsonResponse("you need to get new work", safe=False)
@@ -1879,12 +1882,9 @@ def set_currentJob(request):
             else:
                 return JsonResponse({'status':"A01",'text':"找不到{}的工作, 請聯絡管理員哦".format(project)})
 
-        elif project in ['fcw_testing', 'apacorner']:
+        elif project in ['fcw_testing', 'apacorner', 'dms_training']:
             start_time = time.time()
-            if project == 'fcw_testing':
-                db_Project = models.FCWTest.objects.filter(~Q(**user_priority) & Q(user=request.user.username) & Q(need_modify=True)).order_by('-{}'.format(list(user_priority.keys())[0]), 'task__created_date')
-            elif project == 'apacorner':
-                db_Project = models.APACorner.objects.filter(~Q(**user_priority) & Q(user=request.user.username) & Q(need_modify=True)).order_by('-{}'.format(list(user_priority.keys())[0]), 'task__created_date')
+            db_Project = _ProjectModel.objects.filter(~Q(**user_priority) & Q(user=request.user.username) & Q(need_modify=True)).order_by('-{}'.format(list(user_priority.keys())[0]), 'task__created_date')
             print ("db_Project,",db_Project)
             print ("len  db_Project,",len(db_Project))
             user_record, new_jid = set_currentWithJob(request.user.username, db_Project, time='modify')
@@ -1894,10 +1894,7 @@ def set_currentJob(request):
             if user_record is None:
                 print("need modify is none, try get new frame")
                 start_time = time.time()
-                if project == 'fcw_testing':
-                    db_Project = models.FCWTest.objects.filter(Q(task_id__in=task_list) & ~Q(**user_priority) & Q(user=request.user.username) & Q(userGet_date=None)).order_by('-{}'.format(list(user_priority.keys())[0]), 'task__created_date')
-                elif project == 'apacorner':
-                    db_Project = models.APACorner.objects.filter(Q(task_id__in=task_list) & ~Q(**user_priority) & Q(user=request.user.username) & Q(userGet_date=None)).order_by('-{}'.format(list(user_priority.keys())[0]), 'task__created_date')
+                db_Project = _ProjectModel.objects.filter(Q(task_id__in=task_list) & ~Q(**user_priority) & Q(user=request.user.username) & Q(userGet_date=None)).order_by('-{}'.format(list(user_priority.keys())[0]), 'task__created_date')
                 print ("db_Project,",db_Project)
                 print ("len  db_Project,",len(db_Project))
                 user_record, new_jid = set_currentWithJob(request.user.username, db_Project, time='new')
@@ -1909,10 +1906,7 @@ def set_currentJob(request):
             else:
                 print("need modify is none, try get new frame")
                 start_time = time.time()
-                if project == 'fcw_testing':
-                    db_Project = models.FCWTest.objects.filter(Q(task_id__in=task_list) & ~Q(**user_priority) & Q(user='')).order_by('-{}'.format(list(user_priority.keys())[0]), 'task__created_date')
-                elif project == 'apacorner':
-                    db_Project = models.APACorner.objects.filter(Q(task_id__in=task_list) & ~Q(**user_priority) & Q(user='')).order_by('-{}'.format(list(user_priority.keys())[0]), 'task__created_date')
+                db_Project = _ProjectModel.objects.filter(Q(task_id__in=task_list) & ~Q(**user_priority) & Q(user='')).order_by('-{}'.format(list(user_priority.keys())[0]), 'task__created_date')
                 print ("db_Project,",db_Project)
                 print ("len  db_Project,",len(db_Project))
                 user_record, new_jid = set_currentWithJob(request.user.username, db_Project, time='new')
@@ -1962,9 +1956,33 @@ def get_keyFrames(request, tid):
             frames = qs.values_list('frame', flat=True)
             print(list(frames))
             return JsonResponse({'frames': list(frames)}, safe=False)
-        elif project in ['fcw_testing', 'apacorner']:
+        elif project in ['fcw_testing', 'apacorner', 'dms_training']:
             print(project,'no show keyframe')
             return JsonResponse({'frames': []}, safe=False)
+    except Exception as e:
+        print("error is !!!!",str(e))
+        return HttpResponseBadRequest(str(e))
+
+@login_required
+@transaction.atomic
+@permission_required('engine.add_task', raise_exception=True)
+def get_next_task(request):
+    try:
+        project = list(filter(None, request.path.split('/')))[0]
+        if project != 'bsd_training':
+            raise Exception('u can not do it')
+
+        _ProjectModel = get_ProjectModel(project)
+
+        project_tids = list( _ProjectModel.objects.filter(~Q(keyframe_count=F('checked_count'))).values_list('task_id', flat=True))
+        print('project_tids',project_tids)
+        recods = models.Task.objects.filter(id__in=project_tids).order_by('name')
+        print('recods',recods)
+        if recods.count() > 0:
+            return JsonResponse({'next_tid': recods[0].id}, safe=False)
+        else:
+            raise Exception('no video')
+
     except Exception as e:
         print("error is !!!!",str(e))
         return HttpResponseBadRequest(str(e))

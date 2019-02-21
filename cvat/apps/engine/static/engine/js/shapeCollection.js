@@ -1107,23 +1107,23 @@ class ShapeCollectionController {
             }.bind(this));
 
             let switchLabelHandler = Logger.shortkeyLogDecorator(function(e) {
-                if(document.activeElement.tagName=='INPUT'){return;}
-                let activeShape = this._model.activeShape;
-                if (activeShape) {
-                    let labels = Object.keys(window.cvat.labelsInfo.labels());
-                    let key = e.keyCode - '1'.charCodeAt(0);
-                    if (key in labels) {
-                        let labelId = +labels[key];
-                        activeShape.changeLabel(labelId);
-                    }
-                }
+                // if(document.activeElement.tagName=='INPUT'){return;}
+                // let activeShape = this._model.activeShape;
+                // if (activeShape) {
+                //     let labels = Object.keys(window.cvat.labelsInfo.labels());
+                //     let key = e.keyCode - '1'.charCodeAt(0);
+                //     if (key in labels) {
+                //         let labelId = +labels[key];
+                //         activeShape.changeLabel(labelId);
+                //     }
+                // }
                 e.preventDefault();
             }.bind(this));
 
             let switchDefaultLabelHandler = Logger.shortkeyLogDecorator(function(e) {
-                if(document.activeElement.tagName=='INPUT'){return;}
-                $('#shapeLabelSelector option').eq(e.keyCode - '1'.charCodeAt(0)).prop('selected', true);
-                $('#shapeLabelSelector').trigger('change');
+                // if(document.activeElement.tagName=='INPUT'){return;}
+                // $('#shapeLabelSelector option').eq(e.keyCode - '1'.charCodeAt(0)).prop('selected', true);
+                // $('#shapeLabelSelector').trigger('change');
             });
 
             let changeShapeColorHandler = Logger.shortkeyLogDecorator(function() {
@@ -1227,7 +1227,7 @@ class ShapeCollectionController {
             }.bind(this));
 
             // add by jeff
-            function shiftShape(direction){
+            function shiftShape(shape_type, direction){
                 // console.log("shiftShape",direction);
                 trainigsaveFlag = false;
                 let shape =  $('.shape.selectedShape'); //this._uis.shape.node;//
@@ -1240,22 +1240,38 @@ class ShapeCollectionController {
                     case 6:deltaX=1;deltaY=0;break;
                 }
                 // console.log(direction,deltaX,deltaY,"shiftShape");
-                return {
-                    xtl: +shape.attr('x') +deltaX,
-                    ytl: +shape.attr('y') +deltaY,
-                    xbr: +shape.attr('x') + +shape.attr('width') +deltaX,
-                    ybr: +shape.attr('y') + +shape.attr('height') +deltaY,
-                    occluded: shape.hasClass('occludedShape'),
-                    outside: false,    // if drag or resize possible, track is not outside
-                    z_order: +shape.attr('z_order'),
-                };
+                if (shape_type.includes('box')) {
+                    return {
+                        xtl: +shape.attr('x') +deltaX,
+                        ytl: +shape.attr('y') +deltaY,
+                        xbr: +shape.attr('x') + +shape.attr('width') +deltaX,
+                        ybr: +shape.attr('y') + +shape.attr('height') +deltaY,
+                        occluded: shape.hasClass('occludedShape'),
+                        outside: false,    // if drag or resize possible, track is not outside
+                        z_order: +shape.attr('z_order'),
+                    };
+                }
+                else {
+                    let points = PolyShapeModel.convertStringToNumberArray(shape.attr('points'));
+                    for (let point of points) {
+                        point.x = Math.clamp(point.x+deltaX, 0, window.cvat.player.geometry.frameWidth);
+                        point.y = Math.clamp(point.y+deltaY, 0, window.cvat.player.geometry.frameHeight);
+                    }
+                    return {
+                        occluded: shape.hasClass('occludedShape'),
+                        outside: false,
+                        points: PolyShapeModel.convertNumberArrayToString(points)
+                    }
+                }
+                
             }
 
             let shiftShapeUp = Logger.shortkeyLogDecorator(function(e) {
                 if(document.activeElement.tagName=='INPUT'){return;}
                 if(this._model.activeShape){
                     let frame = window.cvat.player.frames.current;
-                    this._model.activeShape.updatePosition(frame,shiftShape(8));
+                    this._model.activeShape.updatePosition(frame,shiftShape(
+                        this._model.activeShape.type, 8));
                 }
                 e.preventDefault();
             }.bind(this));
@@ -1263,7 +1279,8 @@ class ShapeCollectionController {
                 if(document.activeElement.tagName=='INPUT'){return;}
                 if(this._model.activeShape){
                     let frame = window.cvat.player.frames.current;
-                    this._model.activeShape.updatePosition(frame,shiftShape(2));
+                    this._model.activeShape.updatePosition(frame,shiftShape(
+                        this._model.activeShape.type, 2));
                 }
                 e.preventDefault();
             }.bind(this));
@@ -1271,7 +1288,8 @@ class ShapeCollectionController {
                 if(document.activeElement.tagName=='INPUT'){return;}
                 if(this._model.activeShape){
                     let frame = window.cvat.player.frames.current;
-                    this._model.activeShape.updatePosition(frame,shiftShape(4));
+                    this._model.activeShape.updatePosition(frame,shiftShape(
+                        this._model.activeShape.type, 4));
                 }
                 e.preventDefault();
             }.bind(this));
@@ -1279,7 +1297,8 @@ class ShapeCollectionController {
                 if(document.activeElement.tagName=='INPUT'){return;}
                 if(this._model.activeShape){
                     let frame = window.cvat.player.frames.current;
-                    this._model.activeShape.updatePosition(frame,shiftShape(6));
+                    this._model.activeShape.updatePosition(frame,shiftShape(
+                        this._model.activeShape.type, 6));
                 }
                 e.preventDefault();
             }.bind(this));

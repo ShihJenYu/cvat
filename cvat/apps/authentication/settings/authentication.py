@@ -175,4 +175,21 @@ cvat_groups_definition = {
             },
         'ldap_groups': AUTH_LDAP_DATA_ANNOTATORS_GROUPS,
     },
+
+    'otodms_training': {
+        'description': '',
+        'permissions':  {
+            'task': ['view'],
+            'annotation': ['view', 'change'],
+            },
+        'ldap_groups': AUTH_LDAP_DATA_ANNOTATORS_GROUPS,
+    },
+    'dms_training': {
+        'description': '',
+        'permissions':  {
+            'task': ['view'],
+            'annotation': ['view', 'change'],
+            },
+        'ldap_groups': AUTH_LDAP_DATA_ANNOTATORS_GROUPS,
+    },
 }

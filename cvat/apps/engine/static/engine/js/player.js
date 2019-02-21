@@ -532,6 +532,33 @@ class PlayerController {
             //     this._moving_key = false;
             // }.bind(this));
 
+            let clickIsCompleteKeyHandler = Logger.shortkeyLogDecorator(function() {
+                if(PROJECT=='bsd_training' && isAdminFlag) {
+                    $('#isComplete').prop('disabled',false).trigger('click');
+                }
+            }.bind(this));
+            let nextVideoKeyHandler = Logger.shortkeyLogDecorator(function() {
+                if(PROJECT=='bsd_training' && isAdminFlag) {
+                    $.ajax({
+                        url: "get/next/task",
+                        dataType: "json",
+                        async: false,
+                        success: function(response) {
+                            console.log("success get/next/task", response);
+                            if (response.next_tid != window.cvat.job.id) {
+                                $('#saveButton').click();
+                                window.location.replace(window.location.href.replace('id='+ +window.cvat.job.id, 'id=' + +response.next_tid));
+                            }
+                            console.log("no change video");
+                            
+                        },
+                        error: function(response) {
+                            console.log("error get/next/task", response);
+                        }
+                    });
+                }
+            }.bind(this));
+
             let shortkeys = window.cvat.config.shortkeys;
 
             Mousetrap.bind(shortkeys["next_frame"].value, nextHandler, 'keydown');
@@ -545,6 +572,8 @@ class PlayerController {
             Mousetrap.bind(shortkeys["play_pause"].value, playPauseHandler, 'keydown');
             // Mousetrap.bind('alt', enableMovingKeyHandler, 'keydown');
             // Mousetrap.bind('alt', disableMovingKeyHandler, 'keyup');
+            Mousetrap.bind(shortkeys["clickIsComplete"].value, clickIsCompleteKeyHandler, 'keydown');
+            Mousetrap.bind(shortkeys["nextVideo"].value, nextVideoKeyHandler, 'keydown');
         }
     }
 
@@ -1377,10 +1406,13 @@ class PlayerView {
             $('#select_keyframes').prop("value", "null");
             $('#isKeyFrame').prop('disabled',false);
             $('#isComplete').prop('disabled',true);
+            $('#isComplete').prop('checked',false);
             $('#isComplete_text').prop('disabled',true);
             $('#isRedo').prop('disabled',true);
+            $('#isRedo').prop('checked',false);
             $('#isRedo_text').prop('disabled',true);
             $('#redoComment').prop('disabled',true);
+            $('#redoComment').prop('value','');
             $('#saveRedoComment').prop('disabled',true);
             let keyframeStage_str = "annotator: None";
             $('#beAnnotatorUsing_text').text(keyframeStage_str);

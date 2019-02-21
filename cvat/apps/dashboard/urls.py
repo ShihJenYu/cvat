@@ -38,5 +38,7 @@ urlpatterns = [
     path('otoapacorner', views.DashboardView),
     path('bsd_training', views.DashboardView),
     path('otobsd_training', views.DashboardView),
+    path('dms_training', views.DashboardView),
+    path('otodms_training', views.DashboardView),
 ]
 

@@ -118,6 +118,38 @@ function mapColor_Corner(type_value){
     }
 }
 
+function mapColor_DMS(type_value){
+    let value = type_value.toLowerCase();
+    if(value == ("臉")){
+        return {shape: "#6b79ba",ui: "#6b79ba"};
+    }
+    else if(value == ("臉頰")){
+        return {shape: "#7ab567",ui: "#7ab567"};
+    }
+    else if(value == ("鼻子")){
+        return {shape: "#ffe059",ui: "#ffe059"};
+    }
+    else if(value == ("左眉毛")){
+        return {shape: "#d88498",ui: "#d88498"};
+    }
+    else if(value == ("右眉毛")){
+        return {shape: "#84a8d8",ui: "#84a8d8"};
+    }
+    else if(value == ("左眼睛")){
+        return {shape: "#a33413",ui: "#a33413"};
+    }
+    else if(value == ("右眼睛")){
+        return {shape: "#84cad8",ui: "#84cad8"};
+    }
+    else if(value == ("嘴吧")){
+        return {shape: "#f7ad67",ui: "#f7ad67"};
+    }
+    else {
+        console.log("error but set default with face");
+        return {shape: "#2a30ea",ui: "#2a30ea"};
+    }
+}
+
 /******************************** SHAPE MODELS  ********************************/
 class ShapeModel extends Listener {
     constructor(data, positions, type, id, color) {
@@ -264,6 +296,10 @@ class ShapeModel extends Listener {
             immutable: {},
             mutable: {},
         };
+
+        if (PROJECT == 'dms_training') {
+            this._color = mapColor_DMS(labelsInfo._labels[this._label].name);
+        }
 
         let labelAttributes = labelsInfo.labelAttributes(this._label);
         let Type_value = '';
@@ -1832,7 +1868,7 @@ class ShapeView extends Listener {
             buttons: {},
             changelabel: null,
             shape: null,
-            text: null,
+            text: [],
         };
 
         this._scenes = {
@@ -2084,10 +2120,17 @@ class ShapeView extends Listener {
 
 
     _removeShapeText() {
-        if (this._uis.text) {
-            this._uis.text.remove();
-            SVG.off(this._uis.text.node);
-            this._uis.text = null;
+        // if (this._uis.text) {
+        //     this._uis.text.remove();
+        //     SVG.off(this._uis.text.node);
+        //     this._uis.text = null;
+        // }
+        if(Array.isArray(this._uis.text)) {
+            for(let a_text of this._uis.text) {
+                a_text.remove();
+                SVG.off(a_text.node);
+            }
+            this._uis.text = [];
         }
     }
 
@@ -2101,19 +2144,31 @@ class ShapeView extends Listener {
 
 
     _hideShapeText() {
-        if (this._uis.text && this._uis.text.node.parentElement) {
-            this._scenes.svg.node.removeChild(this._uis.text.node);
+        for(let a_text of this._uis.text) {
+            if (a_text && a_text.node.parentElement) {
+                this._scenes.svg.node.removeChild(a_text.node);
+            }
         }
+        // if (this._uis.text && this._uis.text.node.parentElement) {
+        //     this._scenes.svg.node.removeChild(this._uis.text.node);
+        // }
     }
 
 
     _showShapeText() {
-        if (!this._uis.text) {
+        if (!this._uis.text || this._uis.text.length == 0) {
             let frame = window.cvat.player.frames.current;
             this._drawShapeText(this._controller.interpolate(frame).attributes);
         }
-        else if (!this._uis.text.node.parentElement) {
-            this._scenes.svg.node.appendChild(this._uis.text.node);
+        // else if (!this._uis.text.node.parentElement) {
+        //     this._scenes.svg.node.appendChild(this._uis.text.node);
+        // }
+        else {
+            for(let a_text of this._uis.text) {
+                if (!a_text.node.parentElement) {
+                    this._scenes.svg.node.appendChild(a_text.node);
+                }
+            }
         }
 
         this.updateShapeTextPosition();
@@ -2137,11 +2192,11 @@ class ShapeView extends Listener {
             let x = bbox.x + bbox.width + TEXT_MARGIN;
             let y = bbox.y;
 
-            if (this._uis.shape.type=='polyline'){
+            if (PROJECT != 'dms_training' && this._uis.shape.type=='polyline'){
                 x = this._uis.shape.node.points[0].x + TEXT_MARGIN;
                 y = this._uis.shape.node.points[0].y;
             }
-
+            
             let gruopText = '';
             if (PROJECT=='apacorner') {
                 for (let i = 0; i < groupingID.length; i++) {
@@ -2160,30 +2215,71 @@ class ShapeView extends Listener {
                 }
             }
 
-            this._uis.text = this._scenes.svg.text((add) => {
-                // add.tspan(`${label.normalize()} ${id}`).addClass('bold');
-                add.tspan(`${id}`).addClass('bold');
-                add.tspan(`${gruopText}`).attr({ dy: '1em', x: x});
-                // for (let attrId in attributes) {
-                //     let value = attributes[attrId].value != AAMUndefinedKeyword ?
-                //         attributes[attrId].value : '';
-                //     let name = attributes[attrId].name;
-                //     add.tspan(`${name}: ${value}`).attr({ dy: '1em', x: x, attrId: attrId});
-                // }
-            }).move(x, y).addClass('shapeText regular');
+            if (PROJECT == 'dms_training' && this._uis.shape.type=='polyline') {
+                this._uis.text = [];
+                let labels = window.cvat.labelsInfo.labels();
+                let labelId = this._controller._model._label;
+                let label_str = labels[labelId];
+                for (let i = 0; i < this._uis.shape.node.points.length; i++) {
+                    let offset = TEXT_MARGIN * (1/window.cvat.player.geometry.scale);
+                    if ((label_str.includes("眼睛") && i==1) || (label_str.includes("嘴吧") && i==2)){
+                        offset = -TEXT_MARGIN * (1/window.cvat.player.geometry.scale);
+                    }
+
+                    x = this._uis.shape.node.points[i].x;
+                    y = this._uis.shape.node.points[i].y + offset;
+                    this._uis.text.push(this._scenes.svg.text((add) => {
+                        // add.tspan(`${label.normalize()} ${id}`).addClass('bold');
+                        add.tspan(`${id}-${i+1}`).addClass('bold');
+                        add.tspan(`${gruopText}`).attr({ dy: '1em', x: x});
+                        // for (let attrId in attributes) {
+                        //     let value = attributes[attrId].value != AAMUndefinedKeyword ?
+                        //         attributes[attrId].value : '';
+                        //     let name = attributes[attrId].name;
+                        //     add.tspan(`${name}: ${value}`).attr({ dy: '1em', x: x, attrId: attrId});
+                        // }
+                    }).move(x, y).addClass('shapeText regular'));
+                }
+            }
+            else {
+                this._uis.text = [];
+                this._uis.text.push(this._scenes.svg.text((add) => {
+                    // add.tspan(`${label.normalize()} ${id}`).addClass('bold');
+                    add.tspan(`${id}`).addClass('bold');
+                    add.tspan(`${gruopText}`).attr({ dy: '1em', x: x});
+                    // for (let attrId in attributes) {
+                    //     let value = attributes[attrId].value != AAMUndefinedKeyword ?
+                    //         attributes[attrId].value : '';
+                    //     let name = attributes[attrId].name;
+                    //     add.tspan(`${name}: ${value}`).attr({ dy: '1em', x: x, attrId: attrId});
+                    // }
+                }).move(x, y).addClass('shapeText regular'));
+            }
         }
     }
 
 
     _highlightAttribute(attrId) {
-        if (this._uis.text) {
-            for (let tspan of this._uis.text.lines().members) {
-                if (+tspan.attr('attrId') == +attrId) {
-                    tspan.fill('red');
+
+        for(let a_text of this._uis.text) {
+            if (a_text) {
+                for (let tspan of a_text.lines().members) {
+                    if (+tspan.attr('attrId') == +attrId) {
+                        tspan.fill('red');
+                    }
+                    else tspan.fill('white');
                 }
-                else tspan.fill('white');
             }
         }
+
+        // if (this._uis.text) {
+        //     for (let tspan of this._uis.text.lines().members) {
+        //         if (+tspan.attr('attrId') == +attrId) {
+        //             tspan.fill('red');
+        //         }
+        //         else tspan.fill('white');
+        //     }
+        // }
     }
 
 
@@ -2201,7 +2297,9 @@ class ShapeView extends Listener {
 
     _setupLockedUI(locked) {
         if (this._uis.changelabel) {
-            this._uis.changelabel.disabled = locked;
+            if (PROJECT != 'dms_training') {
+                this._uis.changelabel.disabled = locked;
+            }
         }
 
         if ('occlude' in this._uis.buttons) {
@@ -2238,13 +2336,12 @@ class ShapeView extends Listener {
                         if(!value.includes("動物") && tmpInfo.name=="Rotation") {
                             this._uis.attributes[tmpId].setAttribute('disabled', true);
                             this._uis.attributes[tmpId].value = "-90";
-                            break;
                         }
                         if(tmpInfo.name=="有開燈") {
                             this._uis.attributes[tmpId].setAttribute('disabled', true);
                             this._uis.attributes[tmpId].checked = false;
                         }
-                        if(tmpInfo.name=="障礙物") {
+                        else if(tmpInfo.name=="障礙物") {
                             this._uis.attributes[tmpId].setAttribute('disabled', true);
                             this._uis.attributes[tmpId].checked = false;
                         }
@@ -2512,6 +2609,7 @@ class ShapeView extends Listener {
                 htmlLabel.innerText = 'Label: ';
 
                 let select = document.createElement('select');
+                if (PROJECT == 'dms_training') select.setAttribute('disabled', true);
                 select.classList.add('regular');
                 for (let labelId in labels) {
                     let option = document.createElement('option');
@@ -3543,50 +3641,81 @@ class ShapeView extends Listener {
                 this._uis.shape.attr('stroke-width', STROKE_WIDTH / scale);
             }
 
+            let index = -1;
+            let labels = window.cvat.labelsInfo.labels();
+            let labelId = this._controller._model._label;
+            let label_str = labels[labelId];
+            for(let a_text of this._uis.text) {
+                if (a_text && a_text.node.parentElement) {
+                    index++;
+                    let revscale = 1 / scale;
+                    let shapeBBox = this._uis.shape.node.getBBox();
+                    let textBBox = a_text.node.getBBox();
+    
+                    let x = 0;
+                    let y = 0;
+    
+                    if (this._uis.shape.type=='polyline') {
 
-            if (this._uis.text && this._uis.text.node.parentElement) {
-                let revscale = 1 / scale;
-                let shapeBBox = this._uis.shape.node.getBBox();
-                let textBBox = this._uis.text.node.getBBox();
+                        
+                        
+                        if (PROJECT == 'dms_training') {
 
-                let x = 0;
-                let y = 0;
+                            let offset = TEXT_MARGIN*revscale;
+                            if ((label_str.includes("眼睛") && index==1) || (label_str.includes("嘴吧") && index==2)){
+                                offset = -TEXT_MARGIN*revscale - textBBox.width * revscale;
+                            }
 
-                if (this._uis.shape.type=='polyline'){
-                    x = this._uis.shape.node.points[0].x + TEXT_MARGIN;
-                    y = this._uis.shape.node.points[0].y;
-                    
-                    if (x + textBBox.width * revscale > window.cvat.player.geometry.frameWidth) {
-                        // x = shapeBBox.x - TEXT_MARGIN - textBBox.width * revscale;
-                        x = this._uis.shape.node.points[0].x - TEXT_MARGIN - textBBox.width * revscale;
-                        if (x < 0) {
+                            x = this._uis.shape.node.points[index].x;
+                            y = this._uis.shape.node.points[index].y + offset;
+                            if (x + textBBox.width * revscale > window.cvat.player.geometry.frameWidth) {
+                                // x = shapeBBox.x - TEXT_MARGIN - textBBox.width * revscale;
+                                x = this._uis.shape.node.points[index].x - TEXT_MARGIN - textBBox.width * revscale;
+                                if (x < 0) {
+                                    x = this._uis.shape.node.points[index].x + TEXT_MARGIN;
+                                }
+                            }
+                        }
+                        else{
                             x = this._uis.shape.node.points[0].x + TEXT_MARGIN;
+                            y = this._uis.shape.node.points[0].y;
+                            if (x + textBBox.width * revscale > window.cvat.player.geometry.frameWidth) {
+                                // x = shapeBBox.x - TEXT_MARGIN - textBBox.width * revscale;
+                                x = this._uis.shape.node.points[0].x - TEXT_MARGIN - textBBox.width * revscale;
+                                if (x < 0) {
+                                    x = this._uis.shape.node.points[0].x + TEXT_MARGIN;
+                                }
+                            }
+                        }
+                        
+                        
+                    }
+                    else {
+                        x = shapeBBox.x + shapeBBox.width + TEXT_MARGIN;
+                        y = shapeBBox.y;
+    
+                        if (x + textBBox.width * revscale > window.cvat.player.geometry.frameWidth) {
+                            x = shapeBBox.x - TEXT_MARGIN - textBBox.width * revscale;
+                            if (x < 0) {
+                                x = shapeBBox.x + TEXT_MARGIN;
+                            }
                         }
                     }
-                }
-                else {
-                    x = shapeBBox.x + shapeBBox.width + TEXT_MARGIN;
-                    y = shapeBBox.y;
-
-                    if (x + textBBox.width * revscale > window.cvat.player.geometry.frameWidth) {
-                        x = shapeBBox.x - TEXT_MARGIN - textBBox.width * revscale;
-                        if (x < 0) {
-                            x = shapeBBox.x + TEXT_MARGIN;
-                        }
+    
+                    if (y + textBBox.height * revscale > window.cvat.player.geometry.frameHeight) {
+                        y = Math.max(0, window.cvat.player.geometry.frameHeight - textBBox.height * revscale);
                     }
-                }
-
-                if (y + textBBox.height * revscale > window.cvat.player.geometry.frameHeight) {
-                    y = Math.max(0, window.cvat.player.geometry.frameHeight - textBBox.height * revscale);
-                }
-
-                this._uis.text.move(x / revscale, y / revscale);
-                this._uis.text.attr('transform', `scale(${revscale})`);
-
-                for (let tspan of this._uis.text.lines().members) {
-                    tspan.attr('x', this._uis.text.attr('x'));
+    
+                    a_text.move(x / revscale, y / revscale);
+                    a_text.attr('transform', `scale(${revscale})`);
+    
+                    for (let tspan of a_text.lines().members) {
+                        tspan.attr('x', a_text.attr('x'));
+                    }
                 }
             }
+
+            
         }
     }
 

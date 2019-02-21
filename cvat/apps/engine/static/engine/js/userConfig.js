@@ -103,6 +103,17 @@ class Config {
                 description: "set detect_point"
             },
 
+            clickIsComplete: {
+                value: "alt+w",
+                view_value: "",
+                description: ""
+            },
+            nextVideo: {
+                value: "alt+n",
+                view_value: "",
+                description: ""
+            },
+
             // add by Eric
             remove_detect_point: {
                 value: "shift+w",

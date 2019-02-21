@@ -43,6 +43,8 @@ def get_ProjectModel(project):
         return apps.get_model('engine', 'FCWTrain')
     elif project == 'bsd_training':
         return apps.get_model('engine', 'BSDTrain')
+    elif project == 'dms_training':
+        return apps.get_model('engine', 'DMSTrain')
     elif project == 'apacorner':
         return apps.get_model('engine', 'APACorner')
 def get_FrameUserRecordModel(project):
@@ -50,6 +52,8 @@ def get_FrameUserRecordModel(project):
         return apps.get_model('engine', 'TaskFrameUserRecord')
     elif project == 'bsd_training':
         return apps.get_model('engine', 'BSDTrain_FrameUserRecord')
+    elif project == 'dms_training':
+        return apps.get_model('engine', 'DMSTrain_FrameUserRecord')
     elif project == 'apacorner':
         return apps.get_model('engine', 'APACorner_FrameUserRecord')
 
@@ -129,7 +133,7 @@ def get(jid,project=None,requestUser=None,frame=None):
             except ObjectDoesNotExist:
                 user_record = None
 
-        elif project in ['fcw_testing', 'apacorner']:
+        elif project in ['fcw_testing', 'apacorner', 'dms_training']:
             try:
                 frame = None
                 user_record = None
@@ -137,14 +141,9 @@ def get(jid,project=None,requestUser=None,frame=None):
                 records = None
                 frameInfo = {}
 
-                if project == 'fcw_testing':
-                    user_record = models.FCWTest.objects.select_for_update().get(user=requestUser.username,current=True)
-                    new_jid  = user_record.task_id
-                    records = models.FCWTest_FrameUserRecord.objects.select_for_update().filter(task_id=new_jid).order_by('frame')
-                elif project == 'apacorner':
-                    user_record = models.APACorner.objects.select_for_update().get(user=requestUser.username,current=True)
-                    new_jid  = user_record.task_id
-                    records = models.APACorner_FrameUserRecord.objects.select_for_update().filter(task_id=new_jid).order_by('frame')
+                user_record = _ProjectModel.objects.select_for_update().get(user=requestUser.username,current=True)
+                new_jid  = user_record.task_id
+                records = _FrameUserRecordModel.objects.select_for_update().filter(task_id=new_jid).order_by('frame')
 
                 for record in records:
                     full_name = None
@@ -197,14 +196,11 @@ def get(jid,project=None,requestUser=None,frame=None):
         if project in ['fcw_training','bsd_training']:
             print('project is',project)
             records = _FrameUserRecordModel.objects.select_for_update().filter(task_id=new_jid).order_by('frame')
-        elif project in ['fcw_testing', 'apacorner']:
+        elif project in ['fcw_testing', 'apacorner', 'dms_training']:
             print('project is',project)
-            if project == 'fcw_testing':
-                records = models.FCWTest_FrameUserRecord.objects.select_for_update().filter(task_id=new_jid).order_by('frame')
-                video_record = models.FCWTest.objects.select_for_update().get(task_id=new_jid)
-            elif project == 'apacorner':
-                records = models.APACorner_FrameUserRecord.objects.select_for_update().filter(task_id=new_jid).order_by('frame')
-                video_record = models.APACorner.objects.select_for_update().get(task_id=new_jid)
+            records = _FrameUserRecordModel.objects.select_for_update().filter(task_id=new_jid).order_by('frame')
+            video_record = _ProjectModel.objects.select_for_update().get(task_id=new_jid)
+            
             video_user = video_record.user
             video_submit = video_record.user_submit
             video_current = video_record.current

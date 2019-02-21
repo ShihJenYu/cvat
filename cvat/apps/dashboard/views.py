@@ -16,6 +16,7 @@ from cvat.apps.engine.models import FCWTrain as FCWTrainModel
 from cvat.apps.engine.models import FCWTest as FCWTestModel
 from cvat.apps.engine.models import APACorner as APACornerModel
 from cvat.apps.engine.models import BSDTrain as BSDTrainModel
+from cvat.apps.engine.models import DMSTrain as DMSTrainModel
 from cvat.settings.base import JS_3RDPARTY
 
 import os
@@ -32,7 +33,8 @@ def ScanNode(directory,project=None):
     files = filter(os.path.isfile, map(lambda f: os.path.join(act_dir, f), nodes))
     dirs = filter(os.path.isdir, map(lambda d: os.path.join(act_dir, d), nodes))
 
-    ProjectToFolder = {'fcw_training':'FCW_Train','fcw_testing':'FCW_Test','apacorner':'APA_Corner','bsd_training':'BSD_Train'}
+    ProjectToFolder = {'fcw_training':'FCW_Train','fcw_testing':'FCW_Test',
+                        'apacorner':'APA_Corner','bsd_training':'BSD_Train','dms_training':'DMS_Train',}
 
     for d in dirs:
         name = os.path.basename(d)
@@ -139,6 +141,9 @@ def DetailTaskInfo(request, task, dst_dict):
     elif project == 'bsd_training':
         db_Project = BSDTrainModel.objects.get(task_id=task.id)
         db_keyFrame = models.BSDTrain_FrameUserRecord.objects.filter(task_id=task.id)
+    elif project == 'dms_training':
+        db_Project = DMSTrainModel.objects.get(task_id=task.id)
+        db_keyFrame = models.DMSTrain_FrameUserRecord.objects.filter(task_id=task.id)
     
     packagenames = task.packagename
     print('packagenames',packagenames)
@@ -196,6 +201,8 @@ def DashboardView(request):
             qs = APACornerModel.objects.all()
         elif project == 'bsd_training':
             qs = BSDTrainModel.objects.all()
+        elif project == 'dms_training':
+            qs = DMSTrainModel.objects.all()
 
         id_list = list(qs.values_list('task_id', flat=True))
         print('task_id_list:',id_list)

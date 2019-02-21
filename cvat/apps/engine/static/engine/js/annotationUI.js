@@ -216,62 +216,99 @@ function buildAnnotationUI(job, shapeData, loadJobEvent) {
         $('#isKeyFrame').prop('disabled',true);
     }
 
-    if(PROJECT == 'apacorner')
-    for (let a in window.cvat.labelsInfo._attributes){
-        if(window.cvat.labelsInfo._attributes[a].name=='大標'){
-            console.log(window.cvat.labelsInfo._attributes[a].values);
-            for(let element of window.cvat.labelsInfo._attributes[a].values){
-                $("#default_corner_type").append('<option value="'+element+'">'+element+'</option>');
+    if(PROJECT == 'apacorner') {
+        for (let a in window.cvat.labelsInfo._attributes){
+            if(window.cvat.labelsInfo._attributes[a].name=='大標'){
+                console.log(window.cvat.labelsInfo._attributes[a].values);
+                for(let element of window.cvat.labelsInfo._attributes[a].values){
+                    $("#default_corner_type").append('<option value="'+element+'">'+element+'</option>');
+                }
+                $("#default_corner_type").prop('value','');
+                $("#default_corner_type").selectpicker("refresh");
             }
-            $("#default_corner_type").prop('value','');
-            $("#default_corner_type").selectpicker("refresh");
-        }
-        else if(window.cvat.labelsInfo._attributes[a].name=='小標'){
-            let select = $("#default_corner_att")[0];
-            let flag_for_disabled = false;
-            for (let values of window.cvat.labelsInfo._attributes[a].values) {
-                let optgroup = document.createElement('optgroup');
-                // disable next group
-                if (flag_for_disabled) optgroup.setAttribute('disabled', true);
-
-                for (let value of values) {
-                    if (PROJECT == 'apacorner' && value == 'obstructed') { flag_for_disabled = true; }
-
-                    let option = document.createElement('option');
-                    option.setAttribute('value', value);
-                    if (value === AAMUndefinedKeyword) {
-                        option.innerText = '';
+            else if(window.cvat.labelsInfo._attributes[a].name=='小標'){
+                let select = $("#default_corner_att")[0];
+                let flag_for_disabled = false;
+                for (let values of window.cvat.labelsInfo._attributes[a].values) {
+                    let optgroup = document.createElement('optgroup');
+                    // disable next group
+                    if (flag_for_disabled) optgroup.setAttribute('disabled', true);
+    
+                    for (let value of values) {
+                        if (PROJECT == 'apacorner' && value == 'obstructed') { flag_for_disabled = true; }
+    
+                        let option = document.createElement('option');
+                        option.setAttribute('value', value);
+                        if (value === AAMUndefinedKeyword) {
+                            option.innerText = '';
+                        }
+                        else {
+                            option.innerText = value.normalize();
+                        }
+                        optgroup.appendChild(option);
+                    }
+                    select.add(optgroup);
+                }
+                $("#default_corner_att").prop('value','');
+                $("#default_corner_att").selectpicker("refresh");
+    
+                $("#default_corner_att").on('change', function(e) {
+                    console.log('in onchange multiselect');
+                    let values = $(e.target).val();
+                    if($(e.target).val().includes('obstructed')) {
+                        $(e.target).children()[1].removeAttribute('disabled');
                     }
                     else {
-                        option.innerText = value.normalize();
+                        $(e.target).children()[1].setAttribute('disabled', true);
+                        values = values.filter(function(value, index, arr){ return ['stopper','unarmed_lock'].includes(value); });
+                        $(e.target).val(values);
                     }
-                    optgroup.appendChild(option);
-                }
-                select.add(optgroup);
+                    $(e.target).selectpicker('refresh');
+                });
             }
-            $("#default_corner_att").prop('value','');
-            $("#default_corner_att").selectpicker("refresh");
-
-            $("#default_corner_att").on('change', function(e) {
-                console.log('in onchange multiselect');
-                let values = $(e.target).val();
-                if($(e.target).val().includes('obstructed')) {
-                    $(e.target).children()[1].removeAttribute('disabled');
-                }
-                else {
-                    $(e.target).children()[1].setAttribute('disabled', true);
-                    values = values.filter(function(value, index, arr){ return ['stopper','unarmed_lock'].includes(value); });
-                    $(e.target).val(values);
-                }
-                $(e.target).selectpicker('refresh');
+            $("#clear_default_corner").on('click', function(e) {
+                $("#default_corner_att").val([]);
+                $("#default_corner_att").selectpicker("refresh");
+                $("#default_corner_type").prop('value','');
+                $("#default_corner_type").selectpicker("refresh");
             });
         }
-        $("#clear_default_corner").on('click', function(e) {
-            $("#default_corner_att").val([]);
-            $("#default_corner_att").selectpicker("refresh");
-            $("#default_corner_type").prop('value','');
-            $("#default_corner_type").selectpicker("refresh");
-        });
+    }
+    else if(PROJECT == 'dms_training') {
+        let labels = window.cvat.labelsInfo.labels();
+
+        function getPointSize(label_text) {
+            if (label_text.includes('眼睛') || label_text.includes('嘴吧')) {
+                return 4;
+            } else if (label_text.includes('眉毛') || label_text.includes('鼻子') || label_text.includes('臉頰')) {
+                return 3;
+            } else {
+                return 0;
+            }
+        }
+
+        for(let index in labels) {
+            console.log(labels[index]);
+            $('#DMS_shapeLabelSelector').append($("<option></option>").attr("value",getPointSize(labels[index])).text(labels[index]));
+        }
+        //let label_val = $('#DMS_shapeLabelSelector').val();
+
+        //$('#polyShapeSize').val(label_val).trigger('change');
+        $('#DMS_shapeLabelSelector').on('change', (e) => {
+            console.log('select', e.target.value);
+            if (e.target.value == "0") {
+                $("#shapeTypeSelector").val("box").trigger('change');            
+            } else {
+                $("#shapeTypeSelector").val("points").trigger('change');
+            }
+
+            let label_text = $("#DMS_shapeLabelSelector :selected").text();
+            let current_labelId = Object.keys(labels).find(key => labels[key] == label_text);
+            $("#shapeLabelSelector").val(current_labelId).trigger('change');
+
+            $('#polyShapeSize').val(e.target.value).trigger('change');
+        }).trigger('change');
+
     }
     
     if(isAdminFlag){
@@ -283,7 +320,7 @@ function buildAnnotationUI(job, shapeData, loadJobEvent) {
         let packages = Object.keys(window.cvat.videoInfo.framePackage);
         let allKeyframes = [];
 
-        if(['apacorner'].includes(PROJECT)) {
+        if(['apacorner','dms_training'].includes(PROJECT)) {
             if(window.cvat.videoInfo.video_checked==true){
                 $('#realComplete').prop('checked',true);
                 $('#realRedo').prop('disabled',true);
@@ -746,7 +783,7 @@ function setupShortkeys(shortkeys, models) {
         case 'paste':
             models.shapeBuffer.switchPaste();
             break;
-        case 'poly_editing':f
+        case 'poly_editing':
             models.shapeEditor.finish();
             break;
         }
@@ -1020,7 +1057,7 @@ function setupMenu(job, shapeCollectionModel, annotationParser, aamModel, player
             }
             else {
                 console.log("frame",saveFrame,"to save");
-                if(['fcw_testing','apacorner'].includes(PROJECT)){
+                if(['fcw_testing','apacorner','dms_training'].includes(PROJECT)){
                     if(window.cvat.videoInfo.video_submit) {
                         saveAnnotation(shapeCollectionModel, job);
                     }

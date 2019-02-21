@@ -75,14 +75,12 @@
         <label id="task_name" class="regular h1" style="text-align:center;">Default</label>
     </div>
 
-    <div style="display:inline-block;margin-right: 60px;">
+    <div style="display:none;margin-right: 60px;">
         <label class="regular h1" style="text-align:center;margin-right: 5px;">Frame :</label>
-        <select name="keyframes" id="select_keyframes" size="1" style="text-align:center;"></select>
-        <select name="keyframes" id="select_package" size="1" style="text-align:center;"></select>
+        <select name="keyframes" id="select_keyframes" size="1" style="position:absolute; text-align:center;"></select>
         <span style="display:inline-block; width: 5px;"></span>
     </div>
 
-    {% if project == "fcw_testing" %}
     <div style="display:inline-block;">
         <select id="Select_VideoCatogory_Time" mutiple="multiple">
             <option value="白天">白天</option>
@@ -113,21 +111,17 @@
     
         <button id="Submit_Cato" class="regular h2"> Submit </button>
     </div>
-    {% endif %}
-    
-    
-    
-    <!-- add by eric -->
-    
-
-    <!-- add by eric -->
 
 </div>
 <div id="taskAnnotationCenterPanel">
     <div id="player">
         <div id="playerFrame">
             <svg id="frameLoadingAnim" style="width: 100%; height: 100%;" class="hidden">
+                <text y="60%" x="50%" text-anchor="middle" font-size="20px">載入中,請稍候</text>
                 <circle r="30" cx="50%" cy="50%" id="frameLoadingAnimation"/>
+            </svg>
+            <svg id="talkToUser" style="width: 100%; height: 100%;" class="hidden">
+                <text y="50%" x="50%" text-anchor="middle" font-size="30px"></text>
             </svg>
             <svg id="frameContent"> </svg>
             <svg id="frameBackground"> </svg>
@@ -154,23 +148,6 @@
             </ul>
         </div>
         <div id="playerPanel">
-            <!-- add by jeff -->
-            <div>
-
-                <input type="checkbox" id="isKeyFrame" value="isKeyFrame" />
-                <label class="regular h1" id="isKeyFrame_text" for="isKeyFrame">isKeyFrame</label>
-            
-                <!-- <input type="checkbox" id="beAnnotatorUsing" value="beAnnotatorUsing" /> -->
-                <label class="regular h1" id="beAnnotatorUsing_text" style="margin-left: 50px;"></label>
-                <input type="checkbox" id="isComplete" value="isComplete" style="margin-left: 50px;"/>
-                <label class="regular h1" id="isComplete_text" for="isComplete">isComplete</label>
-                <input type="checkbox" id="isRedo" value="isRedo" style="margin-left: 50px;"/>
-                <label class="regular h1" id="isRedo_text" for="isRedo">isRedo : comment &gt; </label>
-                <input type="text" id="redoComment" value="" placeholder="input your comment ...">
-                <input type="button" id="saveRedoComment" value="save comment"/>
-
-            </div>
-
             <svg id="firstButton" class="playerButton">
                 <polygon points="100,0 100,80 75,60 75,80 50,60, 50,80 0,40 50,0 50,20 75,0 75,20" transform="scale(0.4)"/>
             </svg>
@@ -204,7 +181,7 @@
             </svg>
             <input type = "range" id = "playerProgress"/>
         </div>  <!-- END of PLAYER PANEL -->
-        <div style="margin-top: 40px">
+        <div style="margin-top: 20px">
             <button id="menuButton" class="regular h1"> Open Menu </button>
             <label class="regular h1" style="margin-left: 50px"> Filter: </label>
             <input type="text" id="filterInputString" class="regular h2"/>
@@ -221,16 +198,14 @@
                 <input class="regular h2" style="width: 3.5em;" type="number" id="frameNumber_show", value="1">
                 <input class="regular h2" style="display: none; width: 3.5em;" type="number" id="frameNumber">
             </div>
-
-            {% if project == "apacorner" %}
+            
             <!-- add by jeff apacorner -->
             <label for="default_corner_type"> 預設大標 </label>
             <select id="default_corner_type" class="selectpicker" data-live-search="true"></select>
             <label for="default_corner_att"> 預設小標 </label>
             <select id="default_corner_att" class="selectpicker" multiple data-live-search="true"></select>
             <button id="clear_default_corner"> 清除預設 </button>
-            {% endif %}
-
+            
             <hr>
             <table class="regular" cellpadding="20">
                 <tr>
@@ -396,30 +371,21 @@
         </div>
     </div>
 
-    <div id="annotationMenu" class="hidden regular keyframe">
-        <center style="float:left; width: 28%; height: 100%;" id="engineMenuButtons">
-            {% if project == "apacorner" %}
-            <div class="menuButton semiBold h2">
-                <input type="checkbox" id="realComplete" value="realComplete" style="margin-left: 50px;"/>
-                <label class="regular h1" id="realComplete_text" for="realComplete">realComplete</label>
-            </div>
-            <div class="menuButton semiBold h2">
-                <input type="checkbox" id="realRedo" value="realRedo" style="margin-left: 50px;"/>
-                <label class="regular h1" id="realRedo_text" for="realRedo">realRedo</label>
-            </div>
-            <hr>
-            {% endif %}
-            <button id="downloadAnnotationButton" class="menuButton semiBold h2"> Dump Annotation </button>
+    <div id="annotationMenu" class="hidden regular">
+        <center style="float:left; width: 100%; height: 100%;" id="engineMenuButtons">
+            <!-- <button id="downloadAnnotationButton" class="menuButton semiBold h2"> Dump Annotation </button>
             <button id="uploadAnnotationButton" class="menuButton semiBold h2"> Upload Annotation </button>
             <button id="removeAnnotationButton" class="menuButton semiBold h2"> Remove Annotation </button>
             <button id="settingsButton" class="menuButton semiBold h2"> Settings </button>
             <button id="fullScreenButton" class="menuButton semiBold h2"> Fullscreen Player </button>
-            <button id="switchAAMButton" class="menuButton semiBold h2"> Switch AAM </button>
+            <button id="switchAAMButton" class="menuButton semiBold h2"> Switch AAM </button> -->
+            <button id="sendButton" class="menuButton semiBold h2"> Send </button>
+            <hr>
             <button id="helpButton" class="menuButton semiBold h2"> Help </button>
             <button id="saveButton" class="menuButton semiBold h2"> Save Work </button>
             <input type="file" id="annotationFileSelector" style="display: none"/>
         </center>
-        <div style="float:left; width: 70%; height: 100%; text-align: left;" class="selectable">
+        <div style="float:left; width: 70%; height: 100%; text-align: left;" class="selectable hidden">
             <center>
                 <label id="statTaskName" class="semiBold h2"> </label>  <br>
                 <label id="statTaskStatus" class="regular h2"> </label>
@@ -477,14 +443,19 @@
         </div>
     </div>
 </div>
-
-{% if project == "dms_training"%}
+<!-- style="
+    height: 5%;
+    padding-top: 0px;
+    margin-top: 0px;
+    margin-bottom: 0px;
+    border-radius: 5px;
+    width: 20%;
+    float: left;
+    margin: 0px 10px;
+" -->
 <div id="DMS_LabelBoard" class="">
     <select id="DMS_shapeLabelSelector" class="regular h2" title=""></select>
 </div>
-{% endif %}
-
-
 
 <div class="tab customizedTab">
     <button class="h2 regular activeTabButton" id="sidePanelObjectsButton" style="width: 50%">Objects</button>
@@ -493,7 +464,7 @@
 <div id="taskAnnotationRightPanel">
     <div id="uiContent"> </div>
     <div id="labelsContent" class="hidden"> </div>
-    <div id="trackManagement" class="">  <!-- need hidden -->
+    <div id="trackManagement">
         <button id="createShapeButton" class="regular h2" style="width: 80%;"> Create Shape </button>
         <button id="mergeTracksButton" class="regular h2" style="width: 80%; margin-top: 5px;"> Merge Shapes </button>
         <button id="groupShapesButton" class="regular h2" style="width: 80%; margin-top: 5px;"> Group Shapes </button>
@@ -521,9 +492,8 @@
         </div>
     </div>
 </div>
-
 <!-- Hide for bug, add by ericlou-->
 <!-- <svg id="nextButton_training" class="playerButton_training disabledPlayerButton">
-        <polygon points="0,0"/>
+    <polygon points="0,0"/>
 </svg> -->
 {% endblock %}

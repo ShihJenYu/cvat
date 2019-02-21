@@ -408,34 +408,44 @@ class ShapeCreatorView {
         // Also we need callback on drawdone event for get points
         this._drawInstance.on('drawdone', function(e) {
             let points = PolyShapeModel.convertStringToNumberArray(e.target.getAttribute('points'));
-            for (let point of points) {
-                point.x = Math.clamp(point.x, 0, window.cvat.player.geometry.frameWidth);
-                point.y = Math.clamp(point.y, 0, window.cvat.player.geometry.frameHeight);
+            if (points.length == 1 && points[0].x == 0 && points[0].y == 0){
+                console.log("no point or one point at 0,0");
             }
-
-            // Min 2 points for polyline and 3 points for polygon
-            if (points.length) {
-                if (this._type === 'polyline' && points.length < 2) {
-                    //showMessage("Min 2 points must be for polyline drawing.");
-                    console.log("Min 2 points must be for polyline drawing.");
+            else {
+                for (let point of points) {
+                    point.x = Math.clamp(point.x, 0, window.cvat.player.geometry.frameWidth);
+                    point.y = Math.clamp(point.y, 0, window.cvat.player.geometry.frameHeight);
                 }
-                else if (this._type === 'polygon' && points.length < 3) {
-                    //showMessage("Min 3 points must be for polygon drawing.");
-                    console.log("Min 2 points must be for polygon drawing.");
-                }
-                else {
-                    points = PolyShapeModel.convertNumberArrayToString(points);
-
-                    // Update points in view in order to get updated box
-                    e.target.setAttribute('points', points);
-                    let box = e.target.getBBox();
-                    if (box.width * box.height >= AREA_TRESHOLD || this._type === 'points' ||
-                        this._type === 'polyline' && (box.width >= AREA_TRESHOLD || box.height >= AREA_TRESHOLD)) {
-                        this._controller.finish({points: e.target.getAttribute('points')}, this._type);
+    
+                // Min 2 points for polyline and 3 points for polygon
+                if (points.length) {
+                    if (this._type === 'polyline' && points.length < 2) {
+                        //showMessage("Min 2 points must be for polyline drawing.");
+                        console.log("Min 2 points must be for polyline drawing.");
+                    }
+                    else if (this._type === 'polygon' && points.length < 3) {
+                        //showMessage("Min 3 points must be for polygon drawing.");
+                        console.log("Min 2 points must be for polygon drawing.");
+                    }
+                    else {
+                        if(PROJECT=='dms_training' && points.length < this._polyShapeSize) {
+                            console.log("Min " + +this._polyShapeSize + " points must be for " + 
+                                            $("#DMS_shapeLabelSelector :selected").text() + " drawing.");
+                        }
+                        else {
+                            points = PolyShapeModel.convertNumberArrayToString(points);
+    
+                            // Update points in view in order to get updated box
+                            e.target.setAttribute('points', points);
+                            let box = e.target.getBBox();
+                            if (box.width * box.height >= AREA_TRESHOLD || this._type === 'points' ||
+                                this._type === 'polyline' && (box.width >= AREA_TRESHOLD || box.height >= AREA_TRESHOLD)) {
+                                this._controller.finish({points: e.target.getAttribute('points')}, this._type);
+                            }
+                        }
                     }
                 }
             }
-
             this._controller.switchCreateMode(true);
         }.bind(this));
     }
