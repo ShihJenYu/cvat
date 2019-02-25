@@ -177,8 +177,6 @@ def get(jid,project=None,requestUser=None,frame=None):
         print('u are get anntation with training on frame:',frame,'!')
         annotation.init_from_db(frame=frame)
     
-        print("frame info",frameInfo)
-
         return {'shapeData':annotation.to_client(),'frame':frame,'jid':new_jid,'frameInfo':frameInfo}
 
     elif requestUser.groups.filter(name='admin').exists():
@@ -193,11 +191,11 @@ def get(jid,project=None,requestUser=None,frame=None):
         video_current = None
         video_checked = None
         video_needModify = None
+
+        print('project is',project)
         if project in ['fcw_training','bsd_training']:
-            print('project is',project)
             records = _FrameUserRecordModel.objects.select_for_update().filter(task_id=new_jid).order_by('frame')
         elif project in ['fcw_testing', 'apacorner', 'dms_training']:
-            print('project is',project)
             records = _FrameUserRecordModel.objects.select_for_update().filter(task_id=new_jid).order_by('frame')
             video_record = _ProjectModel.objects.select_for_update().get(task_id=new_jid)
             
@@ -206,10 +204,7 @@ def get(jid,project=None,requestUser=None,frame=None):
             video_current = video_record.current
             video_checked = video_record.checked
             video_needModify = video_record.need_modify
-            print('video_user is',video_user)
-            
-        print('records is',records)
-        print('records len is',len(records))
+
         frameInfo = {}
         framePackage = {}
         for record in records:
@@ -241,10 +236,6 @@ def get(jid,project=None,requestUser=None,frame=None):
                     'video_checked':video_checked,
                     'framePackage':framePackage
                     }
-
-        
-
-        print("frame info",frameInfo)
 
         return {'shapeData':annotation.to_client(),'frame':frame,'jid':new_jid,'frameInfo':frameInfo, 'videoInfo':videoInfo}
 
@@ -1232,7 +1223,6 @@ class _AnnotationForJob(_Annotation):
         db_attrvals = []
 
         for shape_type in ['polygons', 'polylines', 'points', 'boxes']:
-            print("dddddddddddddddddddddddddddddddddddddddddddddddddddddd oneFrameFlag",oneFrameFlag)
             #self._get_shape_set(shape_type).all().delete()
             if(oneFrameFlag):
                 self._get_shape_set(shape_type).filter(frame=frame).delete()

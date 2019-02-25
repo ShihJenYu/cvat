@@ -929,7 +929,7 @@ function UploadCSVRequest(oData, onSuccessRequest, onError) {
 
     let url_str = '';
     let project = window.location.pathname.split('/')[2];
-    if (project=='apacorner') {
+    if (project=='apacorner' || project=='dms_training') {
         url_str = '/dashboard/upload_XML';
     }
     else {

@@ -146,12 +146,10 @@ def DetailTaskInfo(request, task, dst_dict):
         db_keyFrame = models.DMSTrain_FrameUserRecord.objects.filter(task_id=task.id)
     
     packagenames = task.packagename
-    print('packagenames',packagenames)
     packagenames = list(filter(None, packagenames.split(',')))
     if not 'default' in packagenames:
         packagenames.append('default')
 
-    print('packagenames',packagenames)
     packstage = []
     for packagename in packagenames:
         pack_keyFrame = db_keyFrame.filter(packagename=packagename)
@@ -205,7 +203,6 @@ def DashboardView(request):
             qs = DMSTrainModel.objects.all()
 
         id_list = list(qs.values_list('task_id', flat=True))
-        print('task_id_list:',id_list)
 
         tasks_query_set = list(TaskModel.objects.prefetch_related('segment_set').filter(id__in=id_list).order_by('-created_date').all())
         if filter_name is not None:
@@ -219,8 +216,6 @@ def DashboardView(request):
             MainTaskInfo(task, task_info)
             DetailTaskInfo(request, task, task_info)
             data.append(task_info)
-
-        print('url request', project)
 
         return render(request, 'dashboard/dashboard.html', {
             'project': project,

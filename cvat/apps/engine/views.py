@@ -154,8 +154,6 @@ def get_imagesDir_Info(project=None,src_path=None):
 @permission_required('engine.add_task', raise_exception=True)
 def insert_images(request):
     try:
-        print("doing")
-
         #upload/fcw/Images/pd/video/images
         #upload/apa/Images/pd/video/camera/images
 
@@ -365,7 +363,6 @@ def update_keyframe(request):
                         realframe = int(os.path.splitext(realname)[0][-4:])
                         dictRealToFrame[realframe] = frame
             print("--- create dictRealToFrame cost %s seconds ---" % (time.time() - start_time))
-            print(dictRealToFrame)
 
             for nFrameNumber in dictKeyframe[sVideoName]:
                 if sVideoName == 'packagename':
@@ -454,7 +451,6 @@ def upload_XML(request):
                     xmls_list = glob.glob('{}/{}/*.{}'.format(abspath,camara,'xml'))
                     if xmls_list:
                         tid = None
-                        print('AAA')
                         videoname = os.path.basename(abspath) + "_" + camara
                         print(videoname)
                         try:
@@ -463,7 +459,6 @@ def upload_XML(request):
                         except ObjectDoesNotExist:
                             not_do_paths.append({'path':videoname, 'reason':'not found video in data'})
                             continue
-                        print('BBB')
 
                         dictRealToFrame = {} # {realframe:linkframe}
                         root = db_task.get_data_dirname()
@@ -484,7 +479,11 @@ def upload_XML(request):
 
                         listTaskKeyframeExist = list(_FrameUserRecordModel.objects.filter(task_id=tid).values_list('frame', flat=True))
                         
-                        print('------------------')
+                        db_project = _ProjectModel.objects.select_for_update().get(task_id=tid)
+                        db_project.priority = 0
+                        db_project.priority_out = 0
+                        db_project.save()
+
                         print('has xmls_list')
                         for xml in xmls_list:
                             nFrameNumber = dictRealToFrame[int(os.path.splitext(xml)[0][-4:])]
@@ -494,12 +493,7 @@ def upload_XML(request):
                                 not_do_paths.append({'video':xml, 'frame':str(nFrameNumber), 'reason':'frame not exist'})
                                 continue
 
-                            db_project = _ProjectModel.objects.select_for_update().get(task_id=tid)
-                            db_project.priority = 0
-                            db_project.priority_out = 0
-                            db_project.save()
-
-                            file_objects = parseXML.parseFile(xml)
+                            file_objects = parseXML.parseFile(params['project'], xml)
                             print('xml',xml)
                             print(file_objects)
                             dictData = {"boxes":[],"box_paths":[],"points":[],"points_paths":[],
@@ -510,8 +504,6 @@ def upload_XML(request):
                             
                             for sDb_attr in models.AttributeSpec.objects.filter(label__task__id=tid):
                                 attributesID[sDb_attr.get_name()] = [int(sDb_attr.id), int(sDb_attr.label_id)]
-
-                            
 
                             for s_obj_id in file_objects:
                                 obj_id = int(s_obj_id)
@@ -547,6 +539,130 @@ def upload_XML(request):
                         print('------------------')
                     else:
                         print('no xmls_list')
+            elif params['project'] == 'dms_training':
+                xmls_list = glob.glob('{}/*.{}'.format(abspath,'xml'))
+
+                if xmls_list:
+                    tid = None
+                    videoname = os.path.basename(abspath)
+                    print(videoname)
+
+                    try:
+                        db_task = models.Task.objects.select_for_update().get(name=videoname, id__in=project_tids)
+                        tid = db_task.id
+                    except ObjectDoesNotExist:
+                        not_do_paths.append({'path':videoname, 'reason':'not found video in data'})
+                        continue
+
+                    dictRealToFrame = {} # {realframe:linkframe}
+                    root = db_task.get_data_dirname()
+                    start_time = time.time()
+
+                    for subDir in sorted(os.listdir(root)):
+                        subRoot = os.path.join(root,subDir)
+                        for subDir_sec in sorted(os.listdir(subRoot)):
+                            subRoot_sec = os.path.join(subRoot,subDir_sec)
+                            for mfile in sorted(os.listdir(subRoot_sec)):
+                                mfile_path = os.path.join(subRoot_sec,mfile)
+                                frame = int(os.path.splitext(mfile)[0])
+                                realname = os.path.basename(os.path.realpath(mfile_path))
+                                realframe = int(os.path.splitext(realname)[0][-4:])
+                                dictRealToFrame[realframe] = frame
+                    print("--- create dictRealToFrame cost %s seconds ---" % (time.time() - start_time))
+
+                    listTaskKeyframeExist = list(_FrameUserRecordModel.objects.filter(task_id=tid).values_list('frame', flat=True))
+
+                    db_project = _ProjectModel.objects.select_for_update().get(task_id=tid)
+                    db_project.priority = 0
+                    db_project.priority_out = 0
+                    db_project.save()
+
+                    EN_to_CH = {'face':'臉', 'nose':'鼻子', 'mouth':'嘴吧', 'cheek':'臉頰',
+                                'eye_left':'左眼睛', 'eye_right':'右眼睛', 'brow_left':'左眉毛', 'brow_right':'右眉毛'}
+
+                    
+                    print('has xmls_list')
+                    for xml in xmls_list:
+                        print('xml',xml)
+                        nFrameNumber = dictRealToFrame[int(os.path.splitext(xml)[0][-4:])]
+                        if not nFrameNumber in listTaskKeyframeExist:
+                            print(nFrameNumber, 'not is keyframe')
+                            not_do_paths.append({'video':xml, 'frame':str(nFrameNumber), 'reason':'frame not exist'})
+                            continue
+
+                        file_objects = parseXML.parseFile(params['project'], xml)
+                        print('xml',xml)
+                        print(file_objects)
+                        dictData = {"boxes":[],"box_paths":[],"points":[],"points_paths":[],
+                                    "polygons":[],"polygon_paths":[],"polylines":[],"polyline_paths":[]}
+                        
+
+                        attributesID = {} #name to id, label_id
+                        labelAtt = {}
+                        for sDb_attr in models.AttributeSpec.objects.filter(label__task__id=tid):
+                            print('hhhhhhhhhhhhh',sDb_attr.label.name)
+                            if not sDb_attr.label.name in attributesID:
+                                attributesID[sDb_attr.label.name] = {}
+                            attributesID[sDb_attr.label.name][sDb_attr.get_name().lower()] = [int(sDb_attr.id), int(sDb_attr.label_id)]
+                        print('attributesID',attributesID)
+                        
+                        n_zorder = 1
+                        for obj in file_objects:
+                            obj_id = int(obj['id'])
+                            obj_label_name = EN_to_CH[obj['name']]
+                            print ('obj_label_name',obj_label_name)
+                            isBox = True if obj_label_name == '臉' else False
+
+                            item = {}
+                            if isBox:
+                                pointTL, pointBR = obj['points']
+                                pointTL_x, pointTL_y = pointTL.split(',')
+                                pointBR_x, pointBR_y = pointBR.split(',')
+                                item['xtl'] = float(pointTL_x)
+                                item['ytl'] = float(pointTL_y)
+                                item['xbr'] = float(pointBR_x)
+                                item['ybr'] = float(pointBR_y)
+                            else:
+                                # doing
+                                item['points'] = " ".join(obj['points'])
+
+
+                            item['occluded'] = False
+                            item['z_order'] = n_zorder
+                            n_zorder += 1
+
+                            item['attributes'] = []
+
+                            for obj_atts in obj['attributes']:
+                                if obj['attributes'][obj_atts] != '':
+                                    item['attributes'].append({'id':attributesID[obj_label_name][obj_atts][0], 'value':obj['attributes'][obj_atts]})
+                                    item['label_id'] = attributesID[obj_label_name][obj_atts][1]
+
+                            # item['attributes'] = [{'id':attributesID[]['大標'][0],'value':file_objects[s_obj_id]['name'].replace(' ','_')},
+                            #                         {'id':attributesID['小標'][0],'value':str(list(filter(None,file_objects[s_obj_id]['attributes'].split(','))))}]
+                            #item['label_id'] = attributesID['大標'][1]
+                            item['group_id'] = 0
+                            item['grouping'] = '' #.join(file_objects[s_obj_id]['grouping'])
+                            item['obj_id'] = obj_id
+                            item['frame'] = nFrameNumber
+
+                            print('will save item',item)
+
+                            if isBox:
+                                dictData["boxes"].append(item)
+                            else:
+                                dictData["points"].append(item)
+                            
+
+                        if request.user.groups.filter(name='admin').exists():
+                            print('Save xml Job', "Tid:",tid, " Frame:", nFrameNumber)
+                            annotation.save_job(tid, dictData, oneFrameFlag=True,frame=nFrameNumber)
+                        else:
+                            # annotation.save_job(nTid, dictData,oneFrameFlag=True,frame=current_frame)
+                            print("You cant save if you're not admin.")
+                            pass
+                else:
+                    print('no xmls_list')
     except Exception as e:
         print('error',str(e))
         return HttpResponseBadRequest(str(e))
@@ -705,7 +821,6 @@ def create_task(request):
             data_list.sort(key=len)
             createList = []
             passList = []
-            print(data_list)
 
             for share_path in data_list:
                 relpath = os.path.normpath(share_path).lstrip('/')
@@ -717,7 +832,6 @@ def create_task(request):
 
                 print('abspath',abspath)
                 print('target_paths',relpath)
-
 
                 if params['project'] in ['fcw_training','bsd_training','dms_training']:
                     imgs_list = glob.glob('{}/*.{}'.format(abspath,'png'))
@@ -732,7 +846,6 @@ def create_task(request):
                         if exist_count > 1:
                             passList.append(task_name + ' more_{}'.format(exist_count))
                             continue
-
 
                         params['task_name'] = task_name
                         db_task = task.create_empty(params)
@@ -802,8 +915,6 @@ def create_task(request):
             source_paths = []
             upload_dir = db_task.get_upload_dirname()
             data_list = request.FILES.getlist('data')
-
-            print(data_list)
 
             if len(data_list) > settings.LOCAL_LOAD_MAX_FILES_COUNT:
                 raise Exception('Too many files. Please use download via share')
@@ -1799,20 +1910,13 @@ def set_currentJob(request):
         user_workSpace = {'username':request.user.username, 'project':project}
         task_list = None
         try:
-            # print('user_workSpace',user_workSpace)
-            # packagename = models.UserWorkSpace.objects.get(**user_workSpace).packagename
-            # print('packagename',packagename)
-            # task_list = models.Task.objects.filter(packagename__icontains=packagename).values_list('id',flat=True)
-            # print('task_list',task_list)
             print('user_workSpace',user_workSpace)
             packagenames = list(models.UserWorkSpace.objects.filter(**user_workSpace).values_list('packagename',flat=True))
 
-            print('hahahahahahahaha packagenames',packagenames)
             if len(packagenames) == 0:
                 return JsonResponse({'status':"A01",'text':"你沒被分配到工作, 請聯絡管理員哦"})
             query = functools.reduce(operator.or_, (Q(packagename__icontains = item) for item in packagenames))
             task_list = models.Task.objects.filter(query).values_list('id',flat=True)
-            print('hahahahahahahaha task_list',task_list)
         except ObjectDoesNotExist:
             return JsonResponse({'status':"A01",'text':"你沒被分配到工作, 請聯絡管理員哦"})
         
@@ -1954,7 +2058,6 @@ def get_keyFrames(request, tid):
         if project == 'fcw_training':
             qs = models.TaskFrameUserRecord.objects.select_for_update().filter(task_id=tid)
             frames = qs.values_list('frame', flat=True)
-            print(list(frames))
             return JsonResponse({'frames': list(frames)}, safe=False)
         elif project in ['fcw_testing', 'apacorner', 'dms_training']:
             print(project,'no show keyframe')
@@ -1975,9 +2078,7 @@ def get_next_task(request):
         _ProjectModel = get_ProjectModel(project)
 
         project_tids = list( _ProjectModel.objects.filter(~Q(keyframe_count=F('checked_count'))).values_list('task_id', flat=True))
-        print('project_tids',project_tids)
         recods = models.Task.objects.filter(id__in=project_tids).order_by('name')
-        print('recods',recods)
         if recods.count() > 0:
             return JsonResponse({'next_tid': recods[0].id}, safe=False)
         else:
