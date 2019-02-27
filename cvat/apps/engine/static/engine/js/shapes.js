@@ -1974,6 +1974,8 @@ class ShapeView extends Listener {
 
                 this._updateColorForDots();
                 let self = this;
+
+                // JEFF WILL DO
                 $('.svg_select_points').each(function() {
                     $(this).on('mouseover', () => {
                         this.instance.attr('stroke-width', STROKE_WIDTH * 2 / window.cvat.player.geometry.scale);
@@ -1982,8 +1984,11 @@ class ShapeView extends Listener {
                     }).on('mousedown', () => {
                         self._positionateMenus();
                         mousedown_in_shape = true;
+                        // $('.svg_select_points').removeAttr('lockedPoint');
+                        // this.instance.attr('willlockedPoint','true');
                     }).on('mouseup', () => {
                         mousedown_in_shape = false;
+                        //$('.svg_select_points').removeAttr('willlockedPoint');
                     });
                 });
 
@@ -2532,7 +2537,7 @@ class ShapeView extends Listener {
                     `${shortkeys['switch_paste'].view_value} - ${shortkeys['switch_paste'].description}`);
 
                 let propagateButton = document.createElement('button');
-                propagateButton.classList.add('graphicButton', 'hidden', 'propagateButton');
+                propagateButton.classList.add('graphicButton', 'propagateButton');
                 propagateButton.setAttribute('title', `
                     ${shortkeys['propagate_shape'].view_value} - ${shortkeys['propagate_shape'].description}`);
 
@@ -3590,6 +3595,7 @@ class ShapeView extends Listener {
             this.instance.stroke('black');
             this.instance.attr('stroke-width', scaledStroke);
         });
+        $(".svg_select_points[is_selected='true']").attr('stroke', 'violet');
     }
 
 

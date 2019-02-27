@@ -199,12 +199,18 @@
                 <input class="regular h2" style="display: none; width: 3.5em;" type="number" id="frameNumber">
             </div>
             
+            <label> Propagate Frames </label>
+            <input type="number" id="propagateFramesInput" style="width: 3em" min="1" max="10000" value="50" class="regular h2">
+            
+            
             <!-- add by jeff apacorner -->
+            <hr>
             <label for="default_corner_type"> 預設大標 </label>
             <select id="default_corner_type" class="selectpicker" data-live-search="true"></select>
             <label for="default_corner_att"> 預設小標 </label>
             <select id="default_corner_att" class="selectpicker" multiple data-live-search="true"></select>
             <button id="clear_default_corner"> 清除預設 </button>
+            
             
             <hr>
             <table class="regular" cellpadding="20">
@@ -234,6 +240,17 @@
                         <div style="float: left; margin-left: 10px;">
                             <label style="margin-right: 10px;"> Label </label>
                             <input type="radio" name="colorByRadio" id="colorByLabelRadio" class="settingsBox"/>
+                        </div>
+                    </td>
+                    <td style="width: auto;">
+                        <div style="float: left;"> <label class="semiBold"> Move with: </label> </div>
+                        <div style="float: left; margin-left: 10px;">
+                            <label style="margin-right: 10px;"> Object </label>
+                            <input type="radio" name="moveWithRadio" id="moveWithObjectRadio" checked class="settingsBox"/>
+                        </div>
+                        <div style="float: left; margin-left: 10px;">
+                            <label style="margin-right: 10px;"> Point </label>
+                            <input type="radio" name="moveWithRadio" id="moveWithPointRadio" class="settingsBox"/>
                         </div>
                     </td>
                 </tr>
@@ -359,10 +376,6 @@
                     <tr>
                         <td> <label> Auto Saving Interval (Min) </label> </td>
                         <td> <input type = "number"  id="autoSaveTime" style="width: 3em" min="5" max="60" value="15" class="regular h2"/> </td>
-                    </tr>
-                    <tr>
-                        <td> <label> Propagate Frames </label> </td>
-                        <td> <input type = "number" id="propagateFramesInput" style="width: 3em" min="1" max="10000" value="50" class="regular h2"/> </td>
                     </tr>
                 </table>
             </div>

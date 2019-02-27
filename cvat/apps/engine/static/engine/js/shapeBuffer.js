@@ -173,6 +173,24 @@ class ShapeBufferModel extends Listener  {
         return false;
     }
 
+    copyToBuffer_with(srcShape) {
+        if (srcShape) {
+            Logger.addEvent(Logger.EventType.copyObject, {
+                count: 1,
+            });
+            let interpolation = srcShape.interpolate(window.cvat.player.frames.current);
+            if (!interpolation.position.outsided) {
+                this._shape.type = srcShape.type.split('_')[1];
+                this._shape.mode = srcShape.type.split('_')[0];
+                this._shape.label = srcShape.label;
+                this._shape.attributes = interpolation.attributes;
+                this._shape.position = interpolation.position;
+            }
+            return true;
+        }
+        return false;
+    }
+
     pasteToFrame(bbRect, polyPoints) {
         if (!this._shape.type) {
             return;
@@ -203,6 +221,17 @@ class ShapeBufferModel extends Listener  {
         this._collection._currentShapes[this._collection._currentShapes.length-1].model.active = true;
     }
 
+    getMaxObjID(frame){
+        let value = 1;
+        for(let index in this._collection._annotationShapes[frame]) {
+            let shape = this._collection._annotationShapes[frame][index];
+            if (shape._obj_id >= value) {
+                value = shape._obj_id + 1;
+            }
+        }
+        return value;
+    }
+
     propagateToFrames() {
         let numOfFrames = this._propagateFrames;
         if (this._shape.type && Number.isInteger(numOfFrames)) {
@@ -228,11 +257,14 @@ class ShapeBufferModel extends Listener  {
             let addedObjects = [];
             while (numOfFrames > 0 && (object.frame + 1 <= window.cvat.player.frames.stop)) {
                 object.frame ++;
+                object.obj_id = this.getMaxObjID(object.frame);
                 object.z_order = this._collection.zOrder(object.frame).max;
                 this._collection.add(object, `annotation_${this._shape.type}`);
                 addedObjects.push(this._collection.shapes.slice(-1)[0]);
                 numOfFrames --;
             }
+
+
 
             // Undo/redo code
             window.cvat.addAction('Propagate Object', () => {
@@ -298,9 +330,27 @@ class ShapeBufferController {
                 }
             }.bind(this));
 
+            let propagateAllHandler = Logger.shortkeyLogDecorator(function() {
+                if(document.activeElement.tagName=='INPUT'){return;}
+                propagateDialogShowed = true;
+                confirm(`Propagate to ${this._model.propagateFrames} frames. Are you sure?`, () => {
+                    let currentShapes = this._model._collection.currentShapes;
+                    for (let index in currentShapes) {
+                        let currentShape = currentShapes[index];
+                        if (!currentShape.model._removed) {
+                            if (this._model.copyToBuffer_with(currentShape.model)) {
+                                this._model.propagateToFrames();
+                            }
+                        }
+                    }
+                    propagateDialogShowed = false;
+                }, () => propagateDialogShowed = false);
+            }.bind(this));
+
             let shortkeys = window.cvat.config.shortkeys;
             Mousetrap.bind(shortkeys["copy_shape"].value, copyHandler, 'keydown');
             Mousetrap.bind(shortkeys["propagate_shape"].value, propagateHandler, 'keydown');
+            Mousetrap.bind(shortkeys["propagate_allShape"].value, propagateAllHandler, 'keydown');
             Mousetrap.bind(shortkeys["switch_paste"].value, switchHandler, 'keydown');
         }
     }

@@ -1865,11 +1865,10 @@ def get_currentJob(request):
 def set_currentWithJob(username,qs=None,time=None):
     user_record = None
     new_jid = None
-    ids = qs.values_list('id', flat=True)
-    if len(ids):
-        index = random.randint(0, len(ids)-1)
+    if qs.count() > 0 :
+        ids = qs.values_list('id', flat=True)
         try:
-            user_record = qs[index]
+            user_record = qs[0]
             new_jid = user_record.task_id
 
             user_record.user = username

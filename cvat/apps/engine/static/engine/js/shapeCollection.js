@@ -13,6 +13,8 @@ var one_frame_data = null;
 var mousedown_in_shape = false;
 var move_background = false;
 
+var mousedown_in_shape = false;
+
 var passNoShow = false;
 class ShapeCollectionModel extends Listener {
     constructor() {
@@ -68,6 +70,9 @@ class ShapeCollectionModel extends Listener {
         this._groupMap = {};
 
         this._isImported = false;
+
+        this._lockedPointShape = null;
+        this._lockedPointIndexOfShape = -1;
 
     }
 
@@ -531,6 +536,8 @@ class ShapeCollectionModel extends Listener {
             if (this._activeShape) {
                 this._activeShape.active = false;
                 this._activeShape = null;
+                this._lockedPointIndexOfShape = -1;
+
             }
             this._activeShape = active;
             this._activeShape.active = true;
@@ -546,6 +553,7 @@ class ShapeCollectionModel extends Listener {
         if (this._activeShape) {
             this._activeShape.active = false;
             this._activeShape = null;
+            this._lockedPointIndexOfShape = -1;
         }
     }
 
@@ -558,6 +566,7 @@ class ShapeCollectionModel extends Listener {
             if (this._activeShape) {
                 this._activeShape.active = false;
                 this._activeShape = null;
+                this._lockedPointIndexOfShape = -1;
             }
             if (this._activeAAMShape) {
                 this._activeAAMShape.activeAAM = {
@@ -606,6 +615,7 @@ class ShapeCollectionModel extends Listener {
             else {
                 if (this._activeShape === model) {
                     this._activeShape = null;
+                    this._lockedPointIndexOfShape = -1;
                 }
 
                 $(".detectpoint").remove();
@@ -616,6 +626,7 @@ class ShapeCollectionModel extends Listener {
             if (model.removed) {
                 if (this._activeShape === model) {
                     this._activeShape = null;
+                    this._lockedPointIndexOfShape = -1;
                 }
                 break;
             }
@@ -927,13 +938,41 @@ class ShapeCollectionModel extends Listener {
         //             shape.switchHide();
         //         }
         //     }
+            
         // }
+    }
+
+    nextLockedPoint(direction) {
+        if (this._activeShape && !this.activeShape.type.includes('box')) {
+            if (direction > 0) {
+                this._lockedPointIndexOfShape++;
+            }
+            else {
+                this._lockedPointIndexOfShape--;
+            }
+
+            let points = PolyShapeModel.convertStringToNumberArray(this._activeShape._positions[this._frame].points);
+            if (this._lockedPointIndexOfShape >= points.length) {
+                this._lockedPointIndexOfShape = 0;
+            }
+            else if (this._lockedPointIndexOfShape < 0) {
+                this._lockedPointIndexOfShape = points.length-1;
+            }
+            let shape =  $('.shape.selectedShape');
+            $('.svg_select_points').attr('stroke','black');
+            $('.svg_select_points').removeAttr('is_selected');
+            $($('.svg_select_points')[this._lockedPointIndexOfShape]).attr('is_selected','true');
+            $($('.svg_select_points')[this._lockedPointIndexOfShape]).attr('stroke','violet');
+        }
     }
 
 
     //add by jeff
-    moveShape(direction) {
+    nextShape(direction) {
         menuScroll = true;
+
+        this._lockedPointIndexOfShape = -1;
+        
         let currentId = -1;
         let shapeModelTmp = [];
         for (let shape of this._currentShapes) {
@@ -1056,6 +1095,7 @@ class ShapeCollectionModel extends Listener {
 class ShapeCollectionController {
     constructor(collectionModel) {
         this._model = collectionModel;
+        this._moveWith = "object";
         this._menusObj = [];
         this._filterController = new FilterController(collectionModel.filter);
         setupCollectionShortcuts.call(this);
@@ -1196,6 +1236,16 @@ class ShapeCollectionController {
                 move_background = false;
             }.bind(this));
 
+            let lockSelectedPointHandler = Logger.shortkeyLogDecorator(function() {
+                if(document.activeElement.tagName=='INPUT'){return;}
+                if(mousedown_in_shape) {
+                    // $(".svg_select_points[willlockedPoint='true']").instance.attr('lockedPoint','true');
+                    // $(".svg_select_points[willlockedPoint='true']").removeAttr('willlockedPoint');
+                    // this._model._lockedPointIndexOfShape = $(".svg_select_points[lockedPoint='true']").index();
+                }
+                
+            }.bind(this));
+
             Mousetrap.bind('alt', enableMovingKeyHandler, 'keydown');
             Mousetrap.bind('alt', disableMovingKeyHandler, 'keyup');
 
@@ -1215,19 +1265,30 @@ class ShapeCollectionController {
             Mousetrap.bind(shortkeys["switch_others_hide_mode"].value, switchOthersHideHandler.bind(this), 'keydown');
             Mousetrap.bind(shortkeys["detect_point"].value, detectPointHandler.bind(this), 'keydown');
             Mousetrap.bind(shortkeys["remove_detect_point"].value, removedetectPointHandler.bind(this), 'keydown');
+            Mousetrap.bind(shortkeys["lock_selected_pt"].value, lockSelectedPointHandler.bind(this), 'keydown');
 
             let nextShapeHandler = Logger.shortkeyLogDecorator(function(e) {
-                this._model.moveShape(1);
+                if (this._moveWith=='object') {
+                    this._model.nextShape(1);
+                }
+                else {
+                    this._model.nextLockedPoint(1);
+                }
                 e.preventDefault();
             }.bind(this));
 
             let prevShapeHandler = Logger.shortkeyLogDecorator(function(e) {
-                this._model.moveShape(-1);
+                if (this._moveWith=='object') {
+                    this._model.nextShape(-1);
+                }
+                else {
+                    this._model.nextLockedPoint(1);
+                }
                 e.preventDefault();
             }.bind(this));
 
             // add by jeff
-            function shiftShape(shape_type, direction){
+            function shiftShape(shape_type, direction, pointIndex=-1){
                 // console.log("shiftShape",direction);
                 trainigsaveFlag = false;
                 let shape =  $('.shape.selectedShape'); //this._uis.shape.node;//
@@ -1253,10 +1314,17 @@ class ShapeCollectionController {
                 }
                 else {
                     let points = PolyShapeModel.convertStringToNumberArray(shape.attr('points'));
-                    for (let point of points) {
-                        point.x = Math.clamp(point.x+deltaX, 0, window.cvat.player.geometry.frameWidth);
-                        point.y = Math.clamp(point.y+deltaY, 0, window.cvat.player.geometry.frameHeight);
+                    if(pointIndex == -1){
+                        for (let point of points) {
+                            point.x = Math.clamp(point.x+deltaX, 0, window.cvat.player.geometry.frameWidth);
+                            point.y = Math.clamp(point.y+deltaY, 0, window.cvat.player.geometry.frameHeight);
+                        }
                     }
+                    else if(pointIndex < points.length) {
+                        points[pointIndex].x = Math.clamp(points[pointIndex].x+deltaX, 0, window.cvat.player.geometry.frameWidth);
+                        points[pointIndex].y = Math.clamp(points[pointIndex].y+deltaY, 0, window.cvat.player.geometry.frameHeight);
+                    }
+                    
                     return {
                         occluded: shape.hasClass('occludedShape'),
                         outside: false,
@@ -1268,38 +1336,86 @@ class ShapeCollectionController {
 
             let shiftShapeUp = Logger.shortkeyLogDecorator(function(e) {
                 if(document.activeElement.tagName=='INPUT'){return;}
-                if(this._model.activeShape){
-                    let frame = window.cvat.player.frames.current;
-                    this._model.activeShape.updatePosition(frame,shiftShape(
-                        this._model.activeShape.type, 8));
+                if (this._moveWith=='object') {
+                    if(this._model.activeShape){
+                        let frame = window.cvat.player.frames.current;
+                        this._model.activeShape.updatePosition(frame,shiftShape(
+                            this._model.activeShape.type, 8));
+                    }
                 }
+                else {
+                    if (this._model.activeShape && this._model._lockedPointIndexOfShape != -1) {
+                        let frame = window.cvat.player.frames.current;
+                        this._model.activeShape.updatePosition(frame,shiftShape(
+                            this._model.activeShape.type, 8, this._model._lockedPointIndexOfShape));
+                        $($('.svg_select_points')[this._model._lockedPointIndexOfShape]).attr('stroke','violet');
+                        $($('.svg_select_points')[this._model._lockedPointIndexOfShape]).attr('is_selected','true');
+                    }
+                }
+                
                 e.preventDefault();
             }.bind(this));
             let shiftShapeDown = Logger.shortkeyLogDecorator(function(e) {
                 if(document.activeElement.tagName=='INPUT'){return;}
-                if(this._model.activeShape){
-                    let frame = window.cvat.player.frames.current;
-                    this._model.activeShape.updatePosition(frame,shiftShape(
-                        this._model.activeShape.type, 2));
+                if (this._moveWith=='object') {
+                    if(this._model.activeShape){
+                        let frame = window.cvat.player.frames.current;
+                        this._model.activeShape.updatePosition(frame,shiftShape(
+                            this._model.activeShape.type, 2));
+                    }
                 }
+                else {
+                    if (this._model.activeShape && this._model._lockedPointIndexOfShape != -1) {
+                        let frame = window.cvat.player.frames.current;
+                        this._model.activeShape.updatePosition(frame,shiftShape(
+                            this._model.activeShape.type, 2, this._model._lockedPointIndexOfShape));
+                        $($('.svg_select_points')[this._model._lockedPointIndexOfShape]).attr('stroke','violet');
+                        $($('.svg_select_points')[this._model._lockedPointIndexOfShape]).attr('is_selected','true');
+                    }
+                }
+                
                 e.preventDefault();
             }.bind(this));
             let shiftShapeLeft = Logger.shortkeyLogDecorator(function(e) {
                 if(document.activeElement.tagName=='INPUT'){return;}
-                if(this._model.activeShape){
-                    let frame = window.cvat.player.frames.current;
-                    this._model.activeShape.updatePosition(frame,shiftShape(
-                        this._model.activeShape.type, 4));
+                if (this._moveWith=='object') {
+                    if(this._model.activeShape){
+                        let frame = window.cvat.player.frames.current;
+                        this._model.activeShape.updatePosition(frame,shiftShape(
+                            this._model.activeShape.type, 4));
+                    }
                 }
+                else {
+                    if (this._model.activeShape && this._model._lockedPointIndexOfShape != -1) {
+                        let frame = window.cvat.player.frames.current;
+                        this._model.activeShape.updatePosition(frame,shiftShape(
+                            this._model.activeShape.type, 4, this._model._lockedPointIndexOfShape));
+                        $($('.svg_select_points')[this._model._lockedPointIndexOfShape]).attr('stroke','violet');
+                        $($('.svg_select_points')[this._model._lockedPointIndexOfShape]).attr('is_selected','true');
+                    }
+                }
+                
                 e.preventDefault();
             }.bind(this));
             let shiftSapeRight = Logger.shortkeyLogDecorator(function(e) {
                 if(document.activeElement.tagName=='INPUT'){return;}
-                if(this._model.activeShape){
-                    let frame = window.cvat.player.frames.current;
-                    this._model.activeShape.updatePosition(frame,shiftShape(
-                        this._model.activeShape.type, 6));
+                if (this._moveWith=='object') {
+                    if(this._model.activeShape){
+                        let frame = window.cvat.player.frames.current;
+                        this._model.activeShape.updatePosition(frame,shiftShape(
+                            this._model.activeShape.type, 6));
+                    }
                 }
+                else {
+                    if (this._model.activeShape && this._model._lockedPointIndexOfShape != -1) {
+                        let frame = window.cvat.player.frames.current;
+                        this._model.activeShape.updatePosition(frame,shiftShape(
+                            this._model.activeShape.type, 6, this._model._lockedPointIndexOfShape));
+                        $($('.svg_select_points')[this._model._lockedPointIndexOfShape]).attr('stroke','violet');
+                        $($('.svg_select_points')[this._model._lockedPointIndexOfShape]).attr('is_selected','true');
+                    }
+                }
+                
                 e.preventDefault();
             }.bind(this));
 
@@ -1555,6 +1671,27 @@ class ShapeCollectionView {
         // add by jeff for temp delete current (load a frame)
         this._tempViews = [];
         this._tempModels = [];
+
+        this._moveWithObjectRadio = $('#moveWithObjectRadio');
+        this._moveWithPointRadio = $('#moveWithPointRadio');
+
+        this._moveWithObjectRadio.on('change', () => {
+            if (this._moveWithObjectRadio.prop('checked')) {
+                this._controller._moveWith = "object";
+            }
+            else {
+                this._controller._moveWith = "point";
+            }
+        });
+        this._moveWithPointRadio.on('change', () => {
+            if (this._moveWithPointRadio.prop('checked')) {
+                this._controller._moveWith = "point";
+            }
+            else {
+                this._controller._moveWith = "object";
+            }
+        });
+
         
 
         this._activeShapeUI = null;

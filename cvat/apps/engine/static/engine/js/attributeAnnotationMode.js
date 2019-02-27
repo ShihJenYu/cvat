@@ -176,7 +176,7 @@ class AAMModel extends Listener {
         }
     }
 
-    moveShape(direction) {
+    nextShape(direction) {
         if (!this._activeAAM || this._currentShapes.length < 2) {
             return;
         }
@@ -311,12 +311,12 @@ class AAMController {
             }.bind(this));
 
             let nextShapeHandler = Logger.shortkeyLogDecorator(function(e) {
-                this._model.moveShape(1);
+                this._model.nextShape(1);
                 e.preventDefault();
             }.bind(this));
 
             let prevShapeHandler = Logger.shortkeyLogDecorator(function(e) {
-                this._model.moveShape(-1);
+                this._model.nextShape(-1);
                 e.preventDefault();
             }.bind(this));
 

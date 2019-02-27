@@ -81,37 +81,6 @@
         <span style="display:inline-block; width: 5px;"></span>
     </div>
 
-    <div style="display:inline-block;">
-        <select id="Select_VideoCatogory_Time" mutiple="multiple">
-            <option value="白天">白天</option>
-            <option value="晚上">晚上</option>
-        </select>
-        <select id="Select_VideoCatogory_Weather" mutiple="multiple">
-            <option value="晴天">晴天</option>
-            <option value="陰天">陰天</option>
-            <option value="小雨">小雨</option>
-            <option value="大雨">大雨</option>
-        </select>
-        <select id="Select_VideoCatogory_Way" mutiple="multiple">
-            <option value="高速(平面)">高速(平面)</option>
-            <option value="高速(高架)">高速(高架)</option>
-            <option value="市區(高架)">市區(高架)</option>
-            <option value="市區(平面)">市區(平面)</option>
-            <option value="郊區">郊區</option>
-            <option value="巷弄">巷弄</option>
-        </select>
-        <input type="checkbox" id="Select_VideoCatogory_BackLight" value="逆光" />
-        <label class="regular h1" id="isBackLight" for="Select_VideoCatogory_BackLight">逆光</label>
-    
-        <input type="checkbox" id="Select_VideoCatogory_Tunnel" value="隧道" />
-        <label class="regular h1" id="isTunnel" for="Select_VideoCatogory_Tunnel">隧道</label>
-    
-        <input type="checkbox" id="Select_VideoCatogory_underbridge" value="有經過(橋下、涵洞)" />
-        <label class="regular h1" id="isunderbridge" for="Select_VideoCatogory_underbridge">有經過(橋下、涵洞)</label>
-    
-        <button id="Submit_Cato" class="regular h2"> Submit </button>
-    </div>
-
 </div>
 <div id="taskAnnotationCenterPanel">
     <div id="player">
@@ -199,12 +168,8 @@
                 <input class="regular h2" style="display: none; width: 3.5em;" type="number" id="frameNumber">
             </div>
             
-            <!-- add by jeff apacorner -->
-            <label for="default_corner_type"> 預設大標 </label>
-            <select id="default_corner_type" class="selectpicker" data-live-search="true"></select>
-            <label for="default_corner_att"> 預設小標 </label>
-            <select id="default_corner_att" class="selectpicker" multiple data-live-search="true"></select>
-            <button id="clear_default_corner"> 清除預設 </button>
+            <label> Propagate Frames </label>
+            <input type="number" id="propagateFramesInput" style="width: 3em" min="1" max="10000" value="50" class="regular h2">
             
             <hr>
             <table class="regular" cellpadding="20">
@@ -234,6 +199,17 @@
                         <div style="float: left; margin-left: 10px;">
                             <label style="margin-right: 10px;"> Label </label>
                             <input type="radio" name="colorByRadio" id="colorByLabelRadio" class="settingsBox"/>
+                        </div>
+                    </td>
+                    <td style="width: auto;">
+                        <div style="float: left;"> <label class="semiBold"> Move with: </label> </div>
+                        <div style="float: left; margin-left: 10px;">
+                            <label style="margin-right: 10px;"> Object </label>
+                            <input type="radio" name="moveWithRadio" id="moveWithObjectRadio" checked class="settingsBox"/>
+                        </div>
+                        <div style="float: left; margin-left: 10px;">
+                            <label style="margin-right: 10px;"> Point </label>
+                            <input type="radio" name="moveWithRadio" id="moveWithPointRadio" class="settingsBox"/>
                         </div>
                     </td>
                 </tr>
@@ -359,10 +335,6 @@
                     <tr>
                         <td> <label> Auto Saving Interval (Min) </label> </td>
                         <td> <input type = "number"  id="autoSaveTime" style="width: 3em" min="5" max="60" value="15" class="regular h2"/> </td>
-                    </tr>
-                    <tr>
-                        <td> <label> Propagate Frames </label> </td>
-                        <td> <input type = "number" id="propagateFramesInput" style="width: 3em" min="1" max="10000" value="50" class="regular h2"/> </td>
                     </tr>
                 </table>
             </div>

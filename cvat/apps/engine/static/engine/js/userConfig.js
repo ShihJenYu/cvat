@@ -120,6 +120,11 @@ class Config {
                 view_value: "Shift + W",
                 description: "remove detect_point"
             },
+            lock_selected_pt: {
+                value: "l",
+                view_value: "L",
+                description: "lock selected_pt"
+            },
 
             change_player_brightness: {
                 value: "shift+x,x".split(','),
@@ -269,6 +274,12 @@ class Config {
                 value: "alt+ctrl+b",
                 view_value: "Ctrl + B",
                 description: "propagate active shape"
+            },
+
+            propagate_allShape: {
+                value: "alt+p",
+                view_value: "Alt + p",
+                description: "propagate current frame shapes"
             },
 
             switch_paste: {
