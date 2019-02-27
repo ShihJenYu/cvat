@@ -621,19 +621,19 @@ def _save_task_to_db(db_task, task_params):
 
         if project == 'fcw_testing':
             db_Project = models.FCWTest()
-            objs = [models.FCWTest_FrameUserRecord(task=db_task,frame=i) for i in range(db_task.size)]
+            objs = [models.FCWTest_FrameUserRecord(task=db_task,frame=i,packagename=task_params['packagename']) for i in range(db_task.size)]
             models.FCWTest_FrameUserRecord.objects.bulk_create(objs)
             objs = [models.FrameName(task=db_task,frame=i,name=get_realname(db_task,i)) for i in range(db_task.size)]
             models.FrameName.objects.bulk_create(objs)
         elif project == 'dms_training':
             db_Project = models.DMSTrain()
-            objs = [models.DMSTrain_FrameUserRecord(task=db_task,frame=i) for i in range(db_task.size)]
+            objs = [models.DMSTrain_FrameUserRecord(task=db_task,frame=i,packagename=task_params['packagename']) for i in range(db_task.size)]
             models.DMSTrain_FrameUserRecord.objects.bulk_create(objs)
             objs = [models.FrameName(task=db_task,frame=i,name=get_realname(db_task,i)) for i in range(db_task.size)]
             models.FrameName.objects.bulk_create(objs)
         elif project == 'apacorner':
             db_Project = models.APACorner()
-            objs = [models.APACorner_FrameUserRecord(task=db_task,frame=i) for i in range(db_task.size)]
+            objs = [models.APACorner_FrameUserRecord(task=db_task,frame=i,packagename=task_params['packagename']) for i in range(db_task.size)]
             models.APACorner_FrameUserRecord.objects.bulk_create(objs)
             objs = [models.FrameName(task=db_task,frame=i,name=get_realname(db_task,i)) for i in range(db_task.size)]
             models.FrameName.objects.bulk_create(objs)

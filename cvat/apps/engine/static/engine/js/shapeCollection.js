@@ -1328,7 +1328,8 @@ class ShapeCollectionController {
                     return {
                         occluded: shape.hasClass('occludedShape'),
                         outside: false,
-                        points: PolyShapeModel.convertNumberArrayToString(points)
+                        points: PolyShapeModel.convertNumberArrayToString(points),
+                        z_order: +shape.attr('z_order'),
                     }
                 }
                 

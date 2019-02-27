@@ -166,6 +166,7 @@ def DetailTaskInfo(request, task, dst_dict):
                         'need_modify_count': need_modify_count,
                         'undo_count': keyframe_count - unchecked_count - checked_count - need_modify_count,
                         'unchecked_realframes': unchecked_realframes})
+    print('packstage',packstage)
 
     dst_dict['videostage'] = {
         'keyframe_count': db_Project.keyframe_count,
@@ -177,6 +178,7 @@ def DetailTaskInfo(request, task, dst_dict):
         'priority': db_Project.priority,
         'priority_out': db_Project.priority_out,
     }
+    print('videostage',dst_dict['videostage'] )
 
 
 @login_required
