@@ -25,8 +25,11 @@ urlpatterns = [
     path('insert_images', views2.insert_images),
     path('upload_XML', views2.upload_XML),
 
+    path('get/tasks/from/package', views.newDashboardView),
+    path('set/package/priority', views.setPackagePriority),
+
     # add by Eric
-    path('update_keyframe', views2.update_keyframe),
+    path('upload_keyframe', views2.upload_keyframe),
     path('upload_CSV', views2.upload_CSV),
 
     # projects

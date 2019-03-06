@@ -463,7 +463,7 @@ class oToPostgreSQLData():
                 self.i_dictFrame_Map[nTask_ID] = {}
             if nFrame_indb not in self.i_dictFrame_Map[nTask_ID].keys():
                 self.i_dictFrame_Map[nTask_ID][nFrame_indb] = nFrame
-      
+
         oCursorBBox.close()    
 
     def CsvPreProcess(self, a_listVideoDate=None):
@@ -542,8 +542,9 @@ class oToPostgreSQLData():
                         dictBBoxData[nOBJ_ID]['side_x_max'] = nCarside_x_max   
 
         print("Csv pre-processing done!")           
-                      
+                    
     def CsvExport(self, a_sSavePath_csv, a_bErrorExport, a_listAnnotator_name=None, a_listVideoDate=None, a_bGetToday=False, 
+	                    a_sRawDate="",
                         a_bGetCorrect=False, a_sGetCorrectDate=None):
         """!
         To Export Csv files.
@@ -558,13 +559,14 @@ class oToPostgreSQLData():
 
         # for produce err csv
         if a_bErrorExport:
-            sCurrentDate = datetime.now().strftime("%Y-%m-%d-%H-%M")
-            # sCurrentDate = '2019-01-16-18-30'
-            print(sCurrentDate)
+            #sCurrentDate = datetime.now().strftime("%Y-%m-%d-%H-%M")
+            sCurrentDate = a_sRawDate
+            if sCurrentDate == " ":
+                return
 
         if a_bGetCorrect:
             sCurrentDate = a_sGetCorrectDate        
-
+        
         dictUserToGet = {}
         for sUser in self.i_dictUserRecord.keys():
             for nIndex in range(0, len(self.i_dictUserRecord[sUser]['TaskID'])):
@@ -592,14 +594,22 @@ class oToPostgreSQLData():
                 if nframe not in dictUserToGet[nTaskId].keys():
                     dictUserToGet[nTaskId][nframe] = []
                 dictUserToGet[nTaskId][nframe].append(sUser)
-
-        if a_listVideoDate is None: # Download all data no matter what video.
-            a_listVideoDate = self.i_dictVideoID_indb.keys()          
         
         # To Get Frames Mapping if exsists
         listVideo_ID = list(dictUserToGet.keys())
+        print(listVideo_ID, "HAHAHA")
         self.Get_FrameMapping(a_listVideoID=listVideo_ID)
 
+        if a_listVideoDate is None: # Download BBox depend on dictUserToGet, TaskID
+
+            a_listVideoDate = []
+            for nTaskID in listVideo_ID:
+                a_listVideoDate.append(self.i_dictIDVideo_indb[nTaskID])  
+            
+            self.Get_labelbox(a_listVideoDate=a_listVideoDate)
+            self.Get_labelboxAttr()
+            self.CsvPreProcess(a_listVideoDate=a_listVideoDate)                              
+        print(a_listVideoDate, "CCCC")
         for nVideoDate in a_listVideoDate:
             
             # sIndepend_ID = 1 # FOR LOCAL TOOL DEBUG
@@ -672,8 +682,10 @@ class oToPostgreSQLData():
                     sbr_y = self.i_dictBBox[nVideoID][nframe][nID]['ybr']
 
                     #print(nVideoDate, nframe)
+                    if self.i_dictBBox[nVideoID][nframe][nID]['Rotation'] == 'Unknown':
+                       print(nframe, nVideoID)
+                       assert False
                     nDB_Rotation = int(self.i_dictBBox[nVideoID][nframe][nID]['Rotation'])
-
 
                     if nDB_Rotation == -90:
                        sRotation_y = '-1.570796'
@@ -767,8 +779,8 @@ class oToPostgreSQLData():
            # Create Dir by Annotator and VideoDate today.
            # For create empty CSV files
            
-           for nTaskId in dictUserToGet.keys():
-              for nframe in dictUserToGet[nTaskId].keys():
+            for nTaskId in dictUserToGet.keys():
+                for nframe in dictUserToGet[nTaskId].keys():
                     if nframe not in self.i_dictBBox[nTaskId].keys():
                         sAnnotator = dictUserToGet[nTaskId][nframe][0]
                         nVideoDate = self.i_dictIDVideo_indb[nTaskId]
@@ -781,11 +793,11 @@ class oToPostgreSQLData():
                         if self.i_dictFrame_Map is None:
                             sCSV_file_name = "key_%s_%04d.csv" %(nVideoDate, int(nframe)+1)
                         else:
-                           if nVideoID in self.i_dictFrame_Map.keys():
-                             nframe_inVideo = self.i_dictFrame_Map[nVideoID][nframe]
-                             sCSV_file_name = "key_%s_%04d.csv" %(nVideoDate, nframe_inVideo)
-                           else:
-                             sCSV_file_name = "key_%s_%04d.csv" %(nVideoDate, int(nframe)+1)
+                            if nTaskId in self.i_dictFrame_Map.keys():
+                                nframe_inVideo = self.i_dictFrame_Map[nTaskId][nframe]
+                                sCSV_file_name = "key_%s_%04d.csv" %(nVideoDate, nframe_inVideo)
+                            else:
+                                sCSV_file_name = "key_%s_%04d.csv" %(nVideoDate, int(nframe)+1)    
 
                         sCSVPath = os.path.join(sCSVDir, sCSV_file_name)
 
@@ -933,6 +945,7 @@ def str2bool(a_sSTR):
 
 def get_args():
     parser = argparse.ArgumentParser()
+    parser.add_argument('--RawDate', type = str, required = True, help='no')
     parser.add_argument('--CorrectDate', type = str, required = True, help='no')
     parser.add_argument('--ProduceCorrect', type = str2bool, required = True, help='no')
     return parser.parse_args()
@@ -945,7 +958,7 @@ if __name__ == '__main__':
 
     # UserRecord #
 
-    Table_write_out_dir = r"C:/Users/user/Desktop/CVAT/dump_data/Record"
+    Table_write_out_dir = r"/home/ericlou/CVAT/cvat_web/cvat/dump_data/Record"
 
     oSQLData.Get_Video_link_ID()
     oSQLData.Annotation_time_record()
@@ -955,23 +968,25 @@ if __name__ == '__main__':
                               a_bExportStatisticTable=True)
 
     # CSVoutput #
+    oSQLData = oToPostgreSQLData()
 
     oSQLData.Get_Video_link_ID()
     oSQLData.Get_Attribute_Id()
 
-    FCW_Setting_file = r"C:/Users/user/Desktop/CVAT/dump_data/FCW_Setting_training20181210.ini"
-    CSV_write_out_dir = r"C:/Users/user/Desktop/CVAT/dump_data/CSV_file"
+    FCW_Setting_file = r"/home/ericlou/CVAT/cvat_web/cvat/dump_data/FCW_Setting_training20181210.ini"
+    CSV_write_out_dir = r"/home/ericlou/CVAT/cvat_web/cvat/dump_data/CSV_file"
 
     oSQLData.Read_Setting_Files(a_Setting_file=FCW_Setting_file)
 
     oSQLData.Annotation_time_record()
-    oSQLData.Get_labelbox(a_listVideoDate=None)
-    oSQLData.Get_labelboxAttr()
-    oSQLData.CsvPreProcess(a_listVideoDate=None)
+    # oSQLData.Get_labelbox(a_listVideoDate=None)
+    # oSQLData.Get_labelboxAttr()
+    # oSQLData.CsvPreProcess(a_listVideoDate=None)
 
-    oSQLData.CsvExport(a_bErrorExport=True, a_listVideoDate=None, a_sSavePath_csv=CSV_write_out_dir, a_bGetToday=True)
+    oSQLData.CsvExport(a_bErrorExport=True, a_listVideoDate=None, a_sSavePath_csv=CSV_write_out_dir, a_bGetToday=True,
+	                    a_sRawDate=dictArgs['RawDate'])
     oSQLData.CsvExport(a_bErrorExport=True, a_listVideoDate=None, a_sSavePath_csv=CSV_write_out_dir, 
-                        a_bGetCorrect=dictArgs['ProduceCorrect'], a_sGetCorrectDate=dictArgs['CorrectDate'])
+                       a_bGetCorrect=dictArgs['ProduceCorrect'], a_sGetCorrectDate=dictArgs['CorrectDate'])
 
 
 

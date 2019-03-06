@@ -1,4 +1,4 @@
-
+# coding=utf-8
 # Copyright (C) 2018 Intel Corporation
 #
 # SPDX-License-Identifier: MIT
@@ -37,6 +37,8 @@ from requests.exceptions import RequestException
 import logging
 from .logging import task_logger, job_logger, global_logger, job_client_logger
 
+from .common import get_ProjectModel, get_FrameUserRecordModel, new_ProjectObject, new_FrameUserRecordObject
+
 ############################# High Level server API
 @login_required
 @permission_required('engine.view_task', raise_exception=True)
@@ -50,19 +52,8 @@ def catch_client_exception(request, jid):
 @login_required
 def dispatch_request(request):
     """An entry point to dispatch legacy requests"""
-    # if request.method == 'GET' and 'id' in request.GET:
-    #     if request.user.groups.filter(name='admin').exists() and 'setKey' in request.GET and request.GET['setKey'].upper() == "TRUE":
-    #         return render(request, 'engine/annotation_keyframe.html', {
-    #             'js_3rdparty': JS_3RDPARTY.get('engine', [])
-    #         })
-    #     else:
-    #         return render(request, 'engine/annotation_training.html', {
-    #             'js_3rdparty': JS_3RDPARTY.get('engine', [])
-    #         })
-    # else:
-    #     return redirect('/dashboard/')
     project = list(filter(None, request.path.split('/')))[0]
-    if request.user.groups.filter(name='admin').exists(): #and request.method == 'GET' and 'setKey' in request.GET and request.GET['setKey'].upper() == "TRUE":
+    if request.user.groups.filter(name='admin').exists():
         if request.method == 'GET' and 'id' in request.GET:
             return render(request, 'engine/annotation_keyframe.html', {
                 'js_3rdparty': JS_3RDPARTY.get('engine', []),
@@ -86,58 +77,55 @@ def dispatch_request(request):
             web = 'annotation_training'
         else:
             return redirect('/')
-
-
-
         return render(request, 'engine/{}.html'.format(web), {
             'js_3rdparty': JS_3RDPARTY.get('engine', [])
         })
 
-def get_ProjectModel(project):
-    if project == 'fcw_training':
-        return apps.get_model('engine', 'FCWTrain')
-    elif project == 'bsd_training':
-        return apps.get_model('engine', 'BSDTrain')
-    elif project == 'dms_training':
-        return apps.get_model('engine', 'DMSTrain')
-    elif project == 'apacorner':
-        return apps.get_model('engine', 'APACorner')
-def get_FrameUserRecordModel(project):
-    if project == 'fcw_training':
-        return apps.get_model('engine', 'TaskFrameUserRecord')
-    elif project == 'bsd_training':
-        return apps.get_model('engine', 'BSDTrain_FrameUserRecord')
-    elif project == 'dms_training':
-        return apps.get_model('engine', 'DMSTrain_FrameUserRecord')
-    elif project == 'apacorner':
-        return apps.get_model('engine', 'APACorner_FrameUserRecord')
+# def get_ProjectModel(project):
+#     if project == 'fcw_training':
+#         return apps.get_model('engine', 'FCWTrain')
+#     elif project == 'bsd_training':
+#         return apps.get_model('engine', 'BSDTrain')
+#     elif project == 'dms_training':
+#         return apps.get_model('engine', 'DMSTrain')
+#     elif project == 'apacorner':
+#         return apps.get_model('engine', 'APACorner')
+# def get_FrameUserRecordModel(project):
+#     if project == 'fcw_training':
+#         return apps.get_model('engine', 'TaskFrameUserRecord')
+#     elif project == 'bsd_training':
+#         return apps.get_model('engine', 'BSDTrain_FrameUserRecord')
+#     elif project == 'dms_training':
+#         return apps.get_model('engine', 'DMSTrain_FrameUserRecord')
+#     elif project == 'apacorner':
+#         return apps.get_model('engine', 'APACorner_FrameUserRecord')
 
-def new_ProjectObject(project):
-    if project == 'fcw_training':
-        return models.FCWTrain()
-    elif project == 'bsd_training':
-        return models.BSDTrain()
-    elif project == 'dms_training':
-        return models.DMSTrain()
-    elif project == 'apacorner':
-        return models.APACorner()
-def new_FrameUserRecordObject(project):
-    if project == 'fcw_training':
-        return models.TaskFrameUserRecord()
-    elif project == 'bsd_training':
-        return models.BSDTrain_FrameUserRecord()
-    elif project == 'dms_training':
-        return models.DMSTrain_FrameUserRecord()
-    elif project == 'apacorner':
-        return models.APACorner_FrameUserRecord()
+# def new_ProjectObject(project):
+#     if project == 'fcw_training':
+#         return models.FCWTrain()
+#     elif project == 'bsd_training':
+#         return models.BSDTrain()
+#     elif project == 'dms_training':
+#         return models.DMSTrain()
+#     elif project == 'apacorner':
+#         return models.APACorner()
+# def new_FrameUserRecordObject(project):
+#     if project == 'fcw_training':
+#         return models.TaskFrameUserRecord()
+#     elif project == 'bsd_training':
+#         return models.BSDTrain_FrameUserRecord()
+#     elif project == 'dms_training':
+#         return models.DMSTrain_FrameUserRecord()
+#     elif project == 'apacorner':
+#         return models.APACorner_FrameUserRecord()
 
 
 # return packagename, videoname, camera 
 def get_imagesDir_Info(project=None,src_path=None):
 
-    #upload/fcw/images/pd/video
-    #upload/apa/images/pd/video/camera
-    #     
+    #upload/fcw/images/package/video
+    #upload/apa/images/package/video/camera
+
     if project is None or src_path is None:
         return None, None, None
 
@@ -202,18 +190,17 @@ def insert_images(request):
                 video_tid = video_task.id
                 video_size = video_task.size
                 video_path = video_task.path
-                video_packagenames = video_task.packagename
                 
                 # get image path in .upload
                 realvideopath = glob.glob('{}/*/Images/*/*'.format(video_task.get_upload_dirname())) # new formate
                 if len(realvideopath) == 0:
                     realvideopath = glob.glob('{}/*/*'.format(video_task.get_upload_dirname())) # old formate
-                if len(realvideopath) != 1:
-                    not_do_paths.append({'path':a_abs_srcpath, 'reason':'multi dir in upload folder'})
-                    continue
-                if len(realvideopath) == 0:
-                    not_do_paths.append({'path':a_abs_srcpath, 'reason':'no dir in upload folder'})
-                    continue
+                    if len(realvideopath) > 1:
+                        not_do_paths.append({'path':a_abs_srcpath, 'reason':'multi dir in upload folder'})
+                        continue
+                    elif len(realvideopath) == 0:
+                        not_do_paths.append({'path':a_abs_srcpath, 'reason':'no dir in upload folder'})
+                        continue
                 
                 # copy image from share to realpath
                 for image in images_per_dir:
@@ -245,13 +232,26 @@ def insert_images(request):
                         else:
                             raise e
 
+                # #add package
+                # history_packagenames = list(video_task.taskpackage_set.all().values_list('packagename__packagename', flat=True))
+                # if not packagename in history_packagenames:
+                #     try:
+                #         db_package = models.PackagePriority.objects.get(packagename=packagename)
+                #         taskPackage = models.TaskPackage()
+                #         taskPackage.task = video_task
+                #         taskPackage.packagename = db_package
+                #         taskPackage.save()
+                #     except ObjectDoesNotExist:
+                #         packagePriority = models.PackagePriority()
+                #         packagePriority.packagename = packagename
+                #         packagePriority.save()
+                #         taskPackage = models.TaskPackage()
+                #         taskPackage.task = video_task
+                #         taskPackage.packagename = packagePriority
+                #         taskPackage.save()
+
                 # save new size
                 print("save new size")
-                history_packagenames = video_task.packagename
-                history_packagenames = list(filter(None, history_packagenames.split(',')))
-                if not packagename in history_packagenames: 
-                    history_packagenames.append(packagename)
-                video_task.packagename = ','.join(history_packagenames)
                 video_task.size = after_size
                 video_task.save()
 
@@ -298,7 +298,7 @@ def insert_images(request):
 @login_required
 @transaction.atomic
 @permission_required('engine.add_task', raise_exception=True)
-def update_keyframe(request):
+def upload_keyframe(request):
     """Upload keyframe"""
     try:
         params = request.POST.dict()
@@ -335,17 +335,28 @@ def update_keyframe(request):
             db_task = None
             try:
                 print('sVideoName',sVideoName)
-                db_task = models.Task.objects.select_for_update().get(pk__in=project_tids, name=sVideoName)
+                db_task = models.Task.objects.select_for_update().get(id__in=project_tids, name=sVideoName)
             except ObjectDoesNotExist:
                 no_update_video.append({'video':sVideoName, 'frame':['all'], 'reason':'video not exist'})
                 continue
 
-            history_packagenames = db_task.packagename
-            history_packagenames = list(filter(None, history_packagenames.split(',')))
-            if not packagename in history_packagenames: 
-                history_packagenames.append(packagename)
-            db_task.packagename = ','.join(history_packagenames)
-            db_task.save()
+            #add package
+            history_packagenames = list(db_task.taskpackage_set.all().values_list('packagename__packagename', flat=True))
+            if not packagename in history_packagenames:
+                try:
+                    db_package = models.PackagePriority.objects.get(packagename=packagename)
+                    taskPackage = models.TaskPackage()
+                    taskPackage.task = db_task
+                    taskPackage.packagename = db_package
+                    taskPackage.save()
+                except ObjectDoesNotExist:
+                    packagePriority = models.PackagePriority()
+                    packagePriority.packagename = packagename
+                    packagePriority.save()
+                    taskPackage = models.TaskPackage()
+                    taskPackage.task = db_task
+                    taskPackage.packagename = packagePriority
+                    taskPackage.save()
 
             tid = db_task.id
             start_time = time.time()
@@ -384,12 +395,10 @@ def update_keyframe(request):
 
                 db_project = _ProjectModel.objects.select_for_update().get(task_id=tid)
                 db_project.keyframe_count += 1
-                db_project.priority = 0
-                db_project.priority_out = 0
                 db_project.save()
 
                 path = os.path.realpath(task.get_frame_path(tid, nFrameNumber))
-                realname = os.path.basename(path).replace(".png", "")
+                realname = os.path.splitext(os.path.basename(path))[0]
                 db_FrameName = models.FrameName()
                 db_FrameName.task = db_task
                 db_FrameName.frame = nFrameNumber
@@ -480,8 +489,6 @@ def upload_XML(request):
                         listTaskKeyframeExist = list(_FrameUserRecordModel.objects.filter(task_id=tid).values_list('frame', flat=True))
                         
                         db_project = _ProjectModel.objects.select_for_update().get(task_id=tid)
-                        db_project.priority = 0
-                        db_project.priority_out = 0
                         db_project.save()
 
                         print('has xmls_list')
@@ -572,27 +579,56 @@ def upload_XML(request):
 
                     listTaskKeyframeExist = list(_FrameUserRecordModel.objects.filter(task_id=tid).values_list('frame', flat=True))
 
-                    db_project = _ProjectModel.objects.select_for_update().get(task_id=tid)
-                    db_project.priority = 0
-                    db_project.priority_out = 0
-                    db_project.save()
-
                     EN_to_CH = {'face':'臉', 'nose':'鼻子', 'mouth':'嘴吧', 'cheek':'臉頰',
                                 'eye_left':'左眼睛', 'eye_right':'右眼睛', 'brow_left':'左眉毛', 'brow_right':'右眉毛'}
 
+                                #add package
+
+                    history_packagenames = list(db_task.taskpackage_set.all().values_list('packagename__packagename', flat=True))
                     
+
                     print('has xmls_list')
                     for xml in xmls_list:
                         print('xml',xml)
-                        nFrameNumber = dictRealToFrame[int(os.path.splitext(xml)[0][-4:])]
-                        if not nFrameNumber in listTaskKeyframeExist:
-                            print(nFrameNumber, 'not is keyframe')
-                            not_do_paths.append({'video':xml, 'frame':str(nFrameNumber), 'reason':'frame not exist'})
+                        nFrameNumber = dictRealToFrame[int(os.path.splitext(os.path.basename(xml))[0][-4:])]
+                        packagename = os.path.basename(os.path.dirname(xml))
+                        if nFrameNumber in listTaskKeyframeExist:
+                            print(nFrameNumber, 'was keyframe')
+                            not_do_paths.append({'video':xml, 'frame':str(nFrameNumber), 'reason':'frame was exist'})
                             continue
+                        if not packagename in history_packagenames:
+                            try:
+                                db_package = models.PackagePriority.objects.get(packagename=packagename)
+                                taskPackage = models.TaskPackage()
+                                taskPackage.task = db_task
+                                taskPackage.packagename = db_package
+                                taskPackage.save()
+                            except ObjectDoesNotExist:
+                                packagePriority = models.PackagePriority()
+                                packagePriority.packagename = packagename
+                                packagePriority.save()
+                                taskPackage = models.TaskPackage()
+                                taskPackage.task = db_task
+                                taskPackage.packagename = packagePriority
+                                taskPackage.save()
+
+                            history_packagenames.append(packagename)
+
+                        db_frameName = models.FrameName()
+                        db_frameName.task = db_task
+                        db_frameName.frame = nFrameNumber
+                        db_frameName.name = os.path.splitext(os.path.basename(xml))[0]
+                        db_frameName.save()
+
+                        db_frameUserRecord = new_FrameUserRecordObject(params['project'])
+                        db_frameUserRecord.task = db_task
+                        db_frameUserRecord.frame = nFrameNumber
+                        db_frameUserRecord.packagename = packagename
+                        db_frameUserRecord.save()
+
 
                         file_objects = parseXML.parseFile(params['project'], xml)
                         print('xml',xml)
-                        print(file_objects)
                         dictData = {"boxes":[],"box_paths":[],"points":[],"points_paths":[],
                                     "polygons":[],"polygon_paths":[],"polylines":[],"polyline_paths":[]}
                         
@@ -600,17 +636,14 @@ def upload_XML(request):
                         attributesID = {} #name to id, label_id
                         labelAtt = {}
                         for sDb_attr in models.AttributeSpec.objects.filter(label__task__id=tid):
-                            print('hhhhhhhhhhhhh',sDb_attr.label.name)
                             if not sDb_attr.label.name in attributesID:
                                 attributesID[sDb_attr.label.name] = {}
                             attributesID[sDb_attr.label.name][sDb_attr.get_name().lower()] = [int(sDb_attr.id), int(sDb_attr.label_id)]
-                        print('attributesID',attributesID)
                         
                         n_zorder = 1
                         for obj in file_objects:
                             obj_id = int(obj['id'])
                             obj_label_name = EN_to_CH[obj['name']]
-                            print ('obj_label_name',obj_label_name)
                             isBox = True if obj_label_name == '臉' else False
 
                             item = {}
@@ -626,7 +659,6 @@ def upload_XML(request):
                                 # doing
                                 item['points'] = " ".join(obj['points'])
 
-
                             item['occluded'] = False
                             item['z_order'] = n_zorder
                             n_zorder += 1
@@ -638,9 +670,6 @@ def upload_XML(request):
                                     item['attributes'].append({'id':attributesID[obj_label_name][obj_atts][0], 'value':obj['attributes'][obj_atts]})
                                     item['label_id'] = attributesID[obj_label_name][obj_atts][1]
 
-                            # item['attributes'] = [{'id':attributesID[]['大標'][0],'value':file_objects[s_obj_id]['name'].replace(' ','_')},
-                            #                         {'id':attributesID['小標'][0],'value':str(list(filter(None,file_objects[s_obj_id]['attributes'].split(','))))}]
-                            #item['label_id'] = attributesID['大標'][1]
                             item['group_id'] = 0
                             item['grouping'] = '' #.join(file_objects[s_obj_id]['grouping'])
                             item['obj_id'] = obj_id
@@ -652,11 +681,17 @@ def upload_XML(request):
                                 dictData["boxes"].append(item)
                             else:
                                 dictData["points"].append(item)
-                            
+                        print('xml parse done')
+
+                        db_project = _ProjectModel.objects.select_for_update().get(task_id=tid)
+                        db_project.keyframe_count = _FrameUserRecordModel.objects.filter(task_id=tid).count()
+                        db_project.save()
+
 
                         if request.user.groups.filter(name='admin').exists():
-                            print('Save xml Job', "Tid:",tid, " Frame:", nFrameNumber)
+                            print('Save xml Job', "Tid:",tid, " Frame:", nFrameNumber, 'dictData ', dictData)
                             annotation.save_job(tid, dictData, oneFrameFlag=True,frame=nFrameNumber)
+                            print('Save xml done')
                         else:
                             # annotation.save_job(nTid, dictData,oneFrameFlag=True,frame=current_frame)
                             print("You cant save if you're not admin.")
@@ -666,7 +701,6 @@ def upload_XML(request):
     except Exception as e:
         print('error',str(e))
         return HttpResponseBadRequest(str(e))
-
 
 
 # Add by Eric
@@ -681,8 +715,8 @@ def upload_CSV(request, a_bIgnore_not_keyframe=True):
         sShare_Root = settings.SHARE_ROOT
         fileSetting = r'/home/django/cvat/dump_data/FCW_Setting_training20181210.ini'
 
-        listPackage_name = []
-
+        listABSfile = []
+        
         oCSVcontainer = upload_CSV_container()
         oCSVcontainer.Read_Setting_files(a_Setting_file=fileSetting)
 
@@ -697,7 +731,7 @@ def upload_CSV(request, a_bIgnore_not_keyframe=True):
                 continue
             
             for root, dirs, files in os.walk(fileCSV_abs_uploadpath):
-                print(root, dirs, files)
+
                 fileRoot = root
                 for fileCSV in files:
                     if not fileCSV.endswith(".csv"):
@@ -708,77 +742,117 @@ def upload_CSV(request, a_bIgnore_not_keyframe=True):
                         continue      
                     fileCSV_Abspath = os.path.join(fileRoot, fileCSV)
 
-                    sPackage_name = os.path.basename(os.path.dirname(os.path.dirname(fileCSV_Abspath)))
-                    print(sPackage_name)
-                    if sPackage_name not in listPackage_name:
-                        listPackage_name.append(sPackage_name)
-                    print('fileCSV_Abspath',fileCSV_Abspath)
-                    oCSVcontainer.Reading_CSV(a_sCSV_path=fileCSV_Abspath)
+                    listABSfile.append(fileCSV_Abspath)
 
+        listABSfile = list(set(listABSfile))
+
+        listPackage_name = []
+        project = None
+        print("Input files")
+        print(listABSfile)
+        print("Start Reading")
+        for sfile in listABSfile:
+            
+            if 'FCW_Train' in sfile:
+                project = 'fcw_training'
+            if 'FCW_Test' in sfile:
+                project = 'fcw_testing'
+            if 'BSD_Train' in sfile:
+                project = 'bsd_training'
+
+            sPackage_name = os.path.basename(os.path.dirname(os.path.dirname(sfile)))
+
+            if sPackage_name not in listPackage_name:
+                listPackage_name.append(sPackage_name)
+
+            oCSVcontainer.Reading_CSV(a_sCSV_path=sfile)
+
+        print(project, "project name!!!")
+        print(listPackage_name, "listPackage_name!!!")
+        assert project is not None
         assert len(listPackage_name) == 1
-
+        
         sPackagename = listPackage_name[0]
 
-        oCSVcontainer.Get_Task_ID()
+        _ProjectModel = get_ProjectModel(project)
+        _FrameUserRecordModel = get_FrameUserRecordModel(project)
+
+        project_tids = list(_ProjectModel.objects.all().values_list('task_id', flat=True))
+
+        oCSVcontainer.Get_Task_ID(a_listTask_ID=project_tids)
         oCSVcontainer.Get_db_labels_ID()
         oCSVcontainer.Get_Attribute_ID()
+
+        oCSVcontainer.Import_FrameMap(a_listProject_TIDs=project_tids)
         oCSVcontainer.Convert_CSV2Server(a_bIgnore_not_keyframe=a_bIgnore_not_keyframe)
         # print(oCSVcontainer.i_dictSever_Bbox)
-
-        fcwTrain_ids = list(models.FCWTrain.objects.all().values_list('task_id', flat=True))
-
+        
         for nTid in oCSVcontainer.i_dictSever_Bbox.keys():
 
             sVideoName = oCSVcontainer.i_dictID_Taskname[nTid]  
 
-            db_task = models.Task.objects.select_for_update().filter(pk__in=fcwTrain_ids, name=sVideoName)[0]
+            db_task = models.Task.objects.select_for_update().filter(id__in=project_tids, name=sVideoName)[0]
 
-            history_packagenames = db_task.packagename
-            history_packagenames = list(filter(None, history_packagenames.split(',')))
-            if not sPackagename in history_packagenames: 
-                history_packagenames.append(sPackagename)
+            #add package
+            history_packagenames = list(db_task.taskpackage_set.all().values_list('packagename__packagename', flat=True))
+            if not sPackagename in history_packagenames:
+                try:
+                    db_package = models.PackagePriority.objects.get(packagename=sPackagename)
+                    taskPackage = models.TaskPackage()
+                    taskPackage.task = db_task
+                    taskPackage.packagename = db_package
+                    taskPackage.save()
+                except ObjectDoesNotExist:
+                    packagePriority = models.PackagePriority()
+                    packagePriority.packagename = sPackagename
+                    packagePriority.save()
+                    taskPackage = models.TaskPackage()
+                    taskPackage.task = db_task
+                    taskPackage.packagename = packagePriority
+                    taskPackage.save()
 
-            db_task.packagename = ','.join(history_packagenames)
-            db_task.save()   
             print("Packagename save", sPackagename, " History packagenames", history_packagenames)    
 
-            db_fcwTrain = models.FCWTrain.objects.select_for_update().get(task_id=nTid)     
+            db_Model = _ProjectModel.objects.select_for_update().get(task_id=nTid)     
 
             for nframe in oCSVcontainer.i_dictSever_Bbox[nTid].keys():
-            
-                current_frame = nframe - 1
+
+                print(nframe, "database_frame")
                 dictData = oCSVcontainer.i_dictSever_Bbox[nTid][nframe]
 
                 # Also, set uploadframe as keyframe.
-                qs = models.TaskFrameUserRecord.objects.select_for_update().filter(task_id=nTid,frame=current_frame)
+                qs = _FrameUserRecordModel.objects.select_for_update().filter(task_id=nTid,frame=nframe)
 
                 if len(qs) == 0:
 
                     if a_bIgnore_not_keyframe:
-                        qs_name = models.FrameName.objects.select_for_update().filter(task_id=nTid,frame=current_frame)
+                        qs_name = models.FrameName.objects.select_for_update().filter(task_id=nTid,frame=nframe)
+
                         if len(qs_name) == 0:
                             db_frameName = models.FrameName()
                             db_frameName.task_id = nTid
-                            db_frameName.name = (sVideoName + "_%04d")%(oCSVcontainer.i_dictFrameMap[nTid][nframe])
-                            db_frameName.frame = current_frame
+                            db_frameName.frame = nframe
+                            db_frameMap = oCSVcontainer.i_dictFrameMap[sVideoName]
+                            nReal_Frame = list(db_frameMap.keys())[list(db_frameMap.values()).index(nframe)]
+                            db_frameName.name = (sVideoName + "_%04d")%(nReal_Frame)
                             db_frameName.save()  
-                            print("db_frameName", " Tid: ",nTid, " Frame: ", nframe)                  
-                    
-                    db_taskFrameUserRecord = models.TaskFrameUserRecord()
-                    db_taskFrameUserRecord.task = db_task
-                    db_taskFrameUserRecord.frame = current_frame
+                            print("db_frameName", " Tid: ",nTid, " DataBaseFrame: ", nframe)                  
 
-                    db_taskFrameUserRecord.packagename = sPackagename
-                    db_taskFrameUserRecord.save()  
+                    db_frameUserRecord = new_FrameUserRecordObject(project)
+                    db_frameUserRecord.task = db_task
+                    db_frameUserRecord.frame = nframe
 
-                    db_fcwTrain.keyframe_count = models.TaskFrameUserRecord.objects.filter(task_id=nTid).count()
-                    db_fcwTrain.priority = 0
-                    db_fcwTrain.priority_out = 0
-                    db_fcwTrain.save()
+                    db_frameUserRecord.packagename = sPackagename
+                    db_frameUserRecord.save()  
+
+                    db_Model.keyframe_count = _FrameUserRecordModel.objects.filter(task_id=nTid).count()
+                    # db_Model.priority = 0
+                    # db_Model.priority_out = 0
+                    db_Model.save()
 
                     if request.user.groups.filter(name='admin').exists():
                         print('Save CSV Job', "Tid:",nTid, " Frame:", nframe)
-                        annotation.save_job(nTid, dictData, oneFrameFlag=True,frame=current_frame)
+                        annotation.save_job(nTid, dictData, oneFrameFlag=True,frame=nframe)
                     else:
                         # annotation.save_job(nTid, dictData,oneFrameFlag=True,frame=current_frame)
                         print("You cant save if you're not admin.")
@@ -786,6 +860,7 @@ def upload_CSV(request, a_bIgnore_not_keyframe=True):
 
             print("Upload CSV End.")
 
+        print("ALL done")
 
         return JsonResponse({'data':"success"})
     except RequestException as e:
@@ -816,6 +891,14 @@ def create_task(request):
 
         _ProjectModel = get_ProjectModel(params['project'])
 
+        if models.PackagePriority.objects.filter(packagename=params['task_packagename']).count() > 0:
+            print('Packagename was exist')
+            raise Exception('Packagename was exist')
+        else:
+            packagePriority = models.PackagePriority()
+            packagePriority.packagename = params['task_packagename']
+            packagePriority.save()
+
         if params['storage'] == 'share':
             data_list = request.POST.getlist('data')
             data_list.sort(key=len)
@@ -832,6 +915,7 @@ def create_task(request):
 
                 print('abspath',abspath)
                 print('target_paths',relpath)
+
 
                 if params['project'] in ['fcw_training','bsd_training','dms_training']:
                     imgs_list = glob.glob('{}/*.{}'.format(abspath,'png'))
@@ -1185,160 +1269,6 @@ def rq_handler(job, exc_type, exc_value, tb):
 
     return True
 
-# add by jeff, not used
-@login_required
-@permission_required(perm=['engine.view_task', 'engine.change_annotation'], raise_exception=True)
-def set_user_currnet(request, jid):
-    try:        
-        job_logger[jid].info("set {} currnet for {} job".format(request.user.username,jid))
-        
-        #db_job = models.Job.objects.get(id=jid)
-        
-        user_record = None
-        new_jid = None # use taskid
-        
-        # set current frame to submit
-        try:
-            with transaction.atomic():
-                user_record = models.TaskFrameUserRecord.objects.select_for_update().get(user=request.user.username,current=True)
-                db_fcwTrain = models.FCWTrain.objects.select_for_update().get(task_id=user_record.task_id)
-                print ("user: {} find current {}".format(request.user.username,user_record.frame))
-                user_record.current = False
-                user_record.user_submit = True
-                
-                if user_record.need_modify:
-                    user_record.userModifySubmit_date = timezone.now()
-                    tmp = db_fcwTrain.need_modify_count
-                    db_fcwTrain.need_modify_count = tmp-1 if tmp-1>0 else 0
-                else:
-                    user_record.userSubmit_date = timezone.now()
-                user_record.need_modify = False
-
-                db_fcwTrain.unchecked_count += 1 
-                user_record.save()
-                db_fcwTrain.save()
-            print ("user: {}'s user_record.save()".format(request.user.username))
-        except ObjectDoesNotExist:
-            print ("user: {}'s not found current frame".format(request.user.username))
-            raise Exception('user_record is None')
-
-        return JsonResponse({'data':"success"})
-
-    except Exception as e:
-        print("error is !!!!",str(e))
-        job_logger[jid].error("cannot set {} currnet for {} job".format(request.user.username,jid), exc_info=True)
-        return HttpResponseBadRequest(str(e))
-# add by jeff, not used
-@login_required
-@permission_required(perm=['engine.view_task', 'engine.change_annotation'], raise_exception=True)
-def get_user_currnet(request, jid):
-    try:        
-        job_logger[jid].info("set {} currnet for {} job".format(request.user.username,jid))
-        
-        #db_job = models.Job.objects.get(id=jid)
-        
-        user_record = None
-        new_jid = None # use taskid
-        
-        # set current frame to submit
-        try:
-            with transaction.atomic():
-                user_record = models.TaskFrameUserRecord.objects.select_for_update().get(user=request.user.username,current=True)
-                db_fcwTrain = models.FCWTrain.objects.select_for_update().get(task_id=user_record.task_id)
-                print ("user: {} find current {}".format(request.user.username,user_record.frame))
-                return JsonResponse({'jid':user_record.task_id,'frame': user_record.frame})
-
-        except ObjectDoesNotExist:
-            print ("user: {}'s not found current frame".format(request.user.username))            
-            
-        # select need_modify
-        user_record = None
-        try:
-            print("try get need_modify frame first")
-            #user_record = models.TaskFrameUserRecord.objects.filter(task_id=db_job.segment.task.id,user=request.user.username,need_modify=True).first()
-            start_time = time.time()
-            db_fcwTrains = models.FCWTrain.objects.filter(~Q(priority=0)).order_by('-priority', 'task__created_date')
-            print ("db_fcwTrains,",db_fcwTrains)
-            print ("len  db_fcwTrains,",len(db_fcwTrains))
-            if db_fcwTrains and len(db_fcwTrains):
-                print ("db_fcwTrains has {} data".format(len(db_fcwTrains)))
-                for db_fcwTrain in db_fcwTrains:
-                    tmp_tid = db_fcwTrain.task.id
-                    with transaction.atomic():
-                        qs = models.TaskFrameUserRecord.objects.filter(task_id=tmp_tid,user=request.user.username,need_modify=True)
-                        ids = qs.values_list('id', flat=True)
-                        if len(ids):
-                            index = random.randint(0, len(ids)-1)
-                            try:
-                                user_record = qs[index]#models.TaskFrameUserRecord.objects.select_for_update().get(pk=ids[index])
-                                new_jid = tmp_tid
-
-                                user_record.user = request.user.username
-                                user_record.current = True
-                                user_record.userModifyGet_date = timezone.now()
-                                user_record.save()
-                                break
-                            except ObjectDoesNotExist:
-                                user_record = None
-                                new_jid = None
-            end_time = time.time()
-            print ("use random pk cost time : ",(end_time - start_time))
-
-            if user_record is None:
-                print("need modify is none, try get new frame")
-                #user_record = models.TaskFrameUserRecord.objects.filter(task_id=db_job.segment.task.id,user='').first()
-                start_time = time.time()
-                db_fcwTrains = models.FCWTrain.objects.filter(~Q(priority=0)).order_by('-priority', 'task__created_date')
-                print ("db_fcwTrains,",db_fcwTrains)
-                print ("len  db_fcwTrains,",len(db_fcwTrains))
-                if db_fcwTrains and len(db_fcwTrains):
-                    print ("db_fcwTrains has {} data".format(len(db_fcwTrains)))
-                    for db_fcwTrain in db_fcwTrains:
-                        tmp_tid = db_fcwTrain.task.id
-                        with transaction.atomic():
-                            qs = models.TaskFrameUserRecord.objects.select_for_update().filter(task_id=tmp_tid,user='')
-                            ids = qs.values_list('id', flat=True)
-                            if len(ids):
-                                index = random.randint(0, len(ids)-1)
-                                try:
-                                    user_record = qs[index]# models.TaskFrameUserRecord.objects.get(pk=ids[index])
-                                    new_jid = tmp_tid
-
-                                    user_record.user = request.user.username
-                                    user_record.current = True
-                                    user_record.userGet_date = timezone.now()
-                                    user_record.save()
-                                    break
-                                except ObjectDoesNotExist:
-                                    user_record = None
-                                    new_jid = None
-                end_time = time.time()
-                print ("use random pk cost time : ",(end_time - start_time))
-                print ("try get new frame is success",user_record.frame)
-
-        except Exception as e:
-            user_record = None
-            print("error is !!!!",str(e))
-        
-        if user_record:
-            print ("have current")
-            return JsonResponse({'jid':user_record.task_id,'frame': user_record.frame})
-        else:
-            print ("user_record is None, will error")
-            return "you need to get new work"
-            #raise Exception('user_record is None')
-
-        # db_job = models.Job.objects.get(id=new_jid)
-
-        # mAnnotation = annotation._AnnotationForJob(db_job)
-        # mAnnotation.init_from_db(user_record.frame)
-        # return JsonResponse({'jid':new_jid,'frame': user_record.frame})
-
-    except Exception as e:
-        print("error is !!!!",str(e))
-        job_logger[jid].error("cannot set {} currnet for {} job".format(request.user.username,jid), exc_info=True)
-        return HttpResponseBadRequest(str(e))
-
 
 # add by jeff
 @login_required
@@ -1365,8 +1295,8 @@ def set_frame_isKeyFrame(request, tid, frame, flag):
                 db_frameUserRecord.save()
                 
                 db_project.keyframe_count += 1
-                db_project.priority = 0
-                db_project.priority_out = 0
+                # db_project.priority = 0
+                # db_project.priority_out = 0
                 db_project.save()
 
                 path = os.path.realpath(task.get_frame_path(tid, frame))
@@ -1635,38 +1565,39 @@ def set_frame_redoComment(request, tid, frame, comment):
         print("error is !!!!",str(e))
         return HttpResponseBadRequest(str(e))
 
+## will not use
 @login_required
 @transaction.atomic
 @permission_required('engine.add_task', raise_exception=True)
 def set_tasks_priority(request):
     """Create a new annotation task"""
     try:
-        db_task = None
-        params = request.POST.dict()
-        priority = params['priority']
-        inCompany = params['inCompany']
-        project = params['project']
+         db_task = None
+        # params = request.POST.dict()
+        # priority = params['priority']
+        # inCompany = params['inCompany']
+        # project = params['project']
 
-        _ProjectModel = get_ProjectModel(project)
-        _FrameUserRecordModel = get_FrameUserRecordModel(project)
+        # _ProjectModel = get_ProjectModel(project)
+        # _FrameUserRecordModel = get_FrameUserRecordModel(project)
 
-        print('project', project)
+        # print('project', project)
 
-        inCompany = True if inCompany == 'true' else False
+        # inCompany = True if inCompany == 'true' else False
 
-        print('inCompany',inCompany,'priority',priority)
+        # print('inCompany',inCompany,'priority',priority)
 
-        if(params['selectTasks'] != ''):
-            tasks = params['selectTasks'].split(',')
-            for tid in tasks:
-                db_project = _ProjectModel.objects.select_for_update().get(task_id=int(tid))
-                if inCompany:
-                    print('db_project.priority = priority')
-                    db_project.priority = priority
-                else:
-                    print('db_project.priority_out = priority')
-                    db_project.priority_out = priority
-                db_project.save()
+        # if(params['selectTasks'] != ''):
+        #     tasks = params['selectTasks'].split(',')
+        #     for tid in tasks:
+        #         db_project = _ProjectModel.objects.select_for_update().get(task_id=int(tid))
+        #         if inCompany:
+        #             print('db_project.priority = priority')
+        #             db_project.priority = priority
+        #         else:
+        #             print('db_project.priority_out = priority')
+        #             db_project.priority_out = priority
+        #         db_project.save()
 
     except Exception as e:
         print("error is !!!!",str(e))
@@ -1712,28 +1643,28 @@ def get_FCW_Job(request):
     try: 
         response = None
 
-        db_userRecord = None
-        try:
-            db_userRecord = models.TaskFrameUserRecord.objects.get(user=request.user.username,current=True)
-            response = {'jid': db_userRecord.task.id}
-            return JsonResponse(response, safe=False)
-        except ObjectDoesNotExist:
-            pass
+        # db_userRecord = None
+        # try:
+        #     db_userRecord = models.TaskFrameUserRecord.objects.get(user=request.user.username,current=True)
+        #     response = {'jid': db_userRecord.task.id}
+        #     return JsonResponse(response, safe=False)
+        # except ObjectDoesNotExist:
+        #     pass
             
 
-        db_fcwTrains = models.FCWTrain.objects.filter(~Q(priority=0)).order_by('-priority', 'task__created_date')
-        print ("db_fcwTrains,",db_fcwTrains)
-        print ("len  db_fcwTrains,",len(db_fcwTrains))
-        db_fcwTrain = db_fcwTrains.first()
+        # db_fcwTrains = models.FCWTrain.objects.filter(~Q(priority=0)).order_by('-priority', 'task__created_date')
+        # print ("db_fcwTrains,",db_fcwTrains)
+        # print ("len  db_fcwTrains,",len(db_fcwTrains))
+        # db_fcwTrain = db_fcwTrains.first()
 
-        if db_fcwTrain:
-            print("~Q(undo=0),Q(priority=1)",db_fcwTrain.priority)
-            response = {'jid': db_fcwTrain.task.id}
-        else:
-            response = None
-            raise Exception('no priority > 0!') 
+        # if db_fcwTrain:
+        #     print("~Q(undo=0),Q(priority=1)",db_fcwTrain.priority)
+        #     response = {'jid': db_fcwTrain.task.id}
+        # else:
+        #     response = None
+        #     raise Exception('no priority > 0!') 
         
-        return JsonResponse(response, safe=False)
+        # return JsonResponse(response, safe=False)
     except Exception as e:
         print("error is !!!!",str(e))
         return HttpResponseBadRequest(str(e))
@@ -1863,26 +1794,20 @@ def get_currentJob(request):
         return HttpResponseBadRequest(str(e))
 
 def set_currentWithJob(username,qs=None,time=None):
-    user_record = None
     new_jid = None
-    if qs.count() > 0 :
-        ids = qs.values_list('id', flat=True)
+    if qs:
         try:
-            user_record = qs[0]
-            new_jid = user_record.task_id
-
-            user_record.user = username
-            user_record.current = True
+            new_jid = qs.task_id
+            qs.user = username
+            qs.current = True
             if time == 'modify':
-                user_record.userModifyGet_date = timezone.now()
+                qs.userModifyGet_date = timezone.now()
             if time == 'new':
-                user_record.userGet_date = timezone.now()
-            user_record.save()
+                qs.userGet_date = timezone.now()
+            qs.save()
         except ObjectDoesNotExist:
-            print("error in set_currentJob fcw_training modify")
-            user_record = None
-            new_jid = None
-    return user_record, new_jid
+            print("error in set_currentWithJob tid:{}".format(qs.task_id))
+    return qs, new_jid
 
 # add by jeff
 @login_required
@@ -1900,37 +1825,41 @@ def set_currentJob(request):
         new_jid = None
 
         user_priority = None
+        user_priority2 = None
         user_workSpace = None
         if username.startswith('oto',0,3):
-            user_priority = {'priority':0,}
+            user_priority = {'task__taskpackage__packagename__office_priority':0,}#{'office_priority':0,}
+            user_priority2 = {'task__taskpackage__packagename__office_priority':0,}
         else:
-            user_priority = {'priority_out':0,}
+            user_priority = {'task__taskpackage__packagename__soho_priority':0,}#{'soho_priority':0,}
+            user_priority2 = {'task__taskpackage__packagename__soho_priority':0,}
+        user_priority_key = list(user_priority2.keys())[0]
 
         user_workSpace = {'username':request.user.username, 'project':project}
-        task_list = None
+        #task_id_list = list(_ProjectModel.objects.values_list('task_id', flat=True))
         try:
             print('user_workSpace',user_workSpace)
             packagenames = list(models.UserWorkSpace.objects.filter(**user_workSpace).values_list('packagename',flat=True))
 
             if len(packagenames) == 0:
                 return JsonResponse({'status':"A01",'text':"你沒被分配到工作, 請聯絡管理員哦"})
-            query = functools.reduce(operator.or_, (Q(packagename__icontains = item) for item in packagenames))
-            task_list = models.Task.objects.filter(query).values_list('id',flat=True)
+            # query = functools.reduce(operator.or_, (Q(packagename__icontains = item) for item in packagenames))
+            # task_id_list = models.Task.objects.filter(query).values_list('id',flat=True)
         except ObjectDoesNotExist:
             return JsonResponse({'status':"A01",'text':"你沒被分配到工作, 請聯絡管理員哦"})
-        
+
+        # tids = list(models.TaskPackage.objects.filter(Q(task_id__in=task_id_list),Q(packagename__packagename__in=packagenames),~Q(**user_priority2)).order_by('-packagename__{}'.format(user_priority_key)).values_list('task_id',flat=True))
+        # tids = sorted(tids)
 
         if project in ['fcw_training','bsd_training']:
             start_time = time.time()
-            db_projects = _ProjectModel.objects.filter(~Q(**user_priority)).order_by('-{}'.format(list(user_priority.keys())[0]), 'task__created_date')
-            print ("db_projects,",db_projects)
-            print ("len  db_projects,",len(db_projects))
-            if db_projects and len(db_projects):
-                print ("db_projects has {} data".format(len(db_projects)))
-                for db_project in db_projects:
-                    tmp_tid = db_project.task_id
+            tids = list(_ProjectModel.objects.filter(Q(task__taskpackage__packagename__packagename__in=packagenames),~Q(**user_priority)).order_by('-{}'.format(user_priority_key)).values_list('task_id',flat=True))
+            print('tids',tids)
+            if tids:
+                for tid in tids:
+                    tmp_tid = tid
                     with transaction.atomic():
-                        qs = _FrameUserRecordModel.objects.filter(task_id=tmp_tid,user=request.user.username,need_modify=True)
+                        qs = _FrameUserRecordModel.objects.select_for_update().filter(task_id=tmp_tid,user=request.user.username,need_modify=True)
                         ids = qs.values_list('id', flat=True)
                         if len(ids):
                             index = random.randint(0, len(ids)-1)
@@ -1954,13 +1883,17 @@ def set_currentJob(request):
             else:
                 print("need modify is none, try get new frame")
                 start_time = time.time()
-                db_projects = _ProjectModel.objects.filter(Q(task_id__in=task_list) & ~Q(**user_priority)).order_by('-{}'.format(list(user_priority.keys())[0]), 'task__created_date')
-                print ("db_projects,",db_projects)
-                print ("len  db_projects,",len(db_projects))
-                if db_projects and len(db_projects):
-                    print ("db_projects has {} data".format(len(db_projects)))
-                    for db_project in db_projects:
-                        tmp_tid = db_project.task_id
+                # db_projects = _ProjectModel.objects.filter(Q(task_id__in=task_list) & ~Q(**user_priority)).order_by('-{}'.format(list(user_priority.keys())[0]), 'task__created_date')
+                # print ("db_projects,",db_projects)
+                # print ("len  db_projects,",len(db_projects))
+                # if db_projects and len(db_projects):
+                # maybe can pass search again
+                tids = list(_ProjectModel.objects.filter(Q(task__taskpackage__packagename__packagename__in=packagenames),~Q(**user_priority)).order_by('-{}'.format(user_priority_key)).values_list('task_id',flat=True))
+                if tids:
+                    for tid in tids:
+                    # print ("db_projects has {} data".format(len(db_projects)))
+                    # for db_project in db_projects:
+                        tmp_tid = tid
                         with transaction.atomic():
                             qs = _FrameUserRecordModel.objects.select_for_update().filter(task_id=tmp_tid,user='')
                             ids = qs.values_list('id', flat=True)
@@ -1986,10 +1919,10 @@ def set_currentJob(request):
                 return JsonResponse({'status':"A01",'text':"找不到{}的工作, 請聯絡管理員哦".format(project)})
 
         elif project in ['fcw_testing', 'apacorner', 'dms_training']:
+            #task_id_list = list(_ProjectModel.objects.filter(Q(user=request.user.username) & Q(need_modify=True)).values_list('task_id', flat=True))
             start_time = time.time()
-            db_Project = _ProjectModel.objects.filter(~Q(**user_priority) & Q(user=request.user.username) & Q(need_modify=True)).order_by('-{}'.format(list(user_priority.keys())[0]), 'task__created_date')
-            print ("db_Project,",db_Project)
-            print ("len  db_Project,",len(db_Project))
+            #db_Project = _ProjectModel.objects.filter(~Q(**user_priority) & Q(user=request.user.username) & Q(need_modify=True)).order_by('-{}'.format(list(user_priority.keys())[0]), 'task__created_date')
+            db_Project = _ProjectModel.objects.filter(Q(need_modify=True),Q(task__taskpackage__packagename__packagename__in=packagenames),~Q(**user_priority)).order_by('-{}'.format(user_priority_key)).first()
             user_record, new_jid = set_currentWithJob(request.user.username, db_Project, time='modify')
             end_time = time.time()
             print ("use random pk cost time : ",(end_time - start_time))
@@ -1997,9 +1930,7 @@ def set_currentJob(request):
             if user_record is None:
                 print("need modify is none, try get new frame")
                 start_time = time.time()
-                db_Project = _ProjectModel.objects.filter(Q(task_id__in=task_list) & ~Q(**user_priority) & Q(user=request.user.username) & Q(userGet_date=None)).order_by('-{}'.format(list(user_priority.keys())[0]), 'task__created_date')
-                print ("db_Project,",db_Project)
-                print ("len  db_Project,",len(db_Project))
+                db_Project = _ProjectModel.objects.filter(Q(userGet_date=None),Q(task__taskpackage__packagename__packagename__in=packagenames),~Q(**user_priority)).order_by('-{}'.format(user_priority_key)).first()
                 user_record, new_jid = set_currentWithJob(request.user.username, db_Project, time='new')
                 end_time = time.time()
                 print ("use random pk cost time : ",(end_time - start_time))
@@ -2009,9 +1940,7 @@ def set_currentJob(request):
             else:
                 print("need modify is none, try get new frame")
                 start_time = time.time()
-                db_Project = _ProjectModel.objects.filter(Q(task_id__in=task_list) & ~Q(**user_priority) & Q(user='')).order_by('-{}'.format(list(user_priority.keys())[0]), 'task__created_date')
-                print ("db_Project,",db_Project)
-                print ("len  db_Project,",len(db_Project))
+                db_Project = _ProjectModel.objects.filter(Q(user=''),Q(task__taskpackage__packagename__packagename__in=packagenames),~Q(**user_priority)).order_by('-{}'.format(user_priority_key)).first()
                 user_record, new_jid = set_currentWithJob(request.user.username, db_Project, time='new')
                 end_time = time.time()
                 print ("use random pk cost time : ",(end_time - start_time))
@@ -2190,13 +2119,13 @@ class upload_CSV_container:
 
         print("Reading CSV done.")
 
-    def Get_Task_ID(self):
+    def Get_Task_ID(self, a_listTask_ID):
         
         for sVideoDate in self.i_dictTaskname_ID.keys():
 
-            oDB_task = models.Task.objects.select_for_update().get(name=sVideoDate)
+            oDB_task = models.Task.objects.select_for_update().filter(id__in=a_listTask_ID, name=sVideoDate)[0]
             nTid = int(oDB_task.id)
-
+            print(nTid, "ASDASDASFWEQW")
             self.i_dictTaskname_ID[sVideoDate] = nTid
             self.i_dictID_Taskname[nTid] = sVideoDate
 
@@ -2230,6 +2159,31 @@ class upload_CSV_container:
 
         print("Get_Attribute_ID done.")
 
+    def Import_FrameMap(self, a_listProject_TIDs):
+
+        for sVideoName in self.i_dictTaskname_Frame_BBoxInfor.keys():
+
+            db_task = models.Task.objects.select_for_update().filter(id__in=a_listProject_TIDs, name=sVideoName)[0]
+
+            if sVideoName not in self.i_dictFrameMap.keys():
+                self.i_dictFrameMap[sVideoName] = {}
+
+            TaskRoot = db_task.get_data_dirname()
+            print(TaskRoot, "TaskRoot")
+            for subDir in sorted(os.listdir(TaskRoot)):
+                subRoot = os.path.join(TaskRoot, subDir)
+                for subDir_sec in sorted(os.listdir(subRoot)):
+                    subRoot_sec = os.path.join(subRoot, subDir_sec)
+                    for mfile in sorted(os.listdir(subRoot_sec)):
+                        mfile_path = os.path.join(subRoot_sec, mfile)
+                        frame = int(os.path.splitext(mfile)[0])
+                        realname = os.path.basename(os.path.realpath(mfile_path))
+                        realframe = int(os.path.splitext(realname)[0][-4:])
+                        self.i_dictFrameMap[sVideoName][realframe] = frame
+
+        print(self.i_dictFrameMap, "dictRealToFrame")       
+
+
     def Convert_CSV2Server(self, a_bIgnore_not_keyframe=True):
 
         print("Convert_CSV2Server Start.")
@@ -2241,10 +2195,6 @@ class upload_CSV_container:
             if nTid not in self.i_dictSever_Bbox.keys():
                 self.i_dictSever_Bbox[nTid] = {}    
 
-            if a_bIgnore_not_keyframe: # for only save keyframe in database
-                db_frame_count = 1                
-                self.i_dictFrameMap[nTid] = {}
-
             listFrameNumber = list(self.i_dictTaskname_Frame_BBoxInfor[sVideoName].keys())
             listFrameNumber.sort()
 
@@ -2255,12 +2205,10 @@ class upload_CSV_container:
                 dictBBoxFrameInfor = self.i_dictTaskname_Frame_BBoxInfor[sVideoName][nframe]
 
                 if a_bIgnore_not_keyframe: # for only save keyframe in database
-                    self.i_dictFrameMap[nTid][db_frame_count] = nframe
-                    nframe = db_frame_count
-                    db_frame_count += 1
+                    nframe_in_db = self.i_dictFrameMap[sVideoName][nframe]
 
-                if nframe not in self.i_dictSever_Bbox[nTid].keys():
-                    self.i_dictSever_Bbox[nTid][nframe] = {'boxes':[],'points': [], 'polygons': [], 
+                if nframe_in_db not in self.i_dictSever_Bbox[nTid].keys():
+                    self.i_dictSever_Bbox[nTid][nframe_in_db] = {'boxes':[],'points': [], 'polygons': [], 
                     'points_paths': [], 'box_paths': [], 'polygon_paths': [], 'polylines': [], 'polyline_paths': []}    
 
                 # Get Linked information first
@@ -2376,7 +2324,7 @@ class upload_CSV_container:
                             nWidth = nRight_x - nLeft_x
 
                             if nWidth == 0:
-                                print(nframe, sID, "Width = 0")
+                                print(nframe_in_db, sID, "Width = 0")
                                 nWidth = 0.0001
 
                             nleft_ratio = round((sLink_tl_x - nLeft_x) / nWidth, 6)
@@ -2402,7 +2350,7 @@ class upload_CSV_container:
                     dictLoadInBBox['occluded'] = False
                     dictLoadInBBox['group_id'] = 0
                     dictLoadInBBox['grouping'] = ''
-                    dictLoadInBBox['frame'] = (nframe - 1)
+                    dictLoadInBBox['frame'] = nframe_in_db
                     
                     dictLoadInBBox['z_order'] = nZorder
                     nZorder += 1
@@ -2421,17 +2369,7 @@ class upload_CSV_container:
                     dictLoadInBBox['attributes'].append({'id': self.i_dictID_attributes[nTid]['Truncated'], 'value': sTruncated})
                     dictLoadInBBox['attributes'].append({'id': self.i_dictID_attributes[nTid]['Dont_Care'], 'value': bNew_DontCare})
 
-                    self.i_dictSever_Bbox[nTid][nframe]['boxes'].append(dictLoadInBBox)
+                    self.i_dictSever_Bbox[nTid][nframe_in_db]['boxes'].append(dictLoadInBBox)
 
         print("Convert_CSV2Server End.")
         return
-
-        
-
-
-
-
-
-
-
-

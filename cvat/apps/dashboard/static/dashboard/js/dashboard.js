@@ -147,6 +147,12 @@ function setupTaskCreator() {
     let setVideoPriority = $('#setVideoPriority');
     let setVideoPriority_OUT = $('#setVideoPriority_OUT');
 
+    let package_priority_btn = $('#package_priority_btn');
+    let input_package = $('#input_package');
+    let office_priority = $('#office_priority');
+    let soho_priority = $('#soho_priority');
+
+
     let name = nameInput.prop('value');
     let packagename = packageInput.prop('value');
     let labels = labelsInput.prop('value');
@@ -160,6 +166,132 @@ function setupTaskCreator() {
     let files = [];
     // add by eric
     let keyframefiles = [];
+
+    $('#Task_Table').DataTable({
+        "columns":[
+            null,null,null,null,null,null,null,null,
+            {
+                data: null,
+                className: "center",
+                defaultContent: '<a href="" class="editor_edit">Edit</a> / <a href="" class="editor_remove">Delete</a>'
+            }
+        ]
+    });
+    $('#Task_Table').on('click', 'a.editor_edit', function (e) {
+        e.preventDefault();
+        let link = $(this).closest('tr').children('td:first').children('a:first');
+        let task_id = link.prop('title');
+        let task_name = link.prop('text');
+        console.log('Edit',task_id,task_name);
+    } );
+    $('#Task_Table').on('click', 'a.editor_remove', function (e) {
+        e.preventDefault();
+        let link = $(this).closest('tr').children('td:first').children('a:first');
+        let task_id = link.prop('title');
+        let task_name = link.prop('text');
+        console.log('Delete',task_id,task_name);
+        window.cvat.dashboard.taskID = task_id;
+        window.cvat.dashboard.taskName = task_name;
+        RemoveTaskRequest();
+    } );
+
+    let mTable = document.getElementById("Package_Table");
+    if (mTable != null) {
+        for (var i = 0; i < mTable.rows.length; i++) {
+            mTable.rows[i].cells[0].onclick = function () {
+                getTaskFromPackage(this);
+            };
+        }
+    }
+
+    function getTaskFromPackage(tableCell) {
+        let search_package = tableCell.innerHTML;
+        let searchData = new FormData();
+        searchData.append('project', window.location.pathname.split('/')[2]);
+        searchData.append('packagename', search_package);
+        searchData.append('href', window.location.href);
+        $.ajax({
+            url: 'get/tasks/from/package',
+            type: 'POST',
+            data: searchData,
+            contentType: false,
+            processData: false,
+            success: function(response) {
+                console.log(response);
+                let datas = response.data;
+                let t = $('#Task_Table').DataTable();
+                t.clear().draw();
+                for (let data of datas) 
+                {
+                    let name = '<a href="'+ data.segments[0].url + '" target="_blank" title=' + data.id + '>'+data.name+'</a>'
+                    for (let packstage of data.videostage.packstage) {
+                        let packagename = packstage.packagename;
+                        let keyframe_count = packstage.keyframe_count;
+                        let undo_count = packstage.undo_count;
+                        let checked_count = packstage.checked_count;
+                        let need_modify_count = packstage.need_modify_count;
+                        let unchecked_count = packstage.unchecked_count;
+                        let unchecked_realframes = packstage.unchecked_realframes;
+                        let unchecked_realframes_select = '';
+                        for(let unchecked_realframe of unchecked_realframes) {
+                            unchecked_realframes_select += '<option>' + unchecked_realframe + '</option>';
+                        }
+                        unchecked_realframes_select = '<select>' + unchecked_realframes_select + '</select>';
+
+                        t.row.add([name, packagename, keyframe_count, undo_count, 
+                            checked_count, need_modify_count, unchecked_count, unchecked_realframes_select,null
+                        ]).draw( false );
+                    }
+                }
+            },
+            error: function(response) {
+                console.log(response);
+            }
+        });
+    }
+
+    package_priority_btn.on('click', function() {
+        let input_package_val = input_package.prop('value');
+        let office_priority_val = office_priority.prop('value');
+        let soho_priority_val = soho_priority.prop('value');
+
+        let priorityData = new FormData();
+        priorityData.append('project', window.location.pathname.split('/')[2]);
+        priorityData.append('packagename', input_package_val);
+        priorityData.append('office_priority', office_priority_val);
+        priorityData.append('soho_priority', soho_priority_val);
+        $.ajax({
+            url: 'set/package/priority',
+            type: 'POST',
+            data: priorityData,
+            contentType: false,
+            processData: false,
+            success: function(response) {
+                console.log(response);
+                updatePackagePriority(response.packages);
+                $('#package_priority_response').removeClass('alert-danger');
+                $('#package_priority_response').addClass('alert-success');
+                $('#package_priority_response_txt').text('success');
+            },
+            error: function(response) {
+                console.log(response);
+                $('#package_priority_response').removeClass('alert-success');
+                $('#package_priority_response').addClass('alert-danger');
+                $('#package_priority_response_txt').text('error');
+            }
+        });
+    });
+
+    function updatePackagePriority(rows) {
+        $('#Package_Table tbody').empty();
+        for(let row of rows) {
+            $('#Package_Table tbody').append('<tr><td style="cursor: pointer;">' + row.name
+                                            + '</td><td>' + row.office
+                                            + '</td><td>' + row.soho + '</td></tr>');
+        }
+    }
+
+
 
     dashboardCreateTaskButton.on('click', function() {
         $('#dashboardCreateModal').removeClass('hidden');
@@ -630,7 +762,7 @@ function setupTaskCreator() {
         keyframeData.append('data', keyframefiles[0]);
         keyframeData.append('project', window.location.pathname.split('/')[2]);
         $.ajax({
-            url: '/dashboard/update_keyframe',
+            url: '/dashboard/upload_keyframe',
             type: 'POST',
             data: keyframeData,
             contentType: false,
@@ -645,8 +777,9 @@ function setupTaskCreator() {
                 }
                 else{
                     let message = 'Error';
-                    showMessage(response);
-                    onError();
+                    KeyframeUploaderLabel.css('color', 'red');
+                    KeyframeUploaderLabel.text("Upload Error.");
+                    console.log(message);
                     console.log("error list",response.data);
                 }
 
@@ -831,7 +964,7 @@ function UpdateTaskRequest(labels) {
 
 
 function RemoveTaskRequest() {
-    confirm('The action can not be undone. Are you sure?', confirmCallback);
+    confirm('The action (RemoveTask) can not be undone. Are you sure?', confirmCallback);
 
     function confirmCallback() {
         $.ajax ({

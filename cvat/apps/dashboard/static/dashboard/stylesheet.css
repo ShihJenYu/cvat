@@ -125,3 +125,7 @@
     width: 97%;
     margin-bottom: 10px;
 }
+
+.dataTables_length {
+    text-align: left;
+}

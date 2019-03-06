@@ -19,7 +19,6 @@ class Task(models.Model):
     name = models.CharField(max_length=256)
     nickname = models.CharField(max_length=256)
     category = models.CharField(max_length=256)
-    packagename = models.CharField(max_length=1024,default="")
     size = models.PositiveIntegerField()
     path = models.CharField(max_length=256)
     mode = models.CharField(max_length=32)
@@ -270,8 +269,6 @@ class FCWTrain(models.Model):
     unchecked_count = models.PositiveIntegerField()
     checked_count = models.PositiveIntegerField()
     need_modify_count = models.PositiveIntegerField()
-    priority = models.PositiveIntegerField()
-    priority_out = models.PositiveIntegerField()
 
 class FCWTest_FrameUserRecord(models.Model):
     task = models.ForeignKey(Task, on_delete=models.CASCADE)
@@ -293,8 +290,6 @@ class FCWTest(models.Model):
     unchecked_count = models.PositiveIntegerField()
     checked_count = models.PositiveIntegerField()
     need_modify_count = models.PositiveIntegerField()
-    priority = models.PositiveIntegerField()
-    priority_out = models.PositiveIntegerField()
     user = models.CharField(max_length=150)
     checker = models.CharField(max_length=150)
     current = models.BooleanField(default=False)
@@ -331,8 +326,6 @@ class APACorner(models.Model):
     unchecked_count = models.PositiveIntegerField()
     checked_count = models.PositiveIntegerField()
     need_modify_count = models.PositiveIntegerField()
-    priority = models.PositiveIntegerField()
-    priority_out = models.PositiveIntegerField()
     user = models.CharField(max_length=150)
     checker = models.CharField(max_length=150)
     current = models.BooleanField(default=False)
@@ -377,8 +370,6 @@ class BSDTrain(models.Model):
     unchecked_count = models.PositiveIntegerField()
     checked_count = models.PositiveIntegerField()
     need_modify_count = models.PositiveIntegerField()
-    priority = models.PositiveIntegerField()
-    priority_out = models.PositiveIntegerField()
 
 class DMSTrain_FrameUserRecord(models.Model):
     task = models.ForeignKey(Task, on_delete=models.CASCADE)
@@ -400,8 +391,6 @@ class DMSTrain(models.Model):
     unchecked_count = models.PositiveIntegerField()
     checked_count = models.PositiveIntegerField()
     need_modify_count = models.PositiveIntegerField()
-    priority = models.PositiveIntegerField()
-    priority_out = models.PositiveIntegerField()
     user = models.CharField(max_length=150)
     checker = models.CharField(max_length=150)
     current = models.BooleanField(default=False)
@@ -426,3 +415,13 @@ class UserWorkSpace(models.Model):
     username = models.CharField(max_length=150,default="")
     project = models.CharField(max_length=150,default="")
     packagename = models.CharField(max_length=1024,default="")
+
+
+class PackagePriority(models.Model):
+    packagename = models.CharField(max_length=1024,default="")
+    office_priority = models.PositiveIntegerField(default=0)
+    soho_priority = models.PositiveIntegerField(default=0)
+
+class TaskPackage(models.Model):
+    task = models.ForeignKey(Task, on_delete=models.CASCADE)
+    packagename = models.ForeignKey(PackagePriority, on_delete=models.PROTECT)

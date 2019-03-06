@@ -184,18 +184,11 @@ def get_packagename(request, project):
             elif project == 'dms_training':
                 tid_list = list(models.DMSTrain.objects.all().values_list('task_id', flat=True))
 
-            print('tid_list',tid_list)
-            packagename_list = list(models.Task.objects.filter(id__in=tid_list).values_list('packagename', flat=True))
-            print('packagename_list',packagename_list)
-            for packagename in packagename_list:
-                names = packagename.split(',')
-                print('names',names)
-                for name in names:
-                    if not name in nameList:
-                        nameList.append(name)
-                        print('nameList',nameList)
+        
+        packagenames = list(models.TaskPackage.objects.filter(task_id__in=tid_list).values_list('packagename__packagename', flat=True))
+        packagenames = list(set(packagenames))
 
-        response = {'packagenames':nameList}
+        response = {'packagenames':packagenames}
         return JsonResponse(response, safe=False)
     except Exception as e:
         print(str(e))

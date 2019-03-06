@@ -585,8 +585,10 @@ def _save_task_to_db(db_task, task_params):
     db_task.mode = task_params['mode']
     db_task.z_order = task_params['z_order']
     db_task.flipped = task_params['flip']
-    db_task.packagename = task_params['packagename']
-    print('db_task.packagename ',db_task.packagename )
+
+
+    #db_task.packagename = task_params['packagename']
+    #print('db_task.packagename ',db_task.packagename )
     # modify by eric, frame number start from 1.
     segment_step = task_params['segment'] - db_task.overlap
     for x in range(0, db_task.size, segment_step):
@@ -617,7 +619,10 @@ def _save_task_to_db(db_task, task_params):
     elif project == 'bsd_training':
         db_Project = models.BSDTrain()
         db_Project.keyframe_count = 0
-    elif project in ['fcw_testing', 'apacorner','dms_training']:
+    elif project == 'dms_training':
+        db_Project = models.DMSTrain()
+        db_Project.keyframe_count = 0
+    elif project in ['fcw_testing', 'apacorner']:#,'dms_training']:
 
         if project == 'fcw_testing':
             db_Project = models.FCWTest()
@@ -625,12 +630,12 @@ def _save_task_to_db(db_task, task_params):
             models.FCWTest_FrameUserRecord.objects.bulk_create(objs)
             objs = [models.FrameName(task=db_task,frame=i,name=get_realname(db_task,i)) for i in range(db_task.size)]
             models.FrameName.objects.bulk_create(objs)
-        elif project == 'dms_training':
-            db_Project = models.DMSTrain()
-            objs = [models.DMSTrain_FrameUserRecord(task=db_task,frame=i,packagename=task_params['packagename']) for i in range(db_task.size)]
-            models.DMSTrain_FrameUserRecord.objects.bulk_create(objs)
-            objs = [models.FrameName(task=db_task,frame=i,name=get_realname(db_task,i)) for i in range(db_task.size)]
-            models.FrameName.objects.bulk_create(objs)
+        # elif project == 'dms_training':
+        #     db_Project = models.DMSTrain()
+        #     objs = [models.DMSTrain_FrameUserRecord(task=db_task,frame=i,packagename=task_params['packagename']) for i in range(db_task.size)]
+        #     models.DMSTrain_FrameUserRecord.objects.bulk_create(objs)
+        #     objs = [models.FrameName(task=db_task,frame=i,name=get_realname(db_task,i)) for i in range(db_task.size)]
+        #     models.FrameName.objects.bulk_create(objs)
         elif project == 'apacorner':
             db_Project = models.APACorner()
             objs = [models.APACorner_FrameUserRecord(task=db_task,frame=i,packagename=task_params['packagename']) for i in range(db_task.size)]
@@ -644,10 +649,9 @@ def _save_task_to_db(db_task, task_params):
     db_Project.unchecked_count = 0
     db_Project.checked_count = 0
     db_Project.need_modify_count = 0
-    db_Project.priority = 0
-    db_Project.priority_out = 0
+    # db_Project.priority = 0
+    # db_Project.priority_out = 0
     db_Project.save()
-
 
     parsed_labels = _parse_labels(task_params['labels'])
     for label in parsed_labels:
@@ -662,7 +666,15 @@ def _save_task_to_db(db_task, task_params):
             db_attrspec.text = parsed_labels[label][attr]['text']
             db_attrspec.save()
 
+    db_package = models.PackagePriority.objects.get(packagename=task_params['packagename'])
+
+    taskPackage = models.TaskPackage()
+    taskPackage.task = db_task
+    taskPackage.packagename = db_package
+    taskPackage.save()
+
     db_task.save()
+    
 
 
 @transaction.atomic

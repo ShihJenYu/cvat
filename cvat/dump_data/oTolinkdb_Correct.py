@@ -591,10 +591,14 @@ class oToPostgreSQLData():
                 listVideoToGet_ID.append(nVideoID)
 
         dictUserToGet = {}
+        dictNotFinished = {}
+
         for sUser in self.i_dictUserRecord.keys():
             for nIndex in range(0, len(self.i_dictUserRecord[sUser]['TaskID'])):
                 nTaskId = self.i_dictUserRecord[sUser]['TaskID'][nIndex]
                 nframe = self.i_dictUserRecord[sUser]['frame'][nIndex]
+                bModify = self.i_dictUserRecord[sUser]["need_modify"][nIndex]
+                bChecked = self.i_dictUserRecord[sUser]["checked"][nIndex]
 
                 if nTaskId not in listVideoToGet_ID: #Skip Video for put in empty csv files
                     continue
@@ -604,6 +608,10 @@ class oToPostgreSQLData():
                 if nframe not in dictUserToGet[nTaskId].keys():
                     dictUserToGet[nTaskId][nframe] = []
                 dictUserToGet[nTaskId][nframe].append(sUser)
+
+                if (bModify or not bChecked):
+                    if nTaskId not in dictNotFinished.keys():
+                        dictNotFinished[nTaskId] = nframe    
 
         if a_listVideoDate is None: # Download all data no matter what video.
             a_listVideoDate = self.i_dictVideoID_indb.keys()          
@@ -621,7 +629,7 @@ class oToPostgreSQLData():
 
             if nVideoDate in self.i_dictVideoID_indb.keys():
                 nVideoID = self.i_dictVideoID_indb[str(nVideoDate)]
-
+            
             # Create Dir by VideoDate.
             if self.i_dictPackage_TaskID_Frame:
                 sCSVDir = os.path.join(a_sSavePath_csv, sPackageName, nVideoDate)
@@ -668,7 +676,7 @@ class oToPostgreSQLData():
                 fileCSV = open(sCSVPath, mode='w', newline='')
                 fileCSV = csv.writer(fileCSV)
                 fileCSV.writerow(colnames)
-
+                
                 for nID in self.i_dictBBox[nVideoID][nframe].keys():
 
                     sIndepend_ID += 1 # FOR LOCAL TOOL DEBUG
@@ -784,9 +792,9 @@ class oToPostgreSQLData():
                         sCSVDir = os.path.join(a_sSavePath_csv, nVideoDate)
 
                     if self.i_dictPackage_TaskID_Frame:
-                        if nVideoID not in self.i_dictPackage_TaskID_Frame[sPackageName].keys():
+                        if nTaskId not in self.i_dictPackage_TaskID_Frame[sPackageName].keys():
                             continue
-                        if nframe not in self.i_dictPackage_TaskID_Frame[sPackageName][nVideoID]:
+                        if nframe not in self.i_dictPackage_TaskID_Frame[sPackageName][nTaskId]:
                             continue
 
                     if not os.path.exists(sCSVDir):
@@ -795,8 +803,8 @@ class oToPostgreSQLData():
                     if self.i_dictFrame_Map is None:
                         sCSV_file_name = "key_%s_%04d.csv" %(nVideoDate, int(nframe)+1)
                     else:
-                        if nVideoID in self.i_dictFrame_Map.keys():
-                            nframe_inVideo = self.i_dictFrame_Map[nVideoID][nframe]
+                        if nTaskId in self.i_dictFrame_Map.keys():
+                            nframe_inVideo = self.i_dictFrame_Map[nTaskId][nframe]
                             sCSV_file_name = "key_%s_%04d.csv" %(nVideoDate, nframe_inVideo)
                         else:
                             sCSV_file_name = "key_%s_%04d.csv" %(nVideoDate, int(nframe)+1)
@@ -950,7 +958,7 @@ if __name__ == '__main__':
 
     # UserRecord #
 
-    Table_write_out_dir = r"/home/ericlou/CVAT/cvat_web/cvat/dump_data/Record"
+    Table_write_out_dir = r"C:/Users/user/Desktop/CVAT/dump_data/Record"
 
     oSQLData.Get_Video_link_ID()
     oSQLData.Annotation_time_record()
@@ -964,9 +972,9 @@ if __name__ == '__main__':
     oSQLData.Get_Video_link_ID()
     oSQLData.Get_Attribute_Id()
 
-    FCW_Setting_file = r"/home/ericlou/CVAT/cvat_web/cvat/dump_data/FCW_Setting_training20181210.ini"
-    CSV_input_dir = r"/home/ericlou/CVAT/cvat_web/cvat/dump_data/input.txt"
-    CSV_write_out_dir = r"/home/ericlou/CVAT/cvat_web/cvat/dump_data/Finished/"
+    FCW_Setting_file = r"C:/Users/user/Desktop/CVAT/dump_data/FCW_Setting_training20181210.ini"
+    CSV_input_dir = r"C:/Users/user/Desktop/CVAT/dump_data/input.txt"
+    CSV_write_out_dir = r"C:/Users/user/Desktop/CVAT/dump_data/Finished/"
     
     listVideo = []
     with open(CSV_input_dir, 'r') as file:
@@ -986,6 +994,7 @@ if __name__ == '__main__':
     if sPackage_Name:
         oSQLData.Get_Packnagme(a_sPackage_Name=sPackage_Name)
         listVideo = []
+
         for nTask_ID in list(oSQLData.i_dictPackage_TaskID_Frame[sPackage_Name].keys()):
             listVideo.append(oSQLData.i_dictIDVideo_indb[nTask_ID])
 

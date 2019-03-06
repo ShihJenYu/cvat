@@ -79,7 +79,7 @@ def MainTaskInfo(task, dst_dict):
     dst_dict["mode"] = task.mode.capitalize()
     dst_dict["name"] = task.name
     dst_dict["nickname"] = task.nickname
-    dst_dict["packagename"] = task.packagename
+    # dst_dict["packagename"] = task.packagename
     dst_dict["task_id"] = task.id
     dst_dict["created_date"] = task.created_date
     dst_dict["updated_date"] = task.updated_date
@@ -95,37 +95,41 @@ def get_realframe(tid, frame):
     realframe = os.path.splitext(realname)[0][-4:]
     return realframe
 
-def DetailTaskInfo(request, task, dst_dict):
-    scheme = request.scheme
-    host = request.get_host()
+def DetailTaskInfo(href, task, dst_dict):
+    # scheme = request.scheme
+    # host = request.get_host()
     dst_dict['segments'] = []
 
-    project = list(filter(None, request.path.split('/')))[1]
+    url_base = href.replace('dashboard/','')
+
+    project = href.split('/')[-1] #list(filter(None, request.path.split('/')))[-1]
 
     for segment in task.segment_set.all():
         for job in segment.job_set.all():
-            segment_url = "{0}://{1}/{2}/?id={3}".format(scheme, host, project, job.id)
+            #segment_url = "{0}://{1}/{2}/?id={3}".format(scheme, host, project, job.id)
             #url_fcw = "{0}://{1}/fcw?id={2}".format(scheme, host, job.id)
-            url_fcw = "{0}://{1}/{2}/".format(scheme, host, project)
-            url_fcw_key = "{0}://{1}/{2}/?id={3}&setKey=true".format(scheme, host, project, job.id)
+            #url_fcw = "{0}://{1}/{2}/".format(scheme, host, project)
+            #url_fcw_key = "{0}://{1}/{2}/?id={3}&setKey=true".format(scheme, host, project, job.id)
+            url = "{}/?id={}&setKey=true".format(url_base, job.id)
             
             dst_dict["segments"].append({
                 'id': job.id,
                 'start': segment.start_frame,
                 'stop': segment.stop_frame,
-                'url': segment_url,
-                'url_fcw': url_fcw,
-                'url_fcw_key': url_fcw_key,
+                'url': url
+                # 'url': segment_url,
+                # 'url_fcw': url_fcw,
+                # 'url_fcw_key': url_fcw_key,
             })
 
-    db_labels = task.label_set.prefetch_related('attributespec_set').all()
-    attributes = {}
-    for db_label in db_labels:
-        attributes[db_label.id] = {}
-        for db_attrspec in db_label.attributespec_set.all():
-            attributes[db_label.id][db_attrspec.id] = db_attrspec.text
+    # db_labels = task.label_set.prefetch_related('attributespec_set').all()
+    # attributes = {}
+    # for db_label in db_labels:
+    #     attributes[db_label.id] = {}
+    #     for db_attrspec in db_label.attributespec_set.all():
+    #         attributes[db_label.id][db_attrspec.id] = db_attrspec.text
 
-    dst_dict['labels'] = attributes
+    # dst_dict['labels'] = attributes
 
     db_Project = None
     db_keyFrame = None
@@ -145,8 +149,9 @@ def DetailTaskInfo(request, task, dst_dict):
         db_Project = DMSTrainModel.objects.get(task_id=task.id)
         db_keyFrame = models.DMSTrain_FrameUserRecord.objects.filter(task_id=task.id)
     
-    packagenames = task.packagename
-    packagenames = list(filter(None, packagenames.split(',')))
+    packagenames = list(models.TaskPackage.objects.filter(task_id=task.id).values_list('packagename__packagename', flat=True))
+    # packagenames = task.packagename
+    # packagenames = list(filter(None, packagenames.split(',')))
     if not 'default' in packagenames:
         packagenames.append('default')
 
@@ -159,6 +164,15 @@ def DetailTaskInfo(request, task, dst_dict):
         unchecked_frames = list(pack_keyFrame.filter(user_submit=True).values_list('frame', flat=True))
         unchecked_count = len(unchecked_frames)
         unchecked_realframes = [ get_realframe(task.id, frame) for frame in unchecked_frames ]
+        
+        if project in ['fcw_testing', 'apacorner', 'dms_training']:
+            if db_Project.user_submit == True:
+                undo_count = 0
+                unchecked_count = keyframe_count - checked_count - need_modify_count
+            else:
+                undo_count = keyframe_count - checked_count - need_modify_count
+                unchecked_count = 0
+
         packstage.append({'packagename': packagename,
                         'keyframe_count': keyframe_count,
                         'unchecked_count':unchecked_count,
@@ -166,19 +180,17 @@ def DetailTaskInfo(request, task, dst_dict):
                         'need_modify_count': need_modify_count,
                         'undo_count': keyframe_count - unchecked_count - checked_count - need_modify_count,
                         'unchecked_realframes': unchecked_realframes})
-    print('packstage',packstage)
 
     dst_dict['videostage'] = {
-        'keyframe_count': db_Project.keyframe_count,
-        'undo_count': db_Project.keyframe_count - db_Project.unchecked_count - db_Project.checked_count - db_Project.need_modify_count,
-        'unchecked_count': db_Project.unchecked_count,
-        'checked_count': db_Project.checked_count,
-        'need_modify_count': db_Project.need_modify_count,
+        # 'keyframe_count': db_Project.keyframe_count,
+        # 'undo_count': db_Project.keyframe_count - db_Project.unchecked_count - db_Project.checked_count - db_Project.need_modify_count,
+        # 'unchecked_count': db_Project.unchecked_count,
+        # 'checked_count': db_Project.checked_count,
+        # 'need_modify_count': db_Project.need_modify_count,
         'packstage': packstage,
-        'priority': db_Project.priority,
-        'priority_out': db_Project.priority_out,
+        # 'priority': db_Project.priority,
+        # 'priority_out': db_Project.priority_out,
     }
-    print('videostage',dst_dict['videostage'] )
 
 
 @login_required
@@ -206,27 +218,129 @@ def DashboardView(request):
 
         id_list = list(qs.values_list('task_id', flat=True))
 
-        tasks_query_set = list(TaskModel.objects.prefetch_related('segment_set').filter(id__in=id_list).order_by('-created_date').all())
-        if filter_name is not None:
-            tasks_query_set = list(filter(lambda x: filter_name.lower() in x.name.lower() and \
-                                                    filter_packagename.lower() in x.packagename.lower() and \
-                                                    filter_nickname.lower() in x.nickname.lower() and \
-                                                    filter_createdate in datetime.strftime(x.created_date, '%Y/%m/%d'), tasks_query_set))
-        data = []
-        for task in tasks_query_set:
-            task_info = {}
-            MainTaskInfo(task, task_info)
-            DetailTaskInfo(request, task, task_info)
-            data.append(task_info)
+        # tasks_query_set = list(TaskModel.objects.prefetch_related('segment_set').filter(id__in=id_list).order_by('-created_date').all())
+        # if filter_name is not None:
+        #     tasks_query_set = list(filter(lambda x: filter_name.lower() in x.name.lower() and \
+        #                                             # filter_packagename.lower() in x.packagename.lower() and \
+        #                                             filter_nickname.lower() in x.nickname.lower() and \
+        #                                             filter_createdate in datetime.strftime(x.created_date, '%Y/%m/%d'), tasks_query_set))
+        # data = []
+        # for task in tasks_query_set:
+        #     task_info = {}
+        #     MainTaskInfo(task, task_info)
+        #     DetailTaskInfo(request, task, task_info)
+        #     data.append(task_info)
+
+        packages = []
+        packages_names = []
+
+        taskPackages = models.TaskPackage.objects.filter(task_id__in=id_list)
+        for taskPackage in taskPackages:
+            name = taskPackage.packagename.packagename
+            print('name',name)
+            print('packages_names',packages_names)
+            if not name in packages_names:
+                packages_names.append(name)
+                packages.append({'name':name,
+                                'office':taskPackage.packagename.office_priority,
+                                'soho':taskPackage.packagename.soho_priority})
 
         return render(request, 'dashboard/dashboard.html', {
             'project': project,
-            'data': data,
+            'packages': packages,
             'max_upload_size': settings.LOCAL_LOAD_MAX_FILES_SIZE,
             'max_upload_count': settings.LOCAL_LOAD_MAX_FILES_COUNT,
             'share_path': os.getenv('CVAT_SHARE_URL', default=r'${cvat_root}/share'),
             'js_3rdparty': JS_3RDPARTY.get('dashboard', [])
         })
+    except Exception as e:
+        print(str(e))
+        return HttpResponseBadRequest(str(e))
+
+@login_required
+@permission_required('engine.add_task', raise_exception=True)
+def newDashboardView(request):
+    try:
+
+        params = request.POST.dict()
+        packagename = params['packagename']
+        project = params['project']
+        href = params['href']
+
+        print('sssssssssssss')
+        print('packagename',packagename)
+        print('project',project)
+        print('href',href)
+
+        package_id = models.PackagePriority.objects.get(packagename=packagename).id
+        print('package_id',package_id)
+        tasks_per_package = models.TaskPackage.objects.filter(packagename_id=package_id)
+
+        data = []
+        for task_per_package in tasks_per_package:
+            task_info = {}
+            MainTaskInfo(task_per_package.task, task_info)
+            DetailTaskInfo(href, task_per_package.task, task_info)
+            data.append(task_info)
+
+        return JsonResponse({'project':project, 'data':data}, safe=False)
+
+    except Exception as e:
+        print(str(e))
+        return HttpResponseBadRequest(str(e))
+
+@login_required
+@permission_required('engine.add_task', raise_exception=True)
+def setPackagePriority(request):
+    try:
+        print('setPackagePriority start')
+        
+        params = request.POST.dict()
+        project = params['project']
+        packagename = params['packagename']
+        office_priority = params['office_priority']
+        soho_priority = params['soho_priority']
+
+        print('packagename',packagename)
+        print('office_priority',office_priority)
+        print('soho_priority',soho_priority)
+
+        package = models.PackagePriority.objects.get(packagename=packagename)
+        package.office_priority = office_priority
+        package.soho_priority = soho_priority
+        package.save()
+
+        print('setPackagePriority save')
+
+        qs = None
+        id_list = None
+        if project == 'fcw_training':
+            id_list = list(FCWTrainModel.objects.values_list('task_id', flat=True))
+        elif project == 'fcw_testing':
+            id_list = list(FCWTestModel.objects.values_list('task_id', flat=True))
+        elif project == 'apacorner':
+            id_list = list(APACornerModel.objects.values_list('task_id', flat=True))
+        elif project == 'bsd_training':
+            id_list = list(BSDTrainModel.objects.values_list('task_id', flat=True))
+        elif project == 'dms_training':
+            id_list = list(DMSTrainModel.objects.values_list('task_id', flat=True))
+
+        packages = []
+        packages_names = []
+
+        taskPackages = models.TaskPackage.objects.filter(task_id__in=id_list)
+        for taskPackage in taskPackages:
+            name = taskPackage.packagename.packagename
+            print('name',name)
+            print('packages_names',packages_names)
+            if not name in packages_names:
+                packages_names.append(name)
+                packages.append({'name':name,
+                                'office':taskPackage.packagename.office_priority,
+                                'soho':taskPackage.packagename.soho_priority})
+
+        return JsonResponse({'packages':packages}, safe=False)
+
     except Exception as e:
         print(str(e))
         return HttpResponseBadRequest(str(e))
