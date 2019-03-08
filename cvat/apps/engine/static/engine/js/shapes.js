@@ -2651,11 +2651,12 @@ class ShapeView extends Listener {
                 // modify by jeff
                 let attrByType = [];
                 let attrTmp = {};
+
+                let attrIndexTmp = 13;
                 for (let attrId in attributes) {
                     let attrInfo = window.cvat.labelsInfo.attrInfo(attrId);
                     attrByType[attrInfo.type] = attrByType[attrInfo.type] || [];
                     attrByType[attrInfo.type].push(attrId);
-                    let attrIndexTmp = 11;
                     
                     // sort, show att order  
                     if(attrInfo.name == "Type"){
@@ -2681,6 +2682,11 @@ class ShapeView extends Listener {
                         attrTmp[9]=attrId;
                     }else if(attrInfo.name == "小標"){
                         attrTmp[10]=attrId;
+                    }// use dms version
+                    else if(attrInfo.name == "Pitch"){
+                        attrTmp[11]=attrId;
+                    }else if(attrInfo.name == "Key_Face"){
+                        attrTmp[12]=attrId;
                     }
                     else{
                         attrIndexTmp += 1;

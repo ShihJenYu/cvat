@@ -95,38 +95,58 @@ def parseFile(project=None, xml_file_path=None):
         return objects
 
     elif project == 'dms_training':
+        tree = ET.parse(xml_file_path)
+        root = tree.getroot()
+
+        faces = root.findall("face")
+
+        group_id = 1
+        group_order = 1
         objects = []
-        object_elements = {}
-        for event, elem in ET.iterparse(xml_file_path,events=['start','end']):
-            if event == 'start':
-                if elem.tag in ['face', 'eye_left', 'eye_right', 'brow_left', 'brow_right', 'nose', 'mouth', 'cheek']:
-                    if object_elements == {}:
-                        pass
-                    else:
-                        objects.append(object_elements)
-                    object_elements = {}
-                    object_elements['id'] = ''
-                    object_elements['name'] = elem.tag
-                    object_elements['points'] = []
-                    object_elements['attributes'] = {'rotation':'', 'occluded':''}
-                    object_elements['grouping'] = []
-                elif elem.tag == 'id':
-                    object_elements['id'] =  elem.text if elem.text else ''
-                elif elem.tag == 'rotation':
-                    object_elements['attributes']['rotation'] = rotationMap(elem.text) if elem.text else ''
-                elif elem.tag == 'occluded':
-                    object_elements['attributes']['occluded'] = occludedMap(elem.text) if elem.text else ''
-                elif elem.tag == 'x':
-                    point_x = int(elem.text) if elem.text else None
-                elif elem.tag == 'y':
-                    point_y = int(elem.text) if elem.text else None
-                    object_elements['points'].append('{},{}'.format(point_x, point_y))
-            if event == 'end':
-                if elem.tag in ['face', 'eye_left', 'eye_right', 'brow_left', 'brow_right', 'nose', 'mouth', 'cheek']:
-                    if object_elements != None and object_elements != {}:
-                        objects.append(object_elements)
-                        object_elements = {}
-            elem.clear()
+        for face in faces:
+            if face.find("rotation").text == '-1':
+                continue
+            face_obj = {}
+            face_obj['points'] = []
+            face_obj['attributes'] = {'rotation':''}
+            
+            face_obj['id'] = face.find("id").text
+            face_obj['name'] = face.tag
+            face_obj['attributes']['rotation'] = rotationMap(face.find("rotation").text)
+
+            face_obj['grouping'] = ['{}-{}'.format(group_id, group_order)]
+            
+            points = face.findall("points/pt")
+            for point in points:
+                point_str = '{},{}'.format(point.find("x").text, point.find("y").text)
+                face_obj['points'].append(point_str)
+
+            objects.append(face_obj)
+            group_order += 1
+
+            features = face.findall("features/*")
+            for feature in features:
+                feature_obj = {}
+                feature_obj['points'] = []
+                feature_obj['attributes'] = {'occluded':''}
+
+                feature_obj['id'] = feature.find("id").text
+                feature_obj['name'] = feature.tag
+                feature_obj['attributes']['occluded'] = occludedMap(feature.find("occluded").text)
+
+                feature_obj['grouping'] = ['{}-{}'.format(group_id, group_order)]
+
+                points = feature.findall("points/pt")
+                for point in points:
+                    point_str = '{},{}'.format(point.find("x").text, point.find("y").text)
+                    feature_obj['points'].append(point_str)
+
+                objects.append(feature_obj)
+                group_order += 1
+
+            group_id += 1
+            group_order = 1
+
         return objects
 
 def occludedMap(value):

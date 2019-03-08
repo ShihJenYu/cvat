@@ -30,7 +30,7 @@ from django.db import transaction
 from django.db.models import Q, Max, Min, F
 from django.core.exceptions import ObjectDoesNotExist
 
-from . import annotation, task, parseXML, models
+from . import annotation, task, parseXML, read_DMS_CSV, models
 from cvat.settings.base import JS_3RDPARTY
 from cvat.apps.authentication.decorators import login_required
 from requests.exceptions import RequestException
@@ -424,10 +424,10 @@ def upload_keyframe(request):
 @login_required
 @transaction.atomic
 @permission_required('engine.add_task', raise_exception=True)
-def upload_XML(request):
+def upload_Label(request):
     """ use labelme xml, in apa ldws """
 
-    print('doing xml')
+    print('doing label')
     try:
         params = request.POST.dict()
         listLabelfile = request.POST.getlist('data')
@@ -547,7 +547,7 @@ def upload_XML(request):
                     else:
                         print('no xmls_list')
             elif params['project'] == 'dms_training':
-                xmls_list = glob.glob('{}/*.{}'.format(abspath,'xml'))
+                xmls_list = glob.glob('{}/*.{}'.format(abspath,'csv'))
 
                 if xmls_list:
                     tid = None
@@ -591,7 +591,7 @@ def upload_XML(request):
                     for xml in xmls_list:
                         print('xml',xml)
                         nFrameNumber = dictRealToFrame[int(os.path.splitext(os.path.basename(xml))[0][-4:])]
-                        packagename = os.path.basename(os.path.dirname(xml))
+                        packagename = os.path.basename(os.path.dirname(os.path.dirname(xml)))
                         if nFrameNumber in listTaskKeyframeExist:
                             print(nFrameNumber, 'was keyframe')
                             not_do_paths.append({'video':xml, 'frame':str(nFrameNumber), 'reason':'frame was exist'})
@@ -627,8 +627,8 @@ def upload_XML(request):
                         db_frameUserRecord.save()
 
 
-                        file_objects = parseXML.parseFile(params['project'], xml)
-                        print('xml',xml)
+                        file_objects = read_DMS_CSV.parseFile(params['project'], xml)
+                        print('xml',xml,file_objects)
                         dictData = {"boxes":[],"box_paths":[],"points":[],"points_paths":[],
                                     "polygons":[],"polygon_paths":[],"polylines":[],"polyline_paths":[]}
                         
@@ -643,12 +643,14 @@ def upload_XML(request):
                         n_zorder = 1
                         for obj in file_objects:
                             obj_id = int(obj['id'])
-                            obj_label_name = EN_to_CH[obj['name']]
+                            obj_label_name = obj['type']
                             isBox = True if obj_label_name == '臉' else False
+
+                            print('in this')
 
                             item = {}
                             if isBox:
-                                pointTL, pointBR = obj['points']
+                                pointTL, pointBR = obj['points'].split(' ')
                                 pointTL_x, pointTL_y = pointTL.split(',')
                                 pointBR_x, pointBR_y = pointBR.split(',')
                                 item['xtl'] = float(pointTL_x)
@@ -657,21 +659,38 @@ def upload_XML(request):
                                 item['ybr'] = float(pointBR_y)
                             else:
                                 # doing
-                                item['points'] = " ".join(obj['points'])
+                                item['points'] = obj['points']
 
                             item['occluded'] = False
                             item['z_order'] = n_zorder
                             n_zorder += 1
 
                             item['attributes'] = []
+                            
+                            if obj['rotation'] != '-1':
+                                item['attributes'].append({'id':attributesID[obj_label_name]['rotation'][0], 'value':obj['rotation']})
+                                item['label_id'] = attributesID[obj_label_name]['rotation'][1]
 
-                            for obj_atts in obj['attributes']:
-                                if obj['attributes'][obj_atts] != '':
-                                    item['attributes'].append({'id':attributesID[obj_label_name][obj_atts][0], 'value':obj['attributes'][obj_atts]})
-                                    item['label_id'] = attributesID[obj_label_name][obj_atts][1]
+                            if obj['pitch'] != '-1':
+                                item['attributes'].append({'id':attributesID[obj_label_name]['pitch'][0], 'value':obj['pitch']})
+                                item['label_id'] = attributesID[obj_label_name]['pitch'][1]
+                            
+                            if obj['occluded'] != '-1':
+                                item['attributes'].append({'id':attributesID[obj_label_name]['occluded'][0], 'value':obj['occluded']})
+                                item['label_id'] = attributesID[obj_label_name]['occluded'][1]
+
+                            if obj['key_face'] != '-1':
+                                item['attributes'].append({'id':attributesID[obj_label_name]['key_face'][0], 'value':obj['key_face']})
+                                item['label_id'] = attributesID[obj_label_name]['key_face'][1]
+
+
+                            # for obj_atts in obj['attributes']:
+                            #     if obj['attributes'][obj_atts] != '':
+                            #         item['attributes'].append({'id':attributesID[obj_label_name][obj_atts][0], 'value':obj['attributes'][obj_atts]})
+                            #         item['label_id'] = attributesID[obj_label_name][obj_atts][1]
 
                             item['group_id'] = 0
-                            item['grouping'] = '' #.join(file_objects[s_obj_id]['grouping'])
+                            item['grouping'] = obj['grouping']
                             item['obj_id'] = obj_id
                             item['frame'] = nFrameNumber
 
@@ -891,13 +910,13 @@ def create_task(request):
 
         _ProjectModel = get_ProjectModel(params['project'])
 
-        if models.PackagePriority.objects.filter(packagename=params['task_packagename']).count() > 0:
-            print('Packagename was exist')
-            raise Exception('Packagename was exist')
-        else:
-            packagePriority = models.PackagePriority()
-            packagePriority.packagename = params['task_packagename']
-            packagePriority.save()
+        # if models.PackagePriority.objects.filter(packagename=params['task_packagename']).count() > 0:
+        #     print('Packagename was exist')
+        #     raise Exception('Packagename was exist')
+        # else:
+        #     packagePriority = models.PackagePriority()
+        #     packagePriority.packagename = params['task_packagename']
+        #     packagePriority.save()
 
         if params['storage'] == 'share':
             data_list = request.POST.getlist('data')

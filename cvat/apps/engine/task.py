@@ -666,12 +666,11 @@ def _save_task_to_db(db_task, task_params):
             db_attrspec.text = parsed_labels[label][attr]['text']
             db_attrspec.save()
 
-    db_package = models.PackagePriority.objects.get(packagename=task_params['packagename'])
-
-    taskPackage = models.TaskPackage()
-    taskPackage.task = db_task
-    taskPackage.packagename = db_package
-    taskPackage.save()
+    # db_package = models.PackagePriority.objects.get(packagename=task_params['packagename'])
+    # taskPackage = models.TaskPackage()
+    # taskPackage.task = db_task
+    # taskPackage.packagename = db_package
+    # taskPackage.save()
 
     db_task.save()
     

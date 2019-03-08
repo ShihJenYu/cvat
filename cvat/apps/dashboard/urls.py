@@ -23,7 +23,7 @@ urlpatterns = [
     path('set/tasks/priority', views2.set_tasks_priority),
     path('set/task/<int:tid>/nickname/<str:nickname>', views2.set_task_nickname),
     path('insert_images', views2.insert_images),
-    path('upload_XML', views2.upload_XML),
+    path('upload_XML', views2.upload_Label),
 
     path('get/tasks/from/package', views.newDashboardView),
     path('set/package/priority', views.setPackagePriority),
