@@ -581,7 +581,7 @@ def upload_Label(request):
 
                     listTaskKeyframeExist = list(_FrameUserRecordModel.objects.filter(task_id=tid).values_list('frame', flat=True))
 
-                    EN_to_CH = {'face':'臉', 'nose':'鼻子', 'mouth':'嘴吧', 'cheek':'臉頰',
+                    EN_to_CH = {'face':'臉', 'nose':'鼻子', 'mouth':'嘴巴', 'cheek':'臉頰',
                                 'eye_left':'左眼睛', 'eye_right':'右眼睛', 'brow_left':'左眉毛', 'brow_right':'右眉毛'}
 
                     #add package
@@ -594,7 +594,7 @@ def upload_Label(request):
                         print('a_csv',a_csv)
                         frame_str = os.path.splitext(os.path.basename(a_csv))[0][-4:]
                         nFrameNumber = dictRealToFrame[int(frame_str)]
-                        packagename = os.path.basename(os.path.dirname(os.path.dirname(xml)))
+                        packagename = os.path.basename(os.path.dirname(os.path.dirname(a_csv)))
                         if nFrameNumber in listTaskKeyframeExist:
                             print(nFrameNumber, 'was keyframe')
                             not_do_paths.append({'path':a_csv, 'frame':str(frame_str), 'index':str(nFrameNumber), 'reason':'frame was exist'})
@@ -645,12 +645,12 @@ def upload_Label(request):
                         n_zorder = 1
                         for obj in file_objects:
                             obj_id = int(obj['id'])
-                            obj_label_name = obj['type']
+                            obj_label_name = obj['Type']
                             isBox = True if obj_label_name == '臉' else False
 
                             item = {}
                             if isBox:
-                                pointTL, pointBR = obj['points'].split(' ')
+                                pointTL, pointBR = obj['Points'].split(' ')
                                 pointTL_x, pointTL_y = pointTL.split(',')
                                 pointBR_x, pointBR_y = pointBR.split(',')
                                 item['xtl'] = float(pointTL_x)
@@ -659,7 +659,7 @@ def upload_Label(request):
                                 item['ybr'] = float(pointBR_y)
                             else:
                                 # doing
-                                item['points'] = obj['points']
+                                item['points'] = obj['Points']
 
                             item['occluded'] = False
                             item['z_order'] = n_zorder
@@ -667,20 +667,20 @@ def upload_Label(request):
 
                             item['attributes'] = []
                             
-                            if obj['rotation'] != '-1':
-                                item['attributes'].append({'id':attributesID[obj_label_name]['rotation'][0], 'value':obj['rotation']})
+                            if obj['Rotation'] != '-1':
+                                item['attributes'].append({'id':attributesID[obj_label_name]['rotation'][0], 'value':obj['Rotation']})
                                 item['label_id'] = attributesID[obj_label_name]['rotation'][1]
 
-                            if obj['pitch'] != '-1':
-                                item['attributes'].append({'id':attributesID[obj_label_name]['pitch'][0], 'value':obj['pitch']})
+                            if obj['Pitch'] != '-1':
+                                item['attributes'].append({'id':attributesID[obj_label_name]['pitch'][0], 'value':obj['Pitch']})
                                 item['label_id'] = attributesID[obj_label_name]['pitch'][1]
                             
-                            if obj['occluded'] != '-1':
-                                item['attributes'].append({'id':attributesID[obj_label_name]['occluded'][0], 'value':obj['occluded']})
+                            if obj['Occluded'] != '-1':
+                                item['attributes'].append({'id':attributesID[obj_label_name]['occluded'][0], 'value':obj['Occluded']})
                                 item['label_id'] = attributesID[obj_label_name]['occluded'][1]
 
-                            if obj['key_face'] != '-1':
-                                item['attributes'].append({'id':attributesID[obj_label_name]['key_face'][0], 'value':obj['key_face']})
+                            if obj['Key_face'] != '-1':
+                                item['attributes'].append({'id':attributesID[obj_label_name]['key_face'][0], 'value':obj['Key_face']})
                                 item['label_id'] = attributesID[obj_label_name]['key_face'][1]
 
 

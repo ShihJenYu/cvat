@@ -38,11 +38,11 @@ def keyfaceMap(value):
     else:
         return '-1'
 
-EN_to_CH = {'face':'臉', 'nose':'鼻子', 'mouth':'嘴吧', 'cheek':'臉頰',
+EN_to_CH = {'face':'臉', 'nose':'鼻子', 'mouth':'嘴巴', 'cheek':'臉頰',
             'eye_left':'左眼睛', 'eye_right':'右眼睛', 'brow_left':'左眉毛', 'brow_right':'右眉毛'}
         
 
-def parseFile(project=None, xml_file_path=None):
+def parseFile(project=None, csv_file_path=None):
     objects = []
     ignoreFace_ids = []
 
@@ -50,12 +50,12 @@ def parseFile(project=None, xml_file_path=None):
     dict_groupOrders = {}
 
     group_id = 1
-    with open(xml_file_path, newline='') as csvfile:
+    with open(csv_file_path, newline='') as csvfile:
         rows = csv.DictReader(csvfile)
         for row in rows:
             objects.append(row)
-            if row['type'] == 'face':
-                if row['rotation'] == '-1':
+            if row['Type'] == 'face':
+                if row['Rotation'] == '-1':
                     ignoreFace_ids.append(row['id'])
                 else:
                     if not row['id'] in dict_groupId:
@@ -64,24 +64,24 @@ def parseFile(project=None, xml_file_path=None):
                         group_id += 1
     response = []
     for obj in objects:
-        if obj['link_id'] in ignoreFace_ids or obj['id'] in ignoreFace_ids:
+        if obj['link_ID'] in ignoreFace_ids or obj['id'] in ignoreFace_ids:
             continue
         
         if obj['id'] in dict_groupId:
             gid = dict_groupId[obj['id']]
             obj['grouping'] = '{}-{}'.format(gid,len(dict_groupOrders[gid])+1)
             dict_groupOrders[gid].append(obj['id'])
-        elif obj['link_id'] in dict_groupId:
-            gid = dict_groupId[obj['link_id']]
+        elif obj['link_ID'] in dict_groupId:
+            gid = dict_groupId[obj['link_ID']]
             obj['grouping'] = '{}-{}'.format(gid,len(dict_groupOrders[gid])+1)
             dict_groupOrders[gid].append(obj['id'])
 
-        obj['occluded'] = occludedMap(obj['occluded'])
-        obj['rotation'] = rotationMap(obj['rotation'])
-        obj['pitch'] = pitchMap(obj['pitch'])
-        obj['key_face'] = keyfaceMap(obj['key_face'])
+        obj['Occluded'] = occludedMap(obj['Occluded'])
+        obj['Rotation'] = rotationMap(obj['Rotation'])
+        obj['Pitch'] = pitchMap(obj['Pitch'])
+        obj['Key_face'] = keyfaceMap(obj['Key_face'])
 
-        obj['type'] = EN_to_CH[obj['type']]
+        obj['Type'] = EN_to_CH[obj['Type']]
 
         response.append(obj)
 

@@ -1107,6 +1107,7 @@ function UploadCSVRequest(oData, onSuccessRequest, onError) {
             }
             else {
                 let message = 'CSV files some error look F12';
+                console.log(response);
                 showMessage(message);
                 onSuccessRequest();
             }
@@ -1150,6 +1151,8 @@ function InsertImagesRequest(oData, onSuccessRequest, onError) {
 
 function updatePackagePriority(rows) {
     $('#Package_Table tbody').empty();
+    $('#input_setPackage').val('default');
+    $('#input_searchPackage').val('default');
     $('#input_setPackage option').remove();
     $('#input_searchPackage option').remove();
     

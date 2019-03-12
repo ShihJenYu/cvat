@@ -278,7 +278,7 @@ function buildAnnotationUI(job, shapeData, loadJobEvent) {
         let labels = window.cvat.labelsInfo.labels();
 
         function getPointSize(label_text) {
-            if (label_text.includes('眼睛') || label_text.includes('嘴吧')) {
+            if (label_text.includes('眼睛') || label_text.includes('嘴巴')) {
                 return 4;
             } else if (label_text.includes('眉毛') || label_text.includes('鼻子') || label_text.includes('臉頰')) {
                 return 3;

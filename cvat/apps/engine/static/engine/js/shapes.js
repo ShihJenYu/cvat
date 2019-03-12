@@ -141,7 +141,7 @@ function mapColor_DMS(type_value){
     else if(value == ("右眼睛")){
         return {shape: "#84cad8",ui: "#84cad8"};
     }
-    else if(value == ("嘴吧")){
+    else if(value == ("嘴巴")){
         return {shape: "#f7ad67",ui: "#f7ad67"};
     }
     else {
@@ -2227,7 +2227,7 @@ class ShapeView extends Listener {
                 let label_str = labels[labelId];
                 for (let i = 0; i < this._uis.shape.node.points.length; i++) {
                     let offset = TEXT_MARGIN * (1/window.cvat.player.geometry.scale);
-                    if ((label_str.includes("眼睛") && i==1) || (label_str.includes("嘴吧") && i==2)){
+                    if ((label_str.includes("眼睛") && i==1) || (label_str.includes("嘴巴") && i==2)){
                         offset = -TEXT_MARGIN * (1/window.cvat.player.geometry.scale);
                     }
 
@@ -3674,7 +3674,7 @@ class ShapeView extends Listener {
                         if (PROJECT == 'dms_training') {
 
                             let offset = TEXT_MARGIN*revscale;
-                            if ((label_str.includes("眼睛") && index==1) || (label_str.includes("嘴吧") && index==2)){
+                            if ((label_str.includes("眼睛") && index==1) || (label_str.includes("嘴巴") && index==2)){
                                 offset = -TEXT_MARGIN*revscale - textBBox.width * revscale;
                             }
 
