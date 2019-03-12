@@ -337,7 +337,7 @@ def upload_keyframe(request):
                 print('sVideoName',sVideoName)
                 db_task = models.Task.objects.select_for_update().get(id__in=project_tids, name=sVideoName)
             except ObjectDoesNotExist:
-                no_update_video.append({'video':sVideoName, 'frame':['all'], 'reason':'video not exist'})
+                no_update_video.append({'video':sVideoName, 'frame':'all', 'reason':'video not exist'})
                 continue
 
             #add package
@@ -375,16 +375,16 @@ def upload_keyframe(request):
                         dictRealToFrame[realframe] = frame
             print("--- create dictRealToFrame cost %s seconds ---" % (time.time() - start_time))
 
-            for nFrameNumber in dictKeyframe[sVideoName]:
+            for nFrameStr in dictKeyframe[sVideoName]:
                 if sVideoName == 'packagename':
                     continue
 
                 listTaskKeyframeExist = list(_FrameUserRecordModel.objects.filter(task_id=tid).values_list('frame', flat=True))
-                nFrameNumber = dictRealToFrame[int(nFrameNumber)]
+                nFrameNumber = dictRealToFrame[int(nFrameStr)]
                 
                 if nFrameNumber in listTaskKeyframeExist:
                     print(nFrameNumber, 'Aleady is keyframe')
-                    no_update_video.append({'video':sVideoName, 'frame':str(nFrameNumber), 'reason':'frame was exist'})
+                    no_update_video.append({'video':sVideoName, 'frame':str(nFrameStr), 'index':str(nFrameNumber), 'reason':'frame was exist'})
                     continue
                 
                 
@@ -442,7 +442,7 @@ def upload_Label(request):
         project_tids = list(_ProjectModel.objects.all().values_list('task_id', flat=True))
 
         print('listLabelfile',listLabelfile)
-
+        not_do_paths = []
         for sLabelpath in listLabelfile:
             relpath = os.path.normpath(sLabelpath).lstrip('/')
             if '..' in relpath.split(os.path.sep):
@@ -455,7 +455,7 @@ def upload_Label(request):
             print('target_paths',relpath)
 
             
-            not_do_paths = []
+            
             if params['project'] == 'apacorner':
                 Camaras = ['TopLeft','TopLeft_full','TopRight','TopRight_full','TopRear','TopRear_full']
                 for camara in Camaras:
@@ -549,9 +549,9 @@ def upload_Label(request):
                     else:
                         print('no xmls_list')
             elif params['project'] == 'dms_training':
-                xmls_list = glob.glob('{}/*.{}'.format(abspath,'csv'))
+                csvs_list = glob.glob('{}/*.{}'.format(abspath,'csv'))
 
-                if xmls_list:
+                if csvs_list:
                     tid = None
                     videoname = os.path.basename(abspath)
                     print(videoname)
@@ -560,7 +560,7 @@ def upload_Label(request):
                         db_task = models.Task.objects.select_for_update().get(name=videoname, id__in=project_tids)
                         tid = db_task.id
                     except ObjectDoesNotExist:
-                        not_do_paths.append({'path':videoname, 'reason':'not found video in data'})
+                        not_do_paths.append({'path':abspath, 'reason':'not found video in data'})
                         continue
 
                     dictRealToFrame = {} # {realframe:linkframe}
@@ -584,19 +584,20 @@ def upload_Label(request):
                     EN_to_CH = {'face':'臉', 'nose':'鼻子', 'mouth':'嘴吧', 'cheek':'臉頰',
                                 'eye_left':'左眼睛', 'eye_right':'右眼睛', 'brow_left':'左眉毛', 'brow_right':'右眉毛'}
 
-                                #add package
+                    #add package
 
                     history_packagenames = list(db_task.taskpackage_set.all().values_list('packagename__packagename', flat=True))
                     
 
-                    print('has xmls_list')
-                    for xml in xmls_list:
-                        print('xml',xml)
-                        nFrameNumber = dictRealToFrame[int(os.path.splitext(os.path.basename(xml))[0][-4:])]
+                    print('has csvs_list')
+                    for a_csv in csvs_list:
+                        print('a_csv',a_csv)
+                        frame_str = os.path.splitext(os.path.basename(a_csv))[0][-4:]
+                        nFrameNumber = dictRealToFrame[int(frame_str)]
                         packagename = os.path.basename(os.path.dirname(os.path.dirname(xml)))
                         if nFrameNumber in listTaskKeyframeExist:
                             print(nFrameNumber, 'was keyframe')
-                            not_do_paths.append({'video':xml, 'frame':str(nFrameNumber), 'reason':'frame was exist'})
+                            not_do_paths.append({'path':a_csv, 'frame':str(frame_str), 'index':str(nFrameNumber), 'reason':'frame was exist'})
                             continue
                         if not packagename in history_packagenames:
                             try:
@@ -619,7 +620,7 @@ def upload_Label(request):
                         db_frameName = models.FrameName()
                         db_frameName.task = db_task
                         db_frameName.frame = nFrameNumber
-                        db_frameName.name = os.path.splitext(os.path.basename(xml))[0]
+                        db_frameName.name = os.path.splitext(os.path.basename(a_csv))[0]
                         db_frameName.save()
 
                         db_frameUserRecord = new_FrameUserRecordObject(params['project'])
@@ -629,8 +630,7 @@ def upload_Label(request):
                         db_frameUserRecord.save()
 
 
-                        file_objects = read_DMS_CSV.parseFile(params['project'], xml)
-                        print('xml',xml,file_objects)
+                        file_objects = read_DMS_CSV.parseFile(params['project'], a_csv)
                         dictData = {"boxes":[],"box_paths":[],"points":[],"points_paths":[],
                                     "polygons":[],"polygon_paths":[],"polylines":[],"polyline_paths":[]}
                         
@@ -647,8 +647,6 @@ def upload_Label(request):
                             obj_id = int(obj['id'])
                             obj_label_name = obj['type']
                             isBox = True if obj_label_name == '臉' else False
-
-                            print('in this')
 
                             item = {}
                             if isBox:
@@ -686,11 +684,6 @@ def upload_Label(request):
                                 item['label_id'] = attributesID[obj_label_name]['key_face'][1]
 
 
-                            # for obj_atts in obj['attributes']:
-                            #     if obj['attributes'][obj_atts] != '':
-                            #         item['attributes'].append({'id':attributesID[obj_label_name][obj_atts][0], 'value':obj['attributes'][obj_atts]})
-                            #         item['label_id'] = attributesID[obj_label_name][obj_atts][1]
-
                             item['group_id'] = 0
                             item['grouping'] = obj['grouping']
                             item['obj_id'] = obj_id
@@ -702,7 +695,7 @@ def upload_Label(request):
                                 dictData["boxes"].append(item)
                             else:
                                 dictData["points"].append(item)
-                        print('xml parse done')
+                        print('a_csv parse done')
 
                         db_project = _ProjectModel.objects.select_for_update().get(task_id=tid)
                         db_project.keyframe_count = _FrameUserRecordModel.objects.filter(task_id=tid).count()
@@ -710,15 +703,23 @@ def upload_Label(request):
 
 
                         if request.user.groups.filter(name='admin').exists():
-                            print('Save xml Job', "Tid:",tid, " Frame:", nFrameNumber, 'dictData ', dictData)
+                            print('Save a_csv Job', "Tid:",tid, " Frame:", nFrameNumber, 'dictData ', dictData)
                             annotation.save_job(tid, dictData, oneFrameFlag=True,frame=nFrameNumber)
-                            print('Save xml done')
+                            print('Save a_csv done')
                         else:
                             # annotation.save_job(nTid, dictData,oneFrameFlag=True,frame=current_frame)
                             print("You cant save if you're not admin.")
                             pass
                 else:
-                    print('no xmls_list')
+                    not_do_paths.append({'path':abspath, 'reason':'not found csv'})
+                    print('no csvs_list')
+        
+        if len(not_do_paths):
+            return JsonResponse({'data':not_do_paths})
+        else:
+            print("Upload End.")
+            return JsonResponse({'data':"success"})
+
     except Exception as e:
         print('error',str(e))
         return HttpResponseBadRequest(str(e))

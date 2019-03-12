@@ -510,6 +510,7 @@ function setupTaskCreator() {
             () => {
                 CSVMessage.css('color', 'red');
                 CSVMessage.text("Please contact enginer");
+                submitCSVCreate.prop('disabled', false);
             });
     });
 
@@ -1099,8 +1100,13 @@ function UploadCSVRequest(oData, onSuccessRequest, onError) {
         contentType: false,
         processData: false,
         success: function(response) {
-            if (response){
+            if (response.data == "success"){
                 let message = 'CSV files successfully uploaded';
+                showMessage(message);
+                onSuccessRequest();
+            }
+            else {
+                let message = 'CSV files some error look F12';
                 showMessage(message);
                 onSuccessRequest();
             }
