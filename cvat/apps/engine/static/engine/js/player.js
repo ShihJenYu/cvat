@@ -934,6 +934,9 @@ class PlayerView {
 
         // add by jeff
         this._isKeyFrame.unbind('click').on('click', () => {
+            let a=true;
+            if (a==true) {$('#isKeyFrame').prop('checked',!$('#isKeyFrame').prop('checked')); return;}
+
             if(!['fcw_training','bsd_training'].includes(window.location.pathname.split('/')[1])){
                 $('#isKeyFrame').prop('checked',true);
                 return;

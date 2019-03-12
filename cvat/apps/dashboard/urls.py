@@ -26,7 +26,9 @@ urlpatterns = [
     path('upload_XML', views2.upload_Label),
 
     path('get/tasks/from/package', views.newDashboardView),
+    path('get/tasks/from/search', views.searchDashboardView),
     path('set/package/priority', views.setPackagePriority),
+    path('get/package/all/priority', views.getAllPackagePriority),
 
     # add by Eric
     path('upload_keyframe', views2.upload_keyframe),

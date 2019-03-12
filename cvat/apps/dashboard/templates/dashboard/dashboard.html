@@ -88,56 +88,122 @@
             </table>
         </center>
 
-        <center>
-                <!-- <input type="button" id="seletcAllTask" value="seletcAllTask"/>
-                <input type="button" id="cancelAllTask" value="cancelAllTask"/>
-                <input type="number" id="priority" min="0" max="50" value="0">
-                <input type="button" id="setVideoPriority" value="save priority"/>
-                <input type="number" id="priority_out" min="0" max="50" value="0">
-                <input type="button" id="setVideoPriority_OUT" value="save out priority"/> -->
+        <div>
+            <div class="container-fluid">
+                <div class="row">
+                    <div class="col-5">
+                        <h3>Set Priority:</h3>
+                        <div id="set_priority_response" class="alert" role="alert">
+                            <div class="input-group">
+                                <div class="input-group-prepend" style="margin-right: 0px;">
+                                    <span class="input-group-text" id="basic-addon1">Package:</span>
+                                </div>
+                                
+                                <select id="input_setPackage" class="selectpicker package_selectpicker" data-live-search="true" data-size="10" multiple data-actions-box="true">
+                                    {% for package in packages %}
+                                    <option value={{package.name}}>{{package.name}}</option>
+                                    {% endfor %}
+                                </select>
 
-                <br>
-                <div id="package_priority_response" class="alert" role="alert">
-                    <label for="input_package">Package:</label>
-                    <input id="input_package" type="text">
-                    
-                    <label for="input_package">Office_Priority:</label>
-                    <input type="number" id="office_priority" min="0" max="50" value="0">
-                    <label for="input_package">SOHO_Priority:</label>
-                    <input type="number" id="soho_priority" min="0" max="50" value="0">
-                    <button type="button" id="package_priority_btn" class="btn btn-primary">Set</button>
-                    <label id="package_priority_response_txt"></label>
+                                <div class="input-group-append" style="margin-left: 0px;">
+                                    <span class="input-group-text" id="basic-addon1">Office:</span>
+                                </div>
+                                <input type="number" id="office_priority" class="form-control col-1"  min="0" max="50" value="0">
+
+                                <div class="input-group-append">
+                                    <span class="input-group-text" id="basic-addon1">SOHO:</span>
+                                </div>
+                                <input type="number" id="soho_priority" class="form-control col-1"  min="0" max="50" value="0">
+
+                                <div class="input-group-append">
+                                    <button type="button" id="set_priority_btn" class="btn btn-outline-secondary">Set</button>
+                                </div>
+                            </div>
+                            <label id="set_priority_response_txt"></label>
+                        </div>
+                    </div>
+                    <div class="col-5">
+                        <h3>Search Task:</h3>
+                        <div id="search_task_response" class="alert" role="alert">
+                            <div class="input-group">
+                                <div class="input-group-prepend" style="margin-right: 0px;">
+                                    <span class="input-group-text" id="basic-addon1">Package:</span>
+                                </div>
+                                
+                                <select id="input_searchPackage" class="selectpicker package_selectpicker" data-live-search="true" data-size="10" multiple data-actions-box="true">
+                                    {% for package in packages %}
+                                    <option value={{package.name}}>{{package.name}}</option>
+                                    {% endfor %}
+                                </select>
+
+                                <div class="input-group-append" style="margin-left: 0px;">
+                                    <span class="input-group-text" id="basic-addon1">TaskName:</span>
+                                </div>
+                                <input type="text" id="input_searchTaskName" class="form-control col-4">
+
+                                <div class="input-group-append">
+                                    <button type="button" id="search_task_btn" class="btn btn-outline-secondary">Search</button>
+                                </div>
+                            </div>
+                            <label id="search_task_response_txt"></label>
+                        </div>
+                    </div>
+
                 </div>
-                <br>
-        </center>
+            </div>
+        </div>
         <hr><br>
 
         <center>
             <div class="container-fluid">
                 <div class="row">
-                    <div class="col-2">
-                        <table id="Package_Table" class="table table-striped table-hover ">
+                    <div class="col-3">
+                        <!-- <div class="form-group form-inline" style="margin-bottom: 0.4rem;">
+                            <label class="control-label" for="search_packagepriority">Search:</label>
+                            <input type="text" class="form-control form-control-sm col-5" id="search_packagepriority" style="margin-left: 0.3rem;">
+                        </div> -->
+                        <table id="Package_Table" class="table table-hover" style="word-break: break-all;">
                             <thead>
-                                <tr>
-                                    <th scope="col">Package</th>
-                                    <th scope="col">Office_Priority</th>
-                                    <th scope="col">SOHO_Priority</th>
+                                <tr class="d-flex">
+                                    <th class="col-6" scope="col">
+                                        <input type="text" class="form-control form-control-sm" id="search_packagename" placeholder="packagename...">
+                                    </th>
+                                    <th class="col-3" scope="col">
+                                        <input type="text" class="form-control form-control-sm" id="search_packageoffcie" placeholder="priority...">
+                                    </th>
+                                    <th class="col-3" scope="col">
+                                        <input type="text" class="form-control form-control-sm" id="search_packagesoho" placeholder="priority...">
+                                    </th>
                                 </tr>
                             </thead>
-                            <tbody>
+                            <thead>
+                                <tr class="d-flex">
+                                    <th class="col-6" scope="col">Package
+                                        <button id="reload_package_btn" class="btn btn-sm btn-light" style="
+                                            background-color: transparent;
+                                            border-top-width: 0px;
+                                            padding-top: 0px;
+                                            padding-bottom: 0px;
+                                            border-bottom-width: 0px;"> &#x21bb; 
+                                        </button>
+                                    </th>
+                                    <th class="col-3" scope="col">Office</th>
+                                    <th class="col-3" scope="col">SOHO</th>
+                                </tr>
+                            </thead>
+                            <tbody style="height: 400px; overflow: auto; display: block;">
                                 {% for package in packages %}
-                                <tr>
-                                    <td style="cursor: pointer;">{{package.name}}</td>
-                                    <td>{{package.office}}</td>
-                                    <td>{{package.soho}}</td>
+                                <tr class="d-flex">
+                                    <td class="col-6">{{package.name}}</td>
+                                    <td class="col-3">{{package.office}}</td>
+                                    <td class="col-3">{{package.soho}}</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
                         </table>
-                    </div>
-                    <div class="col-1"></div>
+                    </div>                    
                     <div class="col-8">
-                        <table id="Task_Table" class="table table-hover">
+                        <table id="Task_Table" class="table table-hover" style="word-break: keep-all;">
                             <thead>
                                 <tr>
                                     <th scope="col">TaskName</th>
@@ -163,114 +229,134 @@
 
     <div id="dashboardCreateModal" class="modal hidden">
         <form id="dashboardCreateContent" class="modal-content" autocomplete="on" onsubmit="return false">
-            <center>
-                <label class="semiBold h1"> Task Configuration </label>
-            </center>
-
-            <table style="width: 100%; text-align: left;">
-                <tr>
-                    <td style="width: 25%"> <label class="regular h2"> Name: </label> </td>
-                    <td> <input type="text" id="dashboardNameInput" class="regular" style="width: 90%"/> </td>
-                </tr>
-                <tr>
-                    <td style="width: 25%"> <label class="regular h2"> Package: </label> </td>
-                    <td> <input type="text" id="dashboardPackageInput" class="regular" style="width: 90%"/> </td>
-                </tr>
-                <tr>
-                    <td> <label class="regular h2"> Labels: </label> </td>
-                    <td> <input type="text" id="dashboardLabelsInput" class="regular" style="width: 90%" title='
-Example:
-car @select=color:blue,red,black ~checkbox=parked:true
-@text=plate:"" @select=model:volvo,mazda,bmw
-~radio=quality:good,bad
-
-Specification:
-<prefix>checkbox=id:true/false
-<prefix>radio=id:name1,name2,...
-<prefix>number=id:min,max,step
-<prefix>text=id:"default value"
-<prefix>select=id:value1,value2,...
-
-<prefix> can be @ for unique properties and ~ for properties
-which can change its value during lifetime of the object.
-Default value for all elements is the first value after ":".
-
-For "select" and "radio" types the special value is available: "__undefined__".
-Specify the value FIRST if the attribute should be annotated explicitly.
-Example: @select=race:__undefined__,skip,asian,black,caucasian,other'/>
-                </td>
-                </tr>
-                <tr>
-                    <td> <label class="regular h2"> Bug Tracker: </label> </td>
-                    <td> <input type="text" id="dashboardBugTrackerInput" class="regular" style="width: 90%", placeholder="Please specify full URL"/> </td>
-                </tr>
-                <tr>
-                    <td> <label class="regular h2"> Source: </label> </td>
-                    <td>
-                        <input id="dashboardLocalSource" type="radio" name="sourceType" value="local" checked=true/> <label for="dashboardLocalSource" class="regular h2" for="localSource"> Local </label>
-                        <br> <input id="dashboardShareSource" type="radio" name="sourceType" value="share"/> <label for="dashboardShareSource" class="regular h2" for="shareSource"> Share </label>
-                    </td>
-                </tr>
-                <tr>
-                    <td>
-                        <label class="regular h2"> Flip images </label>
-                    </td>
-                    <td>
-                        <input type="checkbox" id="dashboardFlipImages"/>
-                    </td>
-                </tr>
-                <tr>
-                    <td>
-                        <label class="regular h2"> Z-Order </label>
-                    </td>
-                    <td>
-                        <input type="checkbox" id="dashboardZOrder"/>
-                    </td>
-                </tr>
-                <tr>
-                        <td>
-                            <label class="regular h2"> Overlap Size </label>
-                        </td>
-                        <td>
-                            <input type="number" id="dashboardOverlap" class="regular" max="50000" min="0" value="0" disabled=true/>
-                            <input type="checkbox" id="dashboardCustomOverlap" title="Custom overlap size"/>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>
-                            <label class="regular h2"> Segment Size </label>
-                        </td>
-                        <td>
-                            <input type="number" id="dashboardSegmentSize" class="regular" max="50000" min="100" value="5000" disabled=true/>
-                            <input type="checkbox" id="dashboardCustomSegment" title="Custom segment size"/>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>
-                            <label class="regular h2"> Image Quality </label>
-                        </td>
-                        <td>
-                            <input type="number" id="dashboardImageQuality" class="regular" style="width: 4.5em;" max="95" min="1" value="50" disabled=true/>
-                            <input type="checkbox" id="dashboardCustomQuality" title="Custom image quality"/>
-                        </td>
-                    </tr>
-            </table>
-
-
-            <div style="text-align: left;">
-                <div>
-                    <button id="dashboardSelectFiles" class="regular h2"> Select Files </button>
-                    <label id="dashboardFilesLabel" class="regular h2" style="margin-left: 10px"> No Files </label>
-                    <input id="dashboardLocalFileSelector" type="file" style="display: none" multiple/>
-                </div>
-            </div>
-            <div style="width: 100%; height: 14%; padding-top: 10px;">
-                <div style="float: left; height: 50px;  overflow: auto; width: 63%; height: auto;">
-                    <label id="dashboardCreateTaskMessage" class="regular h2 selectable" style="float:left;">  </label>
-                </div>
-                <div style="float: right; width: 35%; height: 50px;">
-                    <button id="dashboardCancelTask" class="regular h2"> Cancel </button>
-                    <button id="dashboardSubmitTask" class="regular h2"> Submit </button>
+            <div class="container">
+                <div class="row">
+                    <div class="col-6">
+                        <center>
+                            <label class="semiBold h1"> Task Configuration </label>
+                        </center>
+            
+                        <table style="width: 100%; text-align: left;">
+                            <tr>
+                                <td style="width: 25%"> <label class="regular h2"> Name: </label> </td>
+                                <td> <input type="text" id="dashboardNameInput" class="regular" style="width: 90%"/> </td>
+                            </tr>
+                            <tr>
+                                <td style="width: 25%"> <label class="regular h2"> Package: </label> </td>
+                                <td> <input type="text" id="dashboardPackageInput" class="regular" style="width: 90%"/> </td>
+                            </tr>
+                            <tr>
+                                <td> <label class="regular h2"> Labels: </label> </td>
+                                <td> <input type="text" id="dashboardLabelsInput" class="regular" style="width: 90%" title='
+            Example:
+            car @select=color:blue,red,black ~checkbox=parked:true
+            @text=plate:"" @select=model:volvo,mazda,bmw
+            ~radio=quality:good,bad
+            
+            Specification:
+            <prefix>checkbox=id:true/false
+            <prefix>radio=id:name1,name2,...
+            <prefix>number=id:min,max,step
+            <prefix>text=id:"default value"
+            <prefix>select=id:value1,value2,...
+            
+            <prefix> can be @ for unique properties and ~ for properties
+            which can change its value during lifetime of the object.
+            Default value for all elements is the first value after ":".
+            
+            For "select" and "radio" types the special value is available: "__undefined__".
+            Specify the value FIRST if the attribute should be annotated explicitly.
+            Example: @select=race:__undefined__,skip,asian,black,caucasian,other'/>
+                            </td>
+                            </tr>
+                            <tr>
+                                <td> <label class="regular h2"> Bug Tracker: </label> </td>
+                                <td> <input type="text" id="dashboardBugTrackerInput" class="regular" style="width: 90%", placeholder="Please specify full URL"/> </td>
+                            </tr>
+                            <tr>
+                                <td> <label class="regular h2"> Source: </label> </td>
+                                <td>
+                                    <input id="dashboardLocalSource" type="radio" name="sourceType" value="local" checked=true/> <label for="dashboardLocalSource" class="regular h2" for="localSource"> Local </label>
+                                    <br> <input id="dashboardShareSource" type="radio" name="sourceType" value="share"/> <label for="dashboardShareSource" class="regular h2" for="shareSource"> Share </label>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <label class="regular h2"> Flip images </label>
+                                </td>
+                                <td>
+                                    <input type="checkbox" id="dashboardFlipImages"/>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <label class="regular h2"> Z-Order </label>
+                                </td>
+                                <td>
+                                    <input type="checkbox" id="dashboardZOrder"/>
+                                </td>
+                            </tr>
+                            <tr>
+                                    <td>
+                                        <label class="regular h2"> Overlap Size </label>
+                                    </td>
+                                    <td>
+                                        <input type="number" id="dashboardOverlap" class="regular" max="50000" min="0" value="0" disabled=true/>
+                                        <input type="checkbox" id="dashboardCustomOverlap" title="Custom overlap size"/>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <label class="regular h2"> Segment Size </label>
+                                    </td>
+                                    <td>
+                                        <input type="number" id="dashboardSegmentSize" class="regular" max="50000" min="100" value="5000" disabled=true/>
+                                        <input type="checkbox" id="dashboardCustomSegment" title="Custom segment size"/>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <label class="regular h2"> Image Quality </label>
+                                    </td>
+                                    <td>
+                                        <input type="number" id="dashboardImageQuality" class="regular" style="width: 4.5em;" max="95" min="1" value="50" disabled=true/>
+                                        <input type="checkbox" id="dashboardCustomQuality" title="Custom image quality"/>
+                                    </td>
+                                </tr>
+                        </table>
+            
+            
+                        <div style="text-align: left;">
+                            <div>
+                                <button id="dashboardSelectFiles" class="regular h2"> Select Files </button>
+                                <label id="dashboardFilesLabel" class="regular h2" style="margin-left: 10px"> No Files </label>
+                                <input id="dashboardLocalFileSelector" type="file" style="display: none" multiple/>
+                            </div>
+                        </div>
+                        <div style="width: 100%; height: 14%; padding-top: 10px;">
+                            <div style="float: left; height: 50px;  overflow: auto; width: 63%; height: auto;">
+                                <label id="dashboardCreateTaskMessage" class="regular h2 selectable" style="float:left;">  </label>
+                            </div>
+                            <div style="float: right; width: 35%; height: 50px;">
+                                <button id="dashboardCancelTask" class="regular h2"> Cancel </button>
+                                <button id="dashboardSubmitTask" class="regular h2"> Submit </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="alert alert-warning" role="alert">
+                            This is Pass!
+                            <textarea id="CreatePassResponse" class="form-control" aria-label="With textarea" style="margin-top: 0px; margin-bottom: 0px; height: 89px;" readonly=""></textarea>
+                        </div>
+                        <div class="alert alert-success" role="alert">
+                            This is Success!
+                            <textarea id="CreateSuccessResponse" class="form-control" aria-label="With textarea" style="margin-top: 0px; margin-bottom: 0px; height: 89px;" readonly=""></textarea>
+                        </div>
+                        <div class="alert alert-danger" role="alert">
+                            This is Error!
+                            <textarea id="CreateErrorResponse" class="form-control" aria-label="With textarea" style="margin-top: 0px; margin-bottom: 0px; height: 89px;" readonly=""></textarea>
+                        </div>
+                    </div>
                 </div>
             </div>
         </form>

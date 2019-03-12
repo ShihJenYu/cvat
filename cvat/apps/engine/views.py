@@ -386,6 +386,8 @@ def upload_keyframe(request):
                     print(nFrameNumber, 'Aleady is keyframe')
                     no_update_video.append({'video':sVideoName, 'frame':str(nFrameNumber), 'reason':'frame was exist'})
                     continue
+                
+                
 
                 db_frameUserRecord = new_FrameUserRecordObject(project)
                 db_frameUserRecord.task = db_task
@@ -922,6 +924,8 @@ def create_task(request):
             data_list = request.POST.getlist('data')
             data_list.sort(key=len)
             createList = []
+            createNameList = []
+            createTidList = []
             passList = []
 
             for share_path in data_list:
@@ -934,6 +938,7 @@ def create_task(request):
 
                 print('abspath',abspath)
                 print('target_paths',relpath)
+                
 
 
                 if params['project'] in ['fcw_training','bsd_training','dms_training']:
@@ -943,11 +948,15 @@ def create_task(request):
 
                         tids = _ProjectModel.objects.all().values_list('task_id', flat=True)
                         exist_count = models.Task.objects.filter(name=task_name, id__in=tids).count()
+                        print('tids,exist_count',tids,exist_count)
                         if exist_count == 1:
-                            passList.append(task_name)
+                            passList.append(abspath)
                             continue
                         if exist_count > 1:
-                            passList.append(task_name + ' more_{}'.format(exist_count))
+                            passList.append(abspath + ', more_{}'.format(exist_count))
+                            continue
+                        if task_name in createNameList:
+                            passList.append(abspath + ', is exist in your created task_name: {}'.format(task_name))
                             continue
 
                         params['task_name'] = task_name
@@ -965,7 +974,9 @@ def create_task(request):
                         params['SOURCE_PATHS'] = source_paths
                         params['TARGET_PATHS'] = target_paths
                         task.create(db_task.id, params)
-                        createList.append(task_name)
+                        createList.append(task_name + ', ' + abspath)
+                        createNameList.append(task_name)
+                        createTidList.append(db_task.id)
                 
                 if params['project'] == 'apacorner':
 
@@ -986,10 +997,13 @@ def create_task(request):
 
                             print('exist_count',exist_count)
                             if exist_count == 1:
-                                passList.append(task_name)
+                                passList.append(os.path.join(abspath,camara))
                                 continue
                             if exist_count > 1:
-                                passList.append(task_name + ' more_{}'.format(exist_count))
+                                passList.append(os.path.join(abspath,camara) + ' more_{}'.format(exist_count))
+                                continue
+                            if task_name in createNameList:
+                                passList.append(os.path.join(abspath,camara) + ', is exist in your created task_name: {}'.format(task_name))
                                 continue
 
                             params['task_name'] = task_name
@@ -1007,9 +1021,11 @@ def create_task(request):
                             params['SOURCE_PATHS'] = source_paths
                             params['TARGET_PATHS'] = target_paths
                             task.create(db_task.id, params)
-                            createList.append(task_name)
+                            createList.append(os.path.join(abspath,camara))
+                            createNameList.append(task_name)
+                            createTidList.append(db_task.id)
 
-            return JsonResponse({'createList':createList,'passList':passList})
+            return JsonResponse({'createList':{'names':createList,'tids':createTidList},'passList':passList})
 
         else:
 
@@ -1039,7 +1055,7 @@ def create_task(request):
             params['TARGET_PATHS'] = target_paths
 
             task.create(db_task.id, params)
-            return JsonResponse({'tid': db_task.id})
+            return JsonResponse({'createList':{'tids':[db_task.id]}})
 
         
     except Exception as exc:
@@ -1057,6 +1073,7 @@ def check_task(request, tid):
     try:
         global_logger.info("check task #{}".format(tid))
         response = task.check(tid)
+        response['tid'] = tid
     except Exception as e:
         global_logger.error("cannot check task #{}".format(tid), exc_info=True)
         return HttpResponseBadRequest(str(e))

@@ -147,11 +147,15 @@ function setupTaskCreator() {
     let setVideoPriority = $('#setVideoPriority');
     let setVideoPriority_OUT = $('#setVideoPriority_OUT');
 
-    let package_priority_btn = $('#package_priority_btn');
-    let input_package = $('#input_package');
+    let input_setPackage = $('#input_setPackage');
+    let set_priority_btn = $('#set_priority_btn');
     let office_priority = $('#office_priority');
     let soho_priority = $('#soho_priority');
-
+    let input_searchPackage = $('#input_searchPackage');
+    let input_searchTaskName = $('#input_searchTaskName');
+    let search_task_btn = $('#search_task_btn');
+    let reload_package_btn = $('#reload_package_btn');
+    
 
     let name = nameInput.prop('value');
     let packagename = packageInput.prop('value');
@@ -166,6 +170,16 @@ function setupTaskCreator() {
     let files = [];
     // add by eric
     let keyframefiles = [];
+
+    $("#search_packagename").on("keyup", function() {
+        searchPackage();
+    });
+    $("#search_packageoffcie").on("keyup", function() {
+        searchPackage();
+    });
+    $("#search_packagesoho").on("keyup", function() {
+        searchPackage();
+    });
 
     $('#Task_Table').DataTable({
         "columns":[
@@ -195,101 +209,54 @@ function setupTaskCreator() {
         RemoveTaskRequest();
     } );
 
-    let mTable = document.getElementById("Package_Table");
-    if (mTable != null) {
-        for (var i = 0; i < mTable.rows.length; i++) {
-            mTable.rows[i].cells[0].onclick = function () {
-                getTaskFromPackage(this);
-            };
-        }
-    }
+    // let mTable = document.getElementById("Package_Table");
+    // if (mTable != null) {
+    //     for (var i = 2; i < mTable.rows.length; i++) {
+    //         mTable.rows[i].cells[0].onclick = function () {
+    //             getTaskFromSearch(this.innerHTML, '');
+    //         };
+    //     }
+    // }
 
-    function getTaskFromPackage(tableCell) {
-        let search_package = tableCell.innerHTML;
-        let searchData = new FormData();
-        searchData.append('project', window.location.pathname.split('/')[2]);
-        searchData.append('packagename', search_package);
-        searchData.append('href', window.location.href);
-        $.ajax({
-            url: 'get/tasks/from/package',
-            type: 'POST',
-            data: searchData,
-            contentType: false,
-            processData: false,
-            success: function(response) {
-                console.log(response);
-                let datas = response.data;
-                let t = $('#Task_Table').DataTable();
-                t.clear().draw();
-                for (let data of datas) 
-                {
-                    let name = '<a href="'+ data.segments[0].url + '" target="_blank" title=' + data.id + '>'+data.name+'</a>'
-                    for (let packstage of data.videostage.packstage) {
-                        let packagename = packstage.packagename;
-                        let keyframe_count = packstage.keyframe_count;
-                        let undo_count = packstage.undo_count;
-                        let checked_count = packstage.checked_count;
-                        let need_modify_count = packstage.need_modify_count;
-                        let unchecked_count = packstage.unchecked_count;
-                        let unchecked_realframes = packstage.unchecked_realframes;
-                        let unchecked_realframes_select = '';
-                        for(let unchecked_realframe of unchecked_realframes) {
-                            unchecked_realframes_select += '<option>' + unchecked_realframe + '</option>';
-                        }
-                        unchecked_realframes_select = '<select>' + unchecked_realframes_select + '</select>';
+    reload_package_btn.on('click', function() {
+        getAllPackage();
+    });
 
-                        t.row.add([name, packagename, keyframe_count, undo_count, 
-                            checked_count, need_modify_count, unchecked_count, unchecked_realframes_select,null
-                        ]).draw( false );
-                    }
-                }
-            },
-            error: function(response) {
-                console.log(response);
-            }
-        });
-    }
-
-    package_priority_btn.on('click', function() {
-        let input_package_val = input_package.prop('value');
+    set_priority_btn.on('click', function() {
+        let input_package_val = input_setPackage.val().toString();
         let office_priority_val = office_priority.prop('value');
         let soho_priority_val = soho_priority.prop('value');
 
-        let priorityData = new FormData();
-        priorityData.append('project', window.location.pathname.split('/')[2]);
-        priorityData.append('packagename', input_package_val);
-        priorityData.append('office_priority', office_priority_val);
-        priorityData.append('soho_priority', soho_priority_val);
-        $.ajax({
-            url: 'set/package/priority',
-            type: 'POST',
-            data: priorityData,
-            contentType: false,
-            processData: false,
-            success: function(response) {
-                console.log(response);
-                updatePackagePriority(response.packages);
-                $('#package_priority_response').removeClass('alert-danger');
-                $('#package_priority_response').addClass('alert-success');
-                $('#package_priority_response_txt').text('success');
-            },
-            error: function(response) {
-                console.log(response);
-                $('#package_priority_response').removeClass('alert-success');
-                $('#package_priority_response').addClass('alert-danger');
-                $('#package_priority_response_txt').text('error');
-            }
-        });
+        if(input_package_val == "" || office_priority_val > 50 || soho_priority_val > 50) {
+            console.log("check your inputs");
+            $('#set_priority_response').removeClass('alert-success');
+            $('#set_priority_response').addClass('alert-danger');
+            $('#set_priority_response_txt').text('check your inputs');
+        }
+        else {
+            let priorityData = new FormData();
+            priorityData.append('project', window.location.pathname.split('/')[2]);
+            priorityData.append('packagenames', input_package_val);
+            priorityData.append('office_priority', office_priority_val);
+            priorityData.append('soho_priority', soho_priority_val);
+            setPackagePriority(priorityData);
+        }
     });
 
-    function updatePackagePriority(rows) {
-        $('#Package_Table tbody').empty();
-        for(let row of rows) {
-            $('#Package_Table tbody').append('<tr><td style="cursor: pointer;">' + row.name
-                                            + '</td><td>' + row.office
-                                            + '</td><td>' + row.soho + '</td></tr>');
+
+    search_task_btn.on('click', function() {
+        let input_package_val = input_searchPackage.val().toString();
+        let input_taskname_val = input_searchTaskName.prop("value");
+        if(input_package_val == "123456789") {
+            console.log("check your inputs");
+            $('#search_task_response').removeClass('alert-success');
+            $('#search_task_response').addClass('alert-danger');
+            $('#search_task_response_txt').text('check your inputs');
         }
-    }
+        else {
+            getTaskFromSearch(input_package_val, input_taskname_val);
+        }
+    });
 
 
 
@@ -887,6 +854,10 @@ function setPriorityRequest(selectTasks, inCompany , priority, successCallback)
 }
 
 function createTaskRequest(oData, onSuccessRequest, onSuccessCreate, onError, onComplete, onUpdateStatus) {
+    $('#CreatePassResponse').text('');
+    $('#CreateSuccessResponse').text('');
+    $('#CreateErrorResponse').text('');
+
     $.ajax({
         url: 'create/task',
         type: 'POST',
@@ -894,6 +865,7 @@ function createTaskRequest(oData, onSuccessRequest, onSuccessCreate, onError, on
         contentType: false,
         processData: false,
         success: function(data) {
+            console.log(data);
             onSuccessRequest();
             requestCreatingStatus(data);
         },
@@ -904,38 +876,89 @@ function createTaskRequest(oData, onSuccessRequest, onSuccessCreate, onError, on
     });
 
     function requestCreatingStatus(data) {
+        let createTids = data.createList.tids;
+        let createNames = data.createList.names;
+        let passList= data.passList;
         let tid = data.tid;
         let request_frequency_ms = 1000;
         let done = false;
 
-        let requestInterval = setInterval(function() {
-            $.ajax({
-                url: 'check/task/' + tid,
-                success: receiveStatus,
-                error: function(data) {
-                    clearInterval(requestInterval);
-                    onComplete();
-                    onError(data.responseText);
-                }
-            });
-        }, request_frequency_ms);
+        let all_done = 0;
+        let myIntervals = new Object();
+
+
+        for(let tid of createTids) {
+            let requestInterval = setInterval(function() {
+                $.ajax({
+                    url: 'check/task/' + tid,
+                    success: receiveStatus,
+                    error: function(data) {
+                        clearInterval(requestInterval);
+                        onComplete();
+                        onError(data.responseText);
+                        console.log("check task: " + data.tid + " is error :" + data.responseText);
+                    }
+                });
+            }, request_frequency_ms);
+            myIntervals[tid] = [false, requestInterval];
+        }
+
+        let pass_tmp = $('#CreatePassResponse').text();
+        for(let passname of passList) {
+            if(pass_tmp!='') {
+                pass_tmp += "\n";
+            }
+            pass_tmp += passname;
+        }
+        $('#CreatePassResponse').text(pass_tmp);
+
+        if(createTids.length==0) {
+            onComplete();
+            // 關掉建立的窗 然後 查當前上傳的影片
+            $('#dashboardCreateTaskMessage').css('color', 'green');
+            $('#dashboardCreateTaskMessage').text('Successful request! Done..');
+        }
 
         function receiveStatus(data) {
-            if (done) return;
+            if (myIntervals[data.tid][0]) return;
             if (data['state'] == 'created') {
-                done = true;
-                clearInterval(requestInterval);
-                onComplete();
-                onSuccessCreate();
+                myIntervals[data.tid][0] = true;
+                clearInterval(myIntervals[data.tid][1]);
+                //onComplete();
+                all_done++;
+                //onSuccessCreate();
+                let tmp = $('#CreateSuccessResponse').text();
+                if(tmp!='') {
+                    tmp += "\n";
+                }
+                tmp += createNames[createTids.indexOf(data.tid)].split(', ')[1];
+                $('#CreateSuccessResponse').text(tmp);
+                console.log("task: " + data.tid + " is created success");
+                
             }
             else if (data['state'] == 'error') {
-                done = true;
-                clearInterval(requestInterval);
-                onComplete();
-                onError(data.stderr);
+                myIntervals[data.tid][0] = true;
+                clearInterval(myIntervals[data.tid][1]);
+                //onComplete();
+                all_done++;
+                //onError(data.stderr);
+                let tmp = $('#CreateErrorResponse').text();
+                if(tmp!='') {
+                    tmp += "\n";
+                }
+                tmp += createNames[createTids.indexOf(data.tid)].split(', ')[1];
+                $('#CreateErrorResponse').text(tmp);
+                console.log("task: " + data.tid + " is error :" + data.stderr);
             }
-            else if (data['state'] == 'started' && 'status' in data) {
+            else if (data['state'] == 'started' && 'status' in data && all_done < createTids.length) {
                 onUpdateStatus(data['status']);
+            }
+            
+            if(all_done == createTids.length ) {
+                onComplete();
+                // 關掉建立的窗 然後 查當前上傳的影片
+                $('#dashboardCreateTaskMessage').css('color', 'green');
+                $('#dashboardCreateTaskMessage').text('Successful request! Done..');
             }
         }
     }
@@ -1115,6 +1138,132 @@ function InsertImagesRequest(oData, onSuccessRequest, onError) {
             let message = 'Error';
             showMessage(response);
             onError();
+        }
+    });
+}
+
+function updatePackagePriority(rows) {
+    $('#Package_Table tbody').empty();
+    $('#input_setPackage option').remove();
+    $('#input_searchPackage option').remove();
+    
+    for(let row of rows) {
+        $('#Package_Table tbody').append('<tr class="d-flex"><td class="col-6">' + row.name
+                                        + '</td><td class="col-3">' + row.office
+                                        + '</td><td class="col-3">' + row.soho + '</td></tr>');
+        $('#input_setPackage').append("<option value='" + row.name + "'>" + row.name + "</option>");
+        $('#input_searchPackage').append("<option value='" + row.name + "'>" + row.name + "</option>");
+    }
+    $('#input_setPackage').selectpicker('refresh');
+    $('#input_searchPackage').selectpicker('refresh');
+}
+
+function searchPackage() {
+    let search_packagename_val = $("#search_packagename").val().toLowerCase();
+    let search_packageoffcie_val = $("#search_packageoffcie").val().toLowerCase();
+    let search_packagesoho_val = $("#search_packagesoho").val().toLowerCase();
+    
+    let a,b,c;
+    $("#Package_Table tbody tr").filter(function() {
+        a = $(this).find("td").eq(0).text().toLowerCase().indexOf(search_packagename_val) > -1;
+        b = $(this).find("td").eq(1).text().toLowerCase().indexOf(search_packageoffcie_val) > -1;
+        c = $(this).find("td").eq(2).text().toLowerCase().indexOf(search_packagesoho_val) > -1;
+        $(this).children().toggle(a && b && c);
+    });
+}
+
+function getAllPackage() {
+    $("#search_packagename").val("");
+    $("#search_packageoffcie").val("");
+    $("#search_packagesoho").val("");
+
+    let searchData = new FormData();
+    searchData.append('project', window.location.pathname.split('/')[2]);
+    $.ajax({
+        url: 'get/package/all/priority',
+        type: 'POST',
+        data: searchData,
+        contentType: false,
+        processData: false,
+        success: function(response) {
+            console.log(response);
+            updatePackagePriority(response.packages);
+            $('#reload_package_btn').text(String.fromCharCode(0x21bb) + ' Success');
+            setTimeout(function(){ $('#reload_package_btn').text(String.fromCharCode(0x21bb)) }, 1500);
+        },
+        error: function(response) {
+            console.log(response);
+            $('#reload_package_btn').text(String.fromCharCode(0x21bb) + ' Error');
+            setTimeout(function(){ $('#reload_package_btn').text(String.fromCharCode(0x21bb)) }, 1500);
+        }
+    });
+}
+
+function setPackagePriority(priorityData) {
+    $.ajax({
+        url: 'set/package/priority',
+        type: 'POST',
+        data: priorityData,
+        contentType: false,
+        processData: false,
+        success: function(response) {
+            console.log(response);
+            updatePackagePriority(response.packages);
+            $('#set_priority_response').removeClass('alert-danger');
+            $('#set_priority_response').addClass('alert-success');
+            $('#set_priority_response_txt').text('success');
+        },
+        error: function(response) {
+            console.log(response);
+            $('#set_priority_response').removeClass('alert-success');
+            $('#set_priority_response').addClass('alert-danger');
+            $('#set_priority_response_txt').text('error');
+        }
+    });
+}
+
+function getTaskFromSearch(packagenames, taskname) {
+    let searchData = new FormData();
+    searchData.append('project', window.location.pathname.split('/')[2]);
+    searchData.append('href', window.location.href);
+    searchData.append('packagenames', packagenames);
+    searchData.append('taskname', taskname);
+    $.ajax({
+        url: 'get/tasks/from/search',
+        type: 'POST',
+        data: searchData,
+        contentType: false,
+        processData: false,
+        success: function(response) {
+            console.log(response);
+            let datas = response.data;
+            let t = $('#Task_Table').DataTable();
+            t.clear().draw();
+            for (let data of datas) 
+            {
+                let name = '<a href="'+ data.segments[0].url + '" target="_blank" title=' + data.id + '>'+data.name+'</a>'
+                for (let packstage of data.videostage.packstage) {
+                    let packagename = packstage.packagename;
+                    let keyframe_count = packstage.keyframe_count;
+                    let undo_count = packstage.undo_count;
+                    let checked_count = packstage.checked_count;
+                    let need_modify_count = packstage.need_modify_count;
+                    let unchecked_count = packstage.unchecked_count;
+                    let unchecked_realframes = packstage.unchecked_realframes;
+                    let unchecked_realframes_select = '';
+                    for(let unchecked_realframe of unchecked_realframes) {
+                        unchecked_realframes_select += '<option>' + unchecked_realframe + '</option>';
+                    }
+                    unchecked_realframes_select = '<select>' + unchecked_realframes_select + '</select>';
+
+                    t.row.add([name, packagename, keyframe_count, undo_count, 
+                        checked_count, need_modify_count, unchecked_count, unchecked_realframes_select,null
+                    ]).draw( false );
+                }
+            }
+        },
+        error: function(response) {
+            console.log(response);
         }
     });
 }

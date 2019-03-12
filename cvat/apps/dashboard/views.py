@@ -19,7 +19,7 @@ from cvat.apps.engine.models import BSDTrain as BSDTrainModel
 from cvat.apps.engine.models import DMSTrain as DMSTrainModel
 from cvat.settings.base import JS_3RDPARTY
 
-import os
+import os, time
 from datetime import datetime
 
 def ScanNode(directory,project=None):
@@ -149,11 +149,14 @@ def DetailTaskInfo(href, task, dst_dict):
         db_Project = DMSTrainModel.objects.get(task_id=task.id)
         db_keyFrame = models.DMSTrain_FrameUserRecord.objects.filter(task_id=task.id)
     
+    print('heeeeeeeeee')
     packagenames = list(models.TaskPackage.objects.filter(task_id=task.id).values_list('packagename__packagename', flat=True))
     # packagenames = task.packagename
     # packagenames = list(filter(None, packagenames.split(',')))
-    if not 'default' in packagenames:
-        packagenames.append('default')
+    # if not 'default' in packagenames:
+    #     packagenames.append('default')
+    if packagenames == []:
+        packagenames.append('NULL')
 
     packstage = []
     for packagename in packagenames:
@@ -196,54 +199,10 @@ def DetailTaskInfo(href, task, dst_dict):
 @login_required
 @permission_required('engine.add_task', raise_exception=True)
 def DashboardView(request):
-    try:
-        filter_name = request.GET['name'] if 'name' in request.GET else None
-        filter_packagename = request.GET['packagename'] if 'packagename' in request.GET else None
-        filter_nickname = request.GET['nickname'] if 'nickname' in request.GET else None
-        filter_createdate = request.GET['createdate'] if 'createdate' in request.GET else None
-        
+    try:        
         project = list(filter(None, request.path.split('/')))[1]
-        
-        qs = None
-        if project == 'fcw_training':
-            qs = FCWTrainModel.objects.all()
-        elif project == 'fcw_testing':
-            qs = FCWTestModel.objects.all()
-        elif project == 'apacorner':
-            qs = APACornerModel.objects.all()
-        elif project == 'bsd_training':
-            qs = BSDTrainModel.objects.all()
-        elif project == 'dms_training':
-            qs = DMSTrainModel.objects.all()
 
-        id_list = list(qs.values_list('task_id', flat=True))
-
-        # tasks_query_set = list(TaskModel.objects.prefetch_related('segment_set').filter(id__in=id_list).order_by('-created_date').all())
-        # if filter_name is not None:
-        #     tasks_query_set = list(filter(lambda x: filter_name.lower() in x.name.lower() and \
-        #                                             # filter_packagename.lower() in x.packagename.lower() and \
-        #                                             filter_nickname.lower() in x.nickname.lower() and \
-        #                                             filter_createdate in datetime.strftime(x.created_date, '%Y/%m/%d'), tasks_query_set))
-        # data = []
-        # for task in tasks_query_set:
-        #     task_info = {}
-        #     MainTaskInfo(task, task_info)
-        #     DetailTaskInfo(request, task, task_info)
-        #     data.append(task_info)
-
-        packages = []
-        packages_names = []
-
-        taskPackages = models.TaskPackage.objects.filter(task_id__in=id_list)
-        for taskPackage in taskPackages:
-            name = taskPackage.packagename.packagename
-            print('name',name)
-            print('packages_names',packages_names)
-            if not name in packages_names:
-                packages_names.append(name)
-                packages.append({'name':name,
-                                'office':taskPackage.packagename.office_priority,
-                                'soho':taskPackage.packagename.soho_priority})
+        packages = getProjectPackage(project)
 
         return render(request, 'dashboard/dashboard.html', {
             'project': project,
@@ -291,28 +250,14 @@ def newDashboardView(request):
 
 @login_required
 @permission_required('engine.add_task', raise_exception=True)
-def setPackagePriority(request):
+def searchDashboardView(request):
     try:
-        print('setPackagePriority start')
-        
+
         params = request.POST.dict()
+        href = params['href']
         project = params['project']
-        packagename = params['packagename']
-        office_priority = params['office_priority']
-        soho_priority = params['soho_priority']
+        taskname = params['taskname']
 
-        print('packagename',packagename)
-        print('office_priority',office_priority)
-        print('soho_priority',soho_priority)
-
-        package = models.PackagePriority.objects.get(packagename=packagename)
-        package.office_priority = office_priority
-        package.soho_priority = soho_priority
-        package.save()
-
-        print('setPackagePriority save')
-
-        qs = None
         id_list = None
         if project == 'fcw_training':
             id_list = list(FCWTrainModel.objects.values_list('task_id', flat=True))
@@ -325,22 +270,118 @@ def setPackagePriority(request):
         elif project == 'dms_training':
             id_list = list(DMSTrainModel.objects.values_list('task_id', flat=True))
 
-        packages = []
-        packages_names = []
+        packagenames = list(filter(None, params['packagenames'].split(',')))
 
-        taskPackages = models.TaskPackage.objects.filter(task_id__in=id_list)
-        for taskPackage in taskPackages:
-            name = taskPackage.packagename.packagename
-            print('name',name)
-            print('packages_names',packages_names)
-            if not name in packages_names:
-                packages_names.append(name)
-                packages.append({'name':name,
-                                'office':taskPackage.packagename.office_priority,
-                                'soho':taskPackage.packagename.soho_priority})
+        print('search with project:{}, taskname:{}, packagenames:{}'.format(project, taskname, packagenames))
+
+        start_time = time.time()
+        tasks = None
+        if packagenames:
+            print("in here",taskname,packagenames)
+            tasks = models.Task.objects.filter(name__icontains=taskname, id__in=id_list, taskpackage__packagename__packagename__in=packagenames)
+        else:
+            print("in hereB",taskname)
+            tasks = models.Task.objects.filter(name__icontains=taskname, id__in=id_list, taskpackage=None)
+        data = []
+        #print('tasks id:',tasks.id," tasks name:" tasks.name)
+        used_tasks = []
+        for task in tasks:
+            if task.id in used_tasks:
+                continue
+            else:
+                used_tasks.append(task.id)
+            task_info = {}
+            print('doing now')
+            MainTaskInfo(task, task_info)
+            print('doing there',task)
+            DetailTaskInfo(href, task, task_info)
+            data.append(task_info)
+
+        print("----- searchDashboardView cost: {} s -----".format(time.time() - start_time))
+
+        return JsonResponse({'project':project, 'data':data}, safe=False)
+
+    except Exception as e:
+        print(str(e))
+        return HttpResponseBadRequest(str(e))
+
+@login_required
+@permission_required('engine.add_task', raise_exception=True)
+def setPackagePriority(request):
+    try:
+        print('setPackagePriority start')
+        
+        params = request.POST.dict()
+        project = params['project']
+        packagenames = params['packagenames'].split(',')
+        office_priority = params['office_priority']
+        soho_priority = params['soho_priority']
+
+        print('packagenames',packagenames)
+        print('office_priority',office_priority)
+        print('soho_priority',soho_priority)
+
+        db_packages = models.PackagePriority.objects.filter(packagename__in=packagenames)
+        for package in db_packages:
+            package.office_priority = office_priority
+            package.soho_priority = soho_priority
+            package.save()
+
+        print('setPackagePriority done')
+
+        packages = getProjectPackage(project)
 
         return JsonResponse({'packages':packages}, safe=False)
 
     except Exception as e:
         print(str(e))
         return HttpResponseBadRequest(str(e))
+
+
+@login_required
+@permission_required('engine.add_task', raise_exception=True)
+def getAllPackagePriority(request):
+    try:
+        params = request.POST.dict()
+        project = params['project']
+        packages = getProjectPackage(project)
+
+        return JsonResponse({'packages':packages}, safe=False)
+
+    except Exception as e:
+        print(str(e))
+        return HttpResponseBadRequest(str(e))
+
+def getProjectPackage(project):
+
+    print('getProjectPackage start')
+
+    id_list = None
+    if project == 'fcw_training':
+        id_list = list(FCWTrainModel.objects.values_list('task_id', flat=True))
+    elif project == 'fcw_testing':
+        id_list = list(FCWTestModel.objects.values_list('task_id', flat=True))
+    elif project == 'apacorner':
+        id_list = list(APACornerModel.objects.values_list('task_id', flat=True))
+    elif project == 'bsd_training':
+        id_list = list(BSDTrainModel.objects.values_list('task_id', flat=True))
+    elif project == 'dms_training':
+        id_list = list(DMSTrainModel.objects.values_list('task_id', flat=True))
+
+    packages = []
+    packages_names = []
+
+    taskPackages = models.TaskPackage.objects.filter(task_id__in=id_list)
+    for taskPackage in taskPackages:
+        name = taskPackage.packagename.packagename
+        if not name in packages_names:
+            packages_names.append(name)
+            packages.append({'name':name,
+                            'office':taskPackage.packagename.office_priority,
+                            'soho':taskPackage.packagename.soho_priority})
+    
+    print('getProjectPackage done')
+
+    return packages
+
+
