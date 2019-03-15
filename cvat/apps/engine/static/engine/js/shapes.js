@@ -247,7 +247,6 @@ class ShapeModel extends Listener {
             this._color = {shape: "#255f9d",ui: "#255f9d"};
         }
     }
-    
 
     _importGrouping(grouping) {
         if(grouping!=null && grouping.length) {
@@ -2471,8 +2470,6 @@ class ShapeView extends Listener {
         this._scenes.menusObj = this._scenes.menusObj.sort(function (a, b) {
                                     return a.obj_id > b.obj_id ? 1 : -1;
                                 });
-
-                
         
         //for (let member in this._scenes.menus) delete this._scenes.menus[member];
 
@@ -2872,7 +2869,6 @@ class ShapeView extends Listener {
             
             return block;
         }
-
 
         function makeRadioAttr(attrInfo, attrId, objectId) {
             let block = document.createElement('fieldset');
@@ -3668,11 +3664,7 @@ class ShapeView extends Listener {
                     let y = 0;
     
                     if (this._uis.shape.type=='polyline') {
-
-                        
-                        
                         if (PROJECT == 'dms_training') {
-
                             let offset = TEXT_MARGIN*revscale;
                             if ((label_str.includes("眼睛") && index==1) || (label_str.includes("嘴巴") && index==2)){
                                 offset = -TEXT_MARGIN*revscale - textBBox.width * revscale;
@@ -3699,8 +3691,6 @@ class ShapeView extends Listener {
                                 }
                             }
                         }
-                        
-                        
                     }
                     else {
                         x = shapeBBox.x + shapeBBox.width + TEXT_MARGIN;
@@ -3726,8 +3716,6 @@ class ShapeView extends Listener {
                     }
                 }
             }
-
-            
         }
     }
 
@@ -4223,7 +4211,6 @@ class BoxView extends ShapeView {
         // console.log("_drawShapeUI(interpolation, id_)");
         setDetectPoint(this._controller._model);
     }
-
 
     _setupAAMView(active, pos) {
         let oldRect = $('#outsideRect');

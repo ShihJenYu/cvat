@@ -60,6 +60,10 @@
 
 
 {% block content %}
+<div id="redoComment_status" style="margin-bottom: 5px;text-align:left; display:inline-block;">
+    <label id="redoComment_status_label" class="regular h1" style="text-align:left;">標記建議</label>
+    <div id="redoComment_view" style="word-break: break-word;"></div>
+</div>
 <div id="group_status" style="margin-bottom: 5px;text-align:left; display:inline-block;">
     <label id="group_status_label" class="regular h1" style="text-align:left;">群組狀態</label>
     <div id="group_status_description"></div>
@@ -409,7 +413,7 @@
 
     <div id="annotationMenu" class="hidden regular keyframe">
         <center style="float:left; width: 28%; height: 100%;" id="engineMenuButtons">
-            {% if project == "apacorner" %}
+            {% if project == "apacorner" or project == "dms_training" %}
             <div class="menuButton semiBold h2">
                 <input type="checkbox" id="realComplete" value="realComplete" style="margin-left: 50px;"/>
                 <label class="regular h1" id="realComplete_text" for="realComplete">realComplete</label>

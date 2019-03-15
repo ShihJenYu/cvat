@@ -112,9 +112,9 @@ def getPersonEfficiency(user=None, project=None, startDateTime=None, endDateTime
         excellent = models.TaskFrameUserRecord.objects.filter(Q(user=user) & Q(current=False) & Q(checked_date__range=(startDateTime, endDateTime)))
         terrible = models.TaskFrameUserRecord.objects.filter(Q(user=user) & Q(current=False) & Q(need_modify_date__range=(startDateTime, endDateTime)))
 
-    response = {'user':user,
-                'search_targets':search_targets.count(),
-                'search_targets_objs':getObjsCount(list(search_targets.values_list('task_id','frame'))),
+    response = {'user': user,
+                'search_targets': search_targets.count(),
+                'search_targets_objs': getObjsCount(list(search_targets.values_list('task_id','frame'))),
                 'checked': checked.count(),
                 'checked_objs': getObjsCount(list(checked.values_list('task_id','frame'))),
                 'uncheck': uncheck.count(),

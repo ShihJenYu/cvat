@@ -1391,6 +1391,7 @@ class PlayerView {
                 let comment_list = window.cvat.frameInfo[frames.current].comment.split(',');
                 let comment_href = comment_list[0];
                 if(!comment_href.includes('file:')){
+                    $('#redoComment_view').text(window.cvat.frameInfo[frames.current].comment);
                     $('#redoComment_readonly').text(window.cvat.frameInfo[frames.current].comment);
 
                     $('#commentImgButton').addClass('hidden');
@@ -1398,6 +1399,7 @@ class PlayerView {
                 }
                 else {
                     let comment_str = comment_list.slice(1).join();
+                    $('#redoComment_view').text(comment_str);
                     $('#redoComment_readonly').text(comment_str);
                     $('#commentImgButton').removeClass('hidden');
                 }

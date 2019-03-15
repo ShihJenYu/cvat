@@ -15,7 +15,7 @@ from django.conf import settings
 from django.contrib.auth.decorators import permission_required
 from cvat.apps.authentication.decorators import login_required
 
-import hashlib
+import hashlib,os
 
 def register_user(request):
     if request.method == 'POST':
@@ -65,8 +65,11 @@ def auth_mysteriousKey(request):
         params = request.POST.dict()
         mysterious_key = params['mysteriousKey']
         print('mysteriousKey', mysterious_key)
+        OFFICE_IP = []
+        with open(os.path.join(settings.OTHERS_ROOT,'ip_settings.txt')) as f:
+            OFFICE_IP = f.readlines()
 
-        OFFICE_IP = ['114.37.148.33', '220.134.104.253']
+        OFFICE_IP = [ip.strip() for ip in OFFICE_IP]
         OFFICE_Key = []
         for ip in OFFICE_IP:
             mhash = hashlib.md5()

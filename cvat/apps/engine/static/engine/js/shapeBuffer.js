@@ -71,7 +71,7 @@ class ShapeBufferModel extends Listener  {
         object.frame = frame;
         object.attributes = attributes;
         // add by jeff, obj_id
-        console.log("finish");
+        // console.log("finish");
         object.grouping = '';
 
         if (Object.keys(this._collection._annotationShapes).length === 0){
@@ -263,8 +263,6 @@ class ShapeBufferModel extends Listener  {
                 addedObjects.push(this._collection.shapes.slice(-1)[0]);
                 numOfFrames --;
             }
-
-
 
             // Undo/redo code
             window.cvat.addAction('Propagate Object', () => {

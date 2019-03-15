@@ -3,7 +3,7 @@
 #
 # SPDX-License-Identifier: MIT
 
-import os,errno
+import os,errno,copy
 import io
 import csv
 import json
@@ -254,6 +254,7 @@ def insert_images(request):
                 print("save new size")
                 video_task.size = after_size
                 video_task.save()
+                task._make_image_meta_cache(db_task)
 
                 video_seg = models.Segment.objects.select_for_update().get(task_id=video_tid)
                 video_seg.stop_frame = after_size-1
@@ -261,7 +262,7 @@ def insert_images(request):
 
                 # update exist frame with tid
                 print("update exist frame with tid")
-                db_framenames = models.FrameName.objects.select_for_update().filter(task_id=video_tid)
+                db_framenames = models.FrameName.objects.select_for_update().filter(task_id=video_tid).order_by('-name')
                 for db_framename in db_framenames:
                     before_frame = db_framename.frame
                     before_name = db_framename.name
@@ -649,6 +650,7 @@ def upload_Label(request):
                             isBox = True if obj_label_name == '臉' else False
 
                             item = {}
+                            obj['Points'] = obj['Points'].strip()
                             if isBox:
                                 pointTL, pointBR = obj['Points'].split(' ')
                                 pointTL_x, pointTL_y = pointTL.split(',')
@@ -743,7 +745,7 @@ def upload_CSV(request, a_bIgnore_not_keyframe=True):
         oCSVcontainer.Read_Setting_files(a_Setting_file=fileSetting)
 
         for sCSVpath in listCSVfile:
-            
+
             fileCSV_uploadpath = os.path.normpath(sCSVpath).lstrip('/')
             fileCSV_abs_uploadpath = os.path.abspath(os.path.join(sShare_Root, fileCSV_uploadpath))
 
@@ -751,17 +753,16 @@ def upload_CSV(request, a_bIgnore_not_keyframe=True):
 
             if fileTaskName.endswith(".csv"):
                 continue
-            
-            for root, dirs, files in os.walk(fileCSV_abs_uploadpath):
 
+            for root, dirs, files in os.walk(fileCSV_abs_uploadpath):
                 fileRoot = root
                 for fileCSV in files:
                     if not fileCSV.endswith(".csv"):
                         continue
                     if (not fileCSV.startswith("key_")):  # prevent bug for no root path
-                        continue            
+                        continue
                     if 'VideoParam' in fileCSV:
-                        continue      
+                        continue
                     fileCSV_Abspath = os.path.join(fileRoot, fileCSV)
 
                     listABSfile.append(fileCSV_Abspath)
@@ -1862,21 +1863,25 @@ def set_currentJob(request):
         new_jid = None
 
         user_priority = None
-        user_priority2 = None
+        user_priority_sec = None
         user_workSpace = None
         if username.startswith('oto',0,3):
             user_priority = {'task__taskpackage__packagename__office_priority':0,}#{'office_priority':0,}
-            user_priority2 = {'task__taskpackage__packagename__office_priority':0,}
+            user_priority_sec = {'office_priority':0,}
         else:
             user_priority = {'task__taskpackage__packagename__soho_priority':0,}#{'soho_priority':0,}
-            user_priority2 = {'task__taskpackage__packagename__soho_priority':0,}
-        user_priority_key = list(user_priority2.keys())[0]
+            user_priority_sec = {'soho_priority':0,}
+        user_priority_key = list(user_priority.keys())[0]
 
         user_workSpace = {'username':request.user.username, 'project':project}
         #task_id_list = list(_ProjectModel.objects.values_list('task_id', flat=True))
         try:
             print('user_workSpace',user_workSpace)
+
+            real_can_use_packagenames = list(models.PackagePriority.objects.filter(~Q(**user_priority_sec)).values_list('packagename',flat=True))
             packagenames = list(models.UserWorkSpace.objects.filter(**user_workSpace).values_list('packagename',flat=True))
+            packagenames = list(set(packagenames)&set(real_can_use_packagenames))
+            print('packagenames',packagenames)
 
             if len(packagenames) == 0:
                 return JsonResponse({'status':"A01",'text':"你沒被分配到工作, 請聯絡管理員哦"})
@@ -1896,8 +1901,9 @@ def set_currentJob(request):
                 for tid in tids:
                     tmp_tid = tid
                     with transaction.atomic():
-                        qs = _FrameUserRecordModel.objects.select_for_update().filter(task_id=tmp_tid,user=request.user.username,need_modify=True)
-                        ids = qs.values_list('id', flat=True)
+                        qs = _FrameUserRecordModel.objects.select_for_update().filter(task_id=tmp_tid,user=request.user.username,need_modify=True,packagename__in=packagenames)
+                        ids = list(qs.values_list('id', flat=True))
+                        print('ids',ids)
                         if len(ids):
                             index = random.randint(0, len(ids)-1)
                             try:
@@ -1932,8 +1938,9 @@ def set_currentJob(request):
                     # for db_project in db_projects:
                         tmp_tid = tid
                         with transaction.atomic():
-                            qs = _FrameUserRecordModel.objects.select_for_update().filter(task_id=tmp_tid,user='')
-                            ids = qs.values_list('id', flat=True)
+                            qs = _FrameUserRecordModel.objects.select_for_update().filter(task_id=tmp_tid,user='',packagename__in=packagenames)
+                            ids = list(qs.values_list('id', flat=True))
+                            print('ids',ids)
                             if len(ids):
                                 index = random.randint(0, len(ids)-1)
                                 try:

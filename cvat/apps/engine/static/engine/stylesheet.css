@@ -641,6 +641,23 @@
     white-space: pre-wrap;
 }
 
+#redoComment_status_label {
+    background:#ccc;
+    border: 1px #333 solid;
+    padding:5px;
+    width:100px;
+}
+#redoComment_view {
+    background:#ccc;
+    display:none;
+    position:absolute;
+    border:1px solid #000;
+    width:400px;
+    height:400px;
+    z-index: 99;
+    white-space: pre-wrap;
+}
+
 #DMS_LabelBoard {
     width: 20%;
     height: 5%;

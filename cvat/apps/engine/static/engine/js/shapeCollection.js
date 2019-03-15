@@ -938,7 +938,6 @@ class ShapeCollectionModel extends Listener {
         //             shape.switchHide();
         //         }
         //     }
-            
         // }
     }
 
@@ -2353,7 +2352,6 @@ function setDetectPoint(activeShape){
                     content.append(shape);
                 }
             });
-            
 
             thisframeContent.rect(scaledR*3,scaledR*3).draggable({
                 minX: xtl - scaledR*1.5,

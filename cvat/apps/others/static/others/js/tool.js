@@ -240,7 +240,7 @@ window.onload = function() {
                         `<td style="${perfection_color}">${row.checked} / ${row.checked_objs}</td>` + 
                         `<td>${need_modify} / ${row.need_modify_objs}</td>` + 
                         `<td>${uncheck} / ${row.uncheck_objs}</td>` + 
-                        `<td>${terrible} / ${row.terrible}</td>` + 
+                        `<td>${terrible} / ${row.terrible_objs}</td>` + 
                         `<td>${excellent} / ${row.excellent_objs}</td>` + 
                         `<td>${date_str}</td></tr>`
                     );

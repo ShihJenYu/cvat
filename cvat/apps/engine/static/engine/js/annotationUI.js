@@ -409,6 +409,7 @@ function buildAnnotationUI(job, shapeData, loadJobEvent) {
         let comment_list = window.cvat.frameInfo[index].comment.split(',');
         let comment_href = comment_list[0];
         if(!comment_href.includes('file:')){
+            $('#redoComment_view').text(window.cvat.frameInfo[index].comment);
             $('#redoComment_readonly').text(window.cvat.frameInfo[index].comment);
 
             $('#commentImgButton').addClass('hidden');
@@ -417,7 +418,9 @@ function buildAnnotationUI(job, shapeData, loadJobEvent) {
         else {
             $('#commentImgButton').removeClass('hidden');
             let comment_str = comment_list.slice(1).join();
+            $('#redoComment_view').text(window.cvat.frameInfo[index].comment);
             $('#redoComment_readonly').text(comment_str);
+
             console.log(' commentImgButton remove hidden');
             $.alert({
                 title: '特別需要注意！ 用下列網址開啟新分頁',
@@ -635,6 +638,22 @@ function buildAnnotationUI(job, shapeData, loadJobEvent) {
         $("#group_status_description").show();
     }).mouseleave(function() {
         $("#group_status_description").hide();
+    });
+
+    $("#redoComment_status").mouseenter(function() {
+        let frame = window.cvat.player.frames.current;
+        if (window.cvat.frameInfo[frame] == undefined){
+            return;
+        }
+        
+        let comment_list = window.cvat.frameInfo[frame].comment;
+        
+        console.log('HI',comment_list);
+        
+        $("#redoComment_view").text(comment_list);
+        $("#redoComment_view").show();
+    }).mouseleave(function() {
+        $("#redoComment_view").hide();
     });
     
 }

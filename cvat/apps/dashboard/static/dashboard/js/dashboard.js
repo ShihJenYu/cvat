@@ -383,7 +383,6 @@ function setupTaskCreator() {
         updateSelectedFiles();
     });
 
-
     cancelBrowseServer.on('click', () => shareFileSelector.addClass('hidden'));
     submitBrowseServer.on('click', function() {
         files = shareBrowseTree.jstree(true).get_selected();

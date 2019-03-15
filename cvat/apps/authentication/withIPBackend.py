@@ -1,4 +1,4 @@
-import hashlib
+import hashlib,os
 
 from django.conf import settings
 from django.contrib.auth.hashers import check_password
@@ -19,7 +19,12 @@ class WithIPBackend(ModelBackend):
                 if isAdmin:
                     return user
                 print('is my auth')
-                OFFICE_IP = ['114.37.148.33', '220.134.104.253']
+                
+                OFFICE_IP = []
+                with open(os.path.join(settings.OTHERS_ROOT,'ip_settings.txt')) as f:
+                    OFFICE_IP = f.readlines()
+
+                OFFICE_IP = [ip.strip() for ip in OFFICE_IP]
                 OFFICE_Key = []
                 for ip in OFFICE_IP:
                     mhash = hashlib.md5()
